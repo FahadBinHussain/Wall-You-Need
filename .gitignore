@@ -1,4 +1,4 @@
-*/
+__pycache__
 .env
 wallpapers.txt
 lastsavelocation.cfg
@@ -7,3 +7,4 @@ last_scrape_time.txt
 wallpaper_history.json
 update_wakatime_stats.py
 wakatime_data.json
+DepotDownloaderMod
