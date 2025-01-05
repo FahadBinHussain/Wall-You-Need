@@ -25,10 +25,10 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller --onefile --windowed gui.py
+          pyinstaller Wall-You-Need.spec
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v3 # Updated to v3
+        uses: actions/upload-artifact@v3
         with:
           name: wallpaper-updater
           path: dist/
