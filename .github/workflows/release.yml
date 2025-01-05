@@ -1,20 +1,20 @@
-name: Release Executable
+name: Release
 
 on:
   push:
     tags:
-      - 'v*'  # Trigger release when a version tag is pushed (e.g., v1.0.0)
+      - 'v*'
 
 jobs:
-  build:
-    runs-on: windows-latest
+  release:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
@@ -31,19 +31,31 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wallpaper-updater
-          path: dist/
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+          path: dist/wallpaper-updater.exe
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: dist/wallpaper-updater.exe
+          body: |
+            ## v0.9.0 - First Release
+            This is the first public release of the Wallpaper Updater program. 🎉
+
+            ### Fixed:
+            - ~~url isn't changing from GUI, until restart~~
+            - ~~exe always showing returned non-zero exit status 1~~
+            - ~~start with Windows not reflecting the correct state upon running the program~~
+            - ~~.env being created from exe, still not decided whether to keep or remove from code~~
+            - ~~couldn't delete being used by another process~~ (Added delay after setting new wallpaper)
+            - ~~rarely failed to delete~~ (Terminated `depotdownloader` before deletion)
+            - ~~check interval 30 changing to 300 not working~~ (Config updates now apply correctly)
+
+            ### Known Issues:
+            - Even when it's just a collection from people, it shows "fetching from page X" — fix this.
+            - Wallpaper occasionally not set immediately after download; might require adding a delay.
+            - Clicking the "X" button while `depotdownloader` runs still hangs the exe.
+            - Remove logic for "last scrape time" created from exe.
+            - Untested platforms: macOS, Linux.
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
