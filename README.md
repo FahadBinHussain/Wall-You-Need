@@ -11,7 +11,7 @@ https://github.com/oureveryday/DepotDownloaderMod for wallpaper engine downloade
 
 # Total Time Spent on Project
 <!--START_SECTION:waka-->
-Total Time Spent: 17 hrs 19 mins
+Total Time Spent: 22 hrs 19 mins
 <!--END_SECTION:waka-->
 
 # how to use?
