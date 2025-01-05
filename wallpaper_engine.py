@@ -7,16 +7,30 @@ from bs4 import BeautifulSoup
 import random
 import logging
 import psutil
-from env import USERNAMES, PASSWORDS, SAVE_LOCATION, COLLECTIONS_URL, CHECK_INTERVAL, SCRAPE_INTERVAL, WALLPAPER_DOWNLOAD_LIMIT, OUTPUT_FILE, COMMAND_TEMPLATE, MAX_WALLPAPERS
+from dotenv import load_dotenv
+import os
+from utils import load_env_vars, load_config, save_config  # Import utility functions
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Load environment variables
+load_env_vars()
+
+# Load configuration
+config = load_config()
+
 # Wallpaper Engine related functions
+
+def printlog(log):
+    """Log messages to the console."""
+    print(log)
+    logging.info(log)
 
 def fetch_page_content(url):
     """Fetch a webpage's content."""
     try:
+        config = load_config()
         response = requests.get(url)
         response.raise_for_status()
         return response.text
@@ -26,16 +40,20 @@ def fetch_page_content(url):
 
 def get_random_credential_pair():
     """Select a random username-password pair."""
-    if not USERNAMES or not PASSWORDS:
+    usernames = os.getenv('USERNAMES').split(',')
+    passwords = os.getenv('PASSWORDS').split(',')
+    
+    if not usernames or not passwords:
         logging.error("Usernames or passwords are not set in environment variables.")
         return None, None
     
-    index = random.randint(0, len(USERNAMES) - 1)
-    return USERNAMES[index], PASSWORDS[index]
+    index = random.randint(0, len(usernames) - 1)
+    return usernames[index], passwords[index]
 
 def log_downloaded_wallpaper(pubfileid):
     """Log downloaded wallpaper metadata."""
-    history_file = SAVE_LOCATION / "wallpaper_history.json"
+    save_location = Path(config['SAVE_LOCATION'])
+    history_file = save_location / "wallpaper_history.json"
     try:
         history = {}
         if history_file.exists():
@@ -43,7 +61,7 @@ def log_downloaded_wallpaper(pubfileid):
                 history = json.load(f)
         history[pubfileid] = {
             "timestamp": time.time(),
-            "path": str(SAVE_LOCATION / "projects" / "myprojects" / pubfileid)
+            "path": str(save_location / "projects" / "myprojects" / pubfileid)
         }
         with history_file.open("w") as f:
             json.dump(history, f, indent=4)
@@ -52,24 +70,27 @@ def log_downloaded_wallpaper(pubfileid):
 
 def set_downloaded_wallpaper(pubfileid):
     """Set the wallpaper using the provided command."""
-    wallpaper_dir = SAVE_LOCATION / "projects" / "myprojects" / pubfileid
+    save_location = Path(config['SAVE_LOCATION'])
+    wallpaper_dir = save_location / "projects" / "myprojects" / pubfileid
     scene_file = wallpaper_dir / "scene.pkg"
     mp4_file = next(wallpaper_dir.glob("*.mp4"), None)
 
     if scene_file.exists():
         logging.info(f"Setting wallpaper using scene.pkg for {pubfileid}")
-        command = f'"{SAVE_LOCATION}\\wallpaper64.exe" -control openWallpaper -file "{scene_file}" play'
+        command = f'"{save_location}\\wallpaper64.exe" -control openWallpaper -file "{scene_file}" play'
         try:
             subprocess.Popen(command, shell=True)
+            time.sleep(2.5)  # Wait for the wallpaper to load
             logging.info(f"Successfully set wallpaper with scene.pkg for {pubfileid}")
         except subprocess.CalledProcessError as e:
             logging.error(f"Failed to set wallpaper with scene.pkg for {pubfileid}: {e}")
             return False
     elif mp4_file:
         logging.info(f"Setting wallpaper using {mp4_file} for {pubfileid}")
-        command = f'"{SAVE_LOCATION}\\wallpaper64.exe" -control openWallpaper -file "{mp4_file}" play'
+        command = f'"{save_location}\\wallpaper64.exe" -control openWallpaper -file "{mp4_file}" play'
         try:
             subprocess.Popen(command, shell=True)
+            time.sleep(2.5)  # Wait for the wallpaper to load
             logging.info(f"Successfully set wallpaper with {mp4_file} for {pubfileid}")
         except subprocess.CalledProcessError as e:
             logging.error(f"Failed to set wallpaper with {mp4_file} for {pubfileid}: {e}")
@@ -81,12 +102,12 @@ def set_downloaded_wallpaper(pubfileid):
     # Log the wallpaper change
     log_downloaded_wallpaper(pubfileid)
     return True
-    
+
 def should_perform_scrape():
     """Determine if scraping should be performed based on interval."""
     try:
         last_scrape = Path("last_scrape_time.txt").stat().st_mtime
-        return (time.time() - last_scrape) > SCRAPE_INTERVAL
+        return (time.time() - last_scrape) > int(config['SCRAPE_INTERVAL'])
     except (FileNotFoundError, OSError):
         return True
 
@@ -95,20 +116,41 @@ def update_last_scrape_time():
     with open("last_scrape_time.txt", "w") as f:
         f.write(str(time.time()))
 
-def download_random_wallpapers():
-    """Download random wallpapers using the saved links."""
-    try:
-        with OUTPUT_FILE.open("r", encoding="utf-8") as f:
-            wallpaper_links = [line.strip() for line in f if line.startswith("https://")]
-    except FileNotFoundError:
-        logging.warning("No wallpaper links file found.")
-        return
+def clean_and_filter_wallpaper_links(links):
+    """Filter and clean wallpaper links to ensure they match the required format."""
+    filtered_links = [link.split("&")[0] for link in links if "steamcommunity.com/sharedfiles/filedetails/?id=" in link]
+    logging.info(f"Filtered {len(filtered_links)} valid wallpaper links.")
+    return filtered_links
 
-    if len(wallpaper_links) < WALLPAPER_DOWNLOAD_LIMIT:
+def scrape_wallpapers():
+    """Scrape wallpapers and return unique links."""
+    random_page = random.randint(1, 1000)
+    config = load_config()
+    collections_url = config['COLLECTIONS_URL'].format(page=random_page)
+    logging.info(f"Fetching wallpaper links from page {random_page}...")
+
+    wallpapers_page = fetch_page_content(collections_url)
+    if wallpapers_page:
+        logging.info("Parsing wallpapers...")
+        soup = BeautifulSoup(wallpapers_page, 'html.parser')
+        raw_links = [a['href'] for a in soup.select('div.workshopItem a') if a.get('href')]
+
+        wallpaper_links = clean_and_filter_wallpaper_links(raw_links)
+        unique_links = set(wallpaper_links)
+        logging.info(f"Found {len(unique_links)} unique wallpapers on page {random_page}.")
+        return list(unique_links)
+    else:
+        logging.warning(f"Failed to fetch or parse page {random_page}.")
+    return []
+
+def download_random_wallpapers(wallpaper_links):
+    """Download random wallpapers using the provided links."""
+    wallpaper_download_limit = int(config['WALLPAPER_DOWNLOAD_LIMIT'])
+    if len(wallpaper_links) < wallpaper_download_limit:
         logging.warning("Not enough wallpapers to download.")
         return
 
-    selected_links = random.sample(wallpaper_links, WALLPAPER_DOWNLOAD_LIMIT)
+    selected_links = random.sample(wallpaper_links, wallpaper_download_limit)
     for link in selected_links:
         pubfileid = link.split("id=")[1]
         logging.info(f"Extracted pubfileid: {pubfileid} from link: {link}")
@@ -118,47 +160,31 @@ def download_random_wallpapers():
             continue
 
         # Create the directory for this wallpaper
-        directory = SAVE_LOCATION / "projects" / "myprojects" / pubfileid
+        save_location = Path(config['SAVE_LOCATION'])
+        directory = save_location / "projects" / "myprojects" / pubfileid
         directory.mkdir(parents=True, exist_ok=True)
 
-        command = COMMAND_TEMPLATE.format(pubfileid=pubfileid, username=username, password=password, directory=directory)
+        command_template = "DepotdownloaderMod\\DepotDownloadermod.exe -app 431960 -pubfile {pubfileid} -verify-all -username {username} -password {password} -dir \"{directory}\""
+        command = command_template.format(pubfileid=pubfileid, username=username, password=password, directory=directory)
         logging.info(f"Downloading wallpaper with ID {pubfileid} using {username}...")
+
         try:
-            subprocess.run(command, shell=True, check=True)
+            # Run the command and capture output
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            for line in process.stdout:
+                printlog(line)
+            process.stdout.close()
+            process.wait()
+
+            if process.returncode != 0:
+                logging.error(f"Command failed with return code {process.returncode}")
+                return False
+
             log_downloaded_wallpaper(pubfileid)
             if not set_downloaded_wallpaper(pubfileid):
                 logging.error(f"Failed to set wallpaper with ID {pubfileid}")
         except subprocess.CalledProcessError as e:
             logging.error(f"Failed to download wallpaper with ID {pubfileid}: {e}")
-
-def clean_and_filter_wallpaper_links(links):
-    """Filter and clean wallpaper links to ensure they match the required format."""
-    return [link.split("&")[0] for link in links if "steamcommunity.com/sharedfiles/filedetails/?id=" in link]
-
-def scrape_wallpapers():
-    """Scrape wallpapers and save unique links."""
-    random_page = random.randint(1, 1000)
-    collections_url = COLLECTIONS_URL.format(page=random_page)
-    logging.info(f"Fetching wallpaper links from page {random_page}...")
-
-    wallpapers_page = fetch_page_content(collections_url)
-    if (wallpapers_page):
-        logging.info("Parsing wallpapers...")
-        soup = BeautifulSoup(wallpapers_page, 'html.parser')
-        raw_links = [a['href'] for a in soup.select('div.workshopItem a') if a.get('href')]
-
-        wallpaper_links = clean_and_filter_wallpaper_links(raw_links)
-
-        if wallpaper_links:
-            unique_links = set(wallpaper_links)
-            logging.info(f"Found {len(unique_links)} unique wallpapers on page {random_page}.")
-            
-            with OUTPUT_FILE.open("w", encoding="utf-8") as f:
-                for link in unique_links:
-                    f.write(link + "\n")
-            logging.info(f"Saved {len(unique_links)} unique wallpapers from page {random_page}.")
-
-    update_last_scrape_time()
 
 def close_wallpaper_engine():
     """Close Wallpaper Engine if it is running."""
@@ -174,6 +200,17 @@ def automate_wallpaper_update():
     """Automate the process of scraping, downloading, and setting wallpapers."""
     logging.info("Starting automated wallpaper update.")
     if should_perform_scrape():
-        scrape_wallpapers()
-    download_random_wallpapers()
+        wallpaper_links = scrape_wallpapers()
+        update_last_scrape_time()
+    else:
+        wallpaper_links = []
+
+    if wallpaper_links:
+        download_random_wallpapers(wallpaper_links)
+    else:
+        logging.warning("No new wallpapers to download.")
     logging.info("Completed automated wallpaper update.")
+
+# Example usage
+# if __name__ == "__main__":
+#     automate_wallpaper_update()

@@ -7,3 +7,5 @@ last_scrape_time.txt
 wallpaper_history.json
 wakatime_data.json
 DepotDownloaderMod
+build
+dist

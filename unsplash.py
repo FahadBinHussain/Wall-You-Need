@@ -7,10 +7,16 @@ import platform
 import subprocess
 import ctypes
 import random
+from utils import load_env_vars, load_config, save_config  # Import utility functions
 
 # Load environment variables
+load_env_vars()
+
+# Load configuration
+config = load_config()
+
+# Unsplash API key from environment variable
 UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
-SAVE_LOCATION = Path(os.getenv("SAVE_LOCATION"))
 
 # Check if API key is loaded
 if not UNSPLASH_ACCESS_KEY:
@@ -29,7 +35,6 @@ def fetch_unsplash_wallpapers(query="wallpapers", count=10):
         return wallpapers
     except requests.RequestException as e:
         logging.error(f"Failed to fetch from Unsplash: {e}")
-        logging.error(f"Response content: {response.content}")
         return []
 
 def save_wallpapers(wallpapers, directory):
@@ -79,3 +84,11 @@ def set_wallpaper_linux(file_path):
     """Set the desktop wallpaper on Linux with GNOME."""
     subprocess.run(["gsettings", "set", "org.gnome.desktop.background", "picture-uri", f"file://{file_path}"])
     logging.info(f"Wallpaper set to {file_path} on Linux")
+
+# Example usage:
+# if __name__ == "__main__":
+#     wallpapers = fetch_unsplash_wallpapers()
+#     save_wallpapers(wallpapers, Path(config['SAVE_LOCATION']) / "unsplash_wallpapers")
+#     latest_wallpaper = get_latest_wallpaper(Path(config['SAVE_LOCATION']) / "unsplash_wallpapers")
+#     if latest_wallpaper:
+#         set_wallpaper(latest_wallpaper)
