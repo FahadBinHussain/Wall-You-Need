@@ -68,7 +68,7 @@ pykakasi==2.3.0
 PyMsgBox==1.0.9
 pynput==1.7.7
 pyperclip==1.9.0
-pyppeteer==2.0.0
+pyppeteer==1.0.2
 pyquery==2.0.1
 PyRect==0.2.0
 PyScreeze==1.0.1
@@ -128,6 +128,6 @@ websockets==10.4
 winpython==1.0
 wrapt==1.16.0
 wsproto==1.2.0
-yt-dlp==2024.8.6
+yt-dlp==2023.3.4
 ytmusicapi==1.8.1
 zipp==3.21.0
