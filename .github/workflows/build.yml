@@ -26,7 +26,7 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller --onefile --clean --noconfirm Wall-You-Need.spec  # Build using the .spec file with --onefile option
+          pyinstaller --clean --noconfirm Wall-You-Need.spec  # Build using the .spec file with --onefile option
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
