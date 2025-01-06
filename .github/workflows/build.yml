@@ -26,9 +26,11 @@ jobs:
       - name: Build executable
         run: |
           pyinstaller Wall-You-Need.spec
+          echo "Contents of dist directory:"
+          dir dist
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
           name: wallpaper-updater
-          path: dist/wallpaper-updater.exe
+          path: dist/Wall-You-Need.exe
