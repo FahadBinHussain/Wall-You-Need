@@ -7,7 +7,7 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
@@ -27,16 +27,16 @@ jobs:
         run: |
           pyinstaller Wall-You-Need.spec  # Ensure to build using your .spec file
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: wallpaper-updater
-          path: dist/wallpaper-updater.exe
-
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: dist/wallpaper-updater.exe
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
           body: |
             ## v0.9.0 - First Release
             This is the first public release of the Wallpaper Updater program. 🎉
@@ -57,5 +57,12 @@ jobs:
             - Remove logic for "last scrape time" created from exe.
             - Untested platforms: macOS, Linux.
 
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/wallpaper-updater.exe
+          asset_name: wallpaper-updater.exe
+          asset_content_type: application/octet-stream
