@@ -7,7 +7,7 @@ more features coming soon!
 
 # how to prepare?
 1. Please install [.NET 9.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/9.0/runtime?cid=getdotnetcore&os=windows&arch=x64) first.
-2. rename .env.dev to .env, and edit as per your needs
+2. add your own api keys in .env
 3. pip install requirements.txt
 
 
@@ -15,6 +15,8 @@ more features coming soon!
 1. run main.py for choosing randomly between all platforms
 2. run gui.py for choosing randomly between manually selected platforms
 3. edit config.json using gui or manually as per your needs
+4. must edit save location with folder location where you want to save wallpapers
+
 
 # how to build?
 
