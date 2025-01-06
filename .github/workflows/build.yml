@@ -31,4 +31,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wallpaper-updater
-          path: dist/
+          path: dist/wallpaper-updater.exe
