@@ -120,7 +120,6 @@ def start_wallpaper_update():
         logging.info(f"Sleeping for {interval} seconds before the next update.")
 
 def update_config_file():
-    # Update the config.json file with the new values from the GUI
     config = load_config()
     config['SAVE_LOCATION'] = entry_save_location.get()
     config['CHECK_INTERVAL'] = entry_check_interval.get()
@@ -129,6 +128,15 @@ def update_config_file():
     config['WALLPAPER_DOWNLOAD_LIMIT'] = entry_wallpaper_download_limit.get()
     config['MAX_WALLPAPERS'] = entry_max_wallpapers.get()
     config['SAVE_OLD_WALLPAPERS'] = str(var_save_old_wallpapers.get())
+    
+    # Save the state of the source buttons
+    config['SOURCE_UNSPLASH'] = var_unsplash.get()
+    config['SOURCE_PEXELS'] = var_pexels.get()
+    config['SOURCE_WALLPAPER_ENGINE'] = var_wallpaper_engine.get()
+    
+    # Save the state of the update process
+    config['UPDATE_RUNNING'] = update_thread is not None and update_thread.is_alive()
+    
     save_config(config)
 
 def on_start():
@@ -180,11 +188,16 @@ def on_start():
     update_thread = threading.Thread(target=start_wallpaper_update)
     update_thread.start()
 
+    # Save the running state
+    config['UPDATE_RUNNING'] = True
+    save_config(config)
+
 def on_startup_checkbox_change():
     set_startup(var_startup.get())
 
 def on_close():
     """Handle the window close event."""
+    update_config_file()  # Save the configuration before closing
     if update_thread and update_thread.is_alive():
         logging.info("Stopping the update thread before closing.")
         stop_event.set()  # Signal the thread to stop
@@ -285,6 +298,18 @@ entry_scrape_interval.insert(0, config['SCRAPE_INTERVAL'])
 entry_collections_url.insert(0, config['COLLECTIONS_URL'])
 entry_wallpaper_download_limit.insert(0, config['WALLPAPER_DOWNLOAD_LIMIT'])
 entry_max_wallpapers.insert(0, config['MAX_WALLPAPERS'])
+
+# Set the state of the source buttons
+if 'SOURCE_UNSPLASH' in config:
+    var_unsplash.set(config['SOURCE_UNSPLASH'])
+if 'SOURCE_PEXELS' in config:
+    var_pexels.set(config['SOURCE_PEXELS'])
+if 'SOURCE_WALLPAPER_ENGINE' in config:
+    var_wallpaper_engine.set(config['SOURCE_WALLPAPER_ENGINE'])
+
+# Automatically start the update process if it was running previously
+if config.get('UPDATE_RUNNING', False):
+    on_start()
 
 # Bind the on_close function to the window close event
 root.protocol("WM_DELETE_WINDOW", on_close)
