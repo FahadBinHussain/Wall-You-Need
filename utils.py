@@ -3,6 +3,7 @@ import os
 import json
 from pathlib import Path
 from dotenv import load_dotenv
+import logging
 
 def load_env_vars():
     """Load environment variables from .env file."""
@@ -12,8 +13,16 @@ def load_env_vars():
 def load_config():
     """Load configuration from config.json file."""
     config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-    with open(config_path, 'r') as config_file:
-        return json.load(config_file)
+    if not os.path.exists(config_path):
+        logging.error("Configuration file does not exist.")
+        return None
+
+    try:
+        with open(config_path, 'r') as config_file:
+            return json.load(config_file)
+    except json.JSONDecodeError:
+        logging.error("Invalid JSON in configuration file.")
+        return None
 
 def save_config(config):
     """Save configuration to config.json file."""
@@ -27,5 +36,8 @@ load_env_vars()
 # Example usage:
 if __name__ == "__main__":
     config = load_config()
-    print("Loaded configuration:", config)
+    if config:
+        print("Loaded configuration:", config)
+    else:
+        print("Failed to load configuration.")
     print("Loaded usernames:", os.getenv('USERNAMES'))

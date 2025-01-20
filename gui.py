@@ -192,6 +192,21 @@ def on_start():
     config['UPDATE_RUNNING'] = True
     save_config(config)
 
+def on_stop():
+    global update_thread
+    if update_thread and update_thread.is_alive():
+        logging.info("Stopping the update thread.")
+        stop_event.set()  # Signal the thread to stop
+        update_thread.join()  # Wait for the thread to finish
+        update_thread = None  # Reset the update_thread variable
+
+    # Update the configuration settings in the config.json file
+    config = load_config()
+    config['UPDATE_RUNNING'] = False
+    save_config(config)
+
+    logging.info("Wallpaper update process stopped.")
+
 def on_startup_checkbox_change():
     set_startup(var_startup.get())
 
@@ -284,8 +299,13 @@ logging.getLogger().addHandler(text_handler)
 frame_actions = ttk.Frame(root, padding="10")
 frame_actions.grid(row=3, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
 
+# Create a Start button in the frame_actions frame
 btn_start = ttk.Button(frame_actions, text="Start", command=on_start)
 btn_start.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
+
+# Create a Stop button in the frame_actions frame
+btn_stop = ttk.Button(frame_actions, text="Stop", command=on_stop)
+btn_stop.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
 root.grid_rowconfigure(2, weight=1)
 root.grid_columnconfigure(0, weight=1)

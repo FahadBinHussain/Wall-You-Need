@@ -1,6 +1,6 @@
 {
     "SAVE_LOCATION": "C:\\Users\\fahad\\Downloads\\Softwares\\Wallpaper.Engine.build.14603215\\wallpaper_engine",
-    "CHECK_INTERVAL": "30",
+    "CHECK_INTERVAL": "300",
     "SCRAPE_INTERVAL": "0",
     "COLLECTIONS_URL": "https://steamcommunity.com/sharedfiles/filedetails/?id=2801058904",
     "WALLPAPER_DOWNLOAD_LIMIT": "1",
