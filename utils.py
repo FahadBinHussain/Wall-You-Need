@@ -15,14 +15,14 @@ def load_config():
     config_path = os.path.join(os.path.dirname(__file__), 'config.json')
     if not os.path.exists(config_path):
         logging.error("Configuration file does not exist.")
-        return None
+        return {}
 
     try:
         with open(config_path, 'r') as config_file:
             return json.load(config_file)
-    except json.JSONDecodeError:
-        logging.error("Invalid JSON in configuration file.")
-        return None
+    except json.JSONDecodeError as e:
+        logging.error(f"Invalid JSON in configuration file: {e}")
+        return {}
 
 def save_config(config):
     """Save configuration to config.json file."""
