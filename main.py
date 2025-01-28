@@ -6,6 +6,7 @@ import shutil
 import time
 import threading
 import subprocess
+import winreg  # Import winreg to modify the registry
 from dotenv import load_dotenv
 from wallpaper_engine import (
     automate_wallpaper_update,
@@ -72,6 +73,26 @@ def cleanup_old_wallpapers(directory, max_wallpapers):
                 except Exception as e:
                     logging.error(f"Unexpected error while deleting {dir_to_delete}: {e}")
 
+def set_lock_screen_wallpaper(image_path):
+    """Set the lock screen wallpaper by modifying the registry."""
+    if not image_path:
+        logging.error("Image path is empty.")
+        return
+
+    try:
+        image_path_str = str(image_path)  # Convert Path object to string
+        reg_key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP"
+
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, reg_key, 0, winreg.KEY_SET_VALUE) as key:
+            # Set the LockScreenImagePath as a REG_SZ (string)
+            winreg.SetValueEx(key, "LockScreenImagePath", 0, winreg.REG_SZ, image_path_str)
+            # Set the LockScreenImageStatus as a REG_DWORD (integer)
+            winreg.SetValueEx(key, "LockScreenImageStatus", 0, winreg.REG_DWORD, 1)
+
+        logging.info(f"Lock screen wallpaper set to {image_path_str}")
+    except Exception as e:
+        logging.error(f"Failed to set lock screen wallpaper: {e}")
+
 def update_wallpaper():
     """Function to update the wallpaper based on a random choice of sources."""
     config = load_config()  # Reload configuration
@@ -89,6 +110,7 @@ def update_wallpaper():
         unsplash_wallpaper_path = get_latest_wallpaper(save_location / "unsplash_wallpapers")
         if unsplash_wallpaper_path:
             set_unsplash_wallpaper(unsplash_wallpaper_path)
+            set_lock_screen_wallpaper(unsplash_wallpaper_path)  # Set lock screen wallpaper
             close_wallpaper_engine()
         cleanup_old_wallpapers(save_location / "unsplash_wallpapers", max_wallpapers)
     
@@ -99,6 +121,7 @@ def update_wallpaper():
         pexels_wallpaper_path = get_latest_wallpaper(save_location / "pexels_wallpapers")
         if pexels_wallpaper_path:
             set_pexels_wallpaper(pexels_wallpaper_path)
+            set_lock_screen_wallpaper(pexels_wallpaper_path)  # Set lock screen wallpaper
             close_wallpaper_engine()
         cleanup_old_wallpapers(save_location / "pexels_wallpapers", max_wallpapers)
     

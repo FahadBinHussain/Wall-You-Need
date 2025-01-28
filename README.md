@@ -22,6 +22,10 @@ more features coming soon!
 
 1. pyinstaller Wall-You-Need.spec
 
+# notes
+
+other programs like John’s Background Switcher might interfere with wall-you-need’s set lockscreen wallpaper feature, so you should turn off those programs when u use wall-you-need
+
 # Thanks to
 https://github.com/oureveryday/WallpaperEngineWorkshopDownloader for acc
 https://github.com/oureveryday/DepotDownloaderMod for wallpaper engine downloader
