@@ -5,9 +5,9 @@
     "COLLECTIONS_URL": "https://steamcommunity.com/sharedfiles/filedetails/?id=2801058904",
     "WALLPAPER_DOWNLOAD_LIMIT": "1",
     "MAX_WALLPAPERS": "1",
-    "SAVE_OLD_WALLPAPERS": "False",
-    "SOURCE_UNSPLASH": false,
-    "SOURCE_PEXELS": false,
-    "SOURCE_WALLPAPER_ENGINE": true,
+    "SAVE_OLD_WALLPAPERS": false,
+    "SOURCE_UNSPLASH": true,
+    "SOURCE_PEXELS": true,
+    "SOURCE_WALLPAPER_ENGINE": false,
     "UPDATE_RUNNING": true
 }

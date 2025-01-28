@@ -24,7 +24,8 @@ more features coming soon!
 
 # notes
 
-other programs like John’s Background Switcher might interfere with wall-you-need’s set lockscreen wallpaper feature, so you should turn off those programs when u use wall-you-need
+- other programs like John’s Background Switcher might interfere with wall-you-need’s set lockscreen wallpaper feature, so you should turn off those programs when u use wall-you-need
+- looks like images smaller than 500 kb cant be set on lock screens by registry
 
 # Thanks to
 https://github.com/oureveryday/WallpaperEngineWorkshopDownloader for acc

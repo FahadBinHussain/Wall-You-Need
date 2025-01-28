@@ -1,97 +1,21 @@
 import logging
 import random
 from pathlib import Path
-import os
-import shutil
 import time
 import threading
-import subprocess
-import winreg  # Import winreg to modify the registry
 from dotenv import load_dotenv
-from wallpaper_engine import (
-    automate_wallpaper_update,
-    close_wallpaper_engine,
-)
+from wallpaper_engine import automate_wallpaper_update, close_wallpaper_engine
 from unsplash import fetch_unsplash_wallpapers, save_wallpapers as save_unsplash_wallpapers, set_wallpaper as set_unsplash_wallpaper
 from pexels import fetch_pexels_wallpapers, save_wallpapers as save_pexels_wallpapers, set_wallpaper as set_pexels_wallpaper
-from utils import load_env_vars, load_config, save_config  # Import utility functions
+from utils import load_env_vars, load_config  # Import utility functions
+from wallpaper_utils import get_latest_wallpaper, terminate_depotdownloader, cleanup_old_wallpapers
+from registry_utils import set_wallpaper_style, set_lock_screen_wallpaper, set_lock_screen_wallpaper_style
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Load environment variables
 load_env_vars()
-
-def get_latest_wallpaper(directory):
-    """Get the latest wallpaper file from the specified directory."""
-    wallpapers = list(directory.glob("*.jpg"))
-    if not wallpapers:
-        return None
-    latest_wallpaper = max(wallpapers, key=os.path.getctime)
-    logging.info(f"Latest wallpaper identified: {latest_wallpaper}")
-    return latest_wallpaper
-
-def terminate_depotdownloader():
-    """Terminate DepotDownloadermod.exe if it is running."""
-    try:
-        subprocess.run(["taskkill", "/f", "/im", "DepotDownloadermod.exe"], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
-        logging.info("Successfully terminated DepotDownloadermod.exe")
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Failed to terminate DepotDownloadermod.exe: {e}")
-
-def cleanup_old_wallpapers(directory, max_wallpapers):
-    """Delete old wallpapers to save space."""
-    wallpaper_files = list(directory.glob("*.jpg"))
-
-    if len(wallpaper_files) > max_wallpapers:
-        wallpaper_files.sort(key=os.path.getctime)
-        
-        for file_to_delete in wallpaper_files[:-max_wallpapers]:
-            logging.info(f"Deleting old wallpaper file: {file_to_delete}")
-            try:
-                file_to_delete.unlink()
-                logging.info(f"Successfully deleted: {file_to_delete}")
-            except OSError as e:
-                logging.error(f"Failed to delete old wallpaper {file_to_delete}: {e}")
-
-    target_dir = directory / "projects" / "myprojects"
-    if target_dir.exists() and target_dir.is_dir():
-        wallpaper_dirs = [d for d in target_dir.iterdir() if d.is_dir()]
-        if len(wallpaper_dirs) > max_wallpapers:
-            wallpaper_dirs.sort(key=os.path.getctime)
-            for dir_to_delete in wallpaper_dirs[:len(wallpaper_dirs) - max_wallpapers]:
-                logging.info(f"Deleting old wallpaper directory: {dir_to_delete}")
-                try:
-                    for root, dirs, files in os.walk(dir_to_delete):
-                        for file in files:
-                            file_path = os.path.join(root, file)
-                            os.chmod(file_path, 0o777)
-                    shutil.rmtree(dir_to_delete)
-                    logging.info(f"Successfully deleted: {dir_to_delete}")
-                except PermissionError as e:
-                    logging.error(f"PermissionError: Could not delete {dir_to_delete}. {e}")
-                except Exception as e:
-                    logging.error(f"Unexpected error while deleting {dir_to_delete}: {e}")
-
-def set_lock_screen_wallpaper(image_path):
-    """Set the lock screen wallpaper by modifying the registry."""
-    if not image_path:
-        logging.error("Image path is empty.")
-        return
-
-    try:
-        image_path_str = str(image_path)  # Convert Path object to string
-        reg_key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP"
-
-        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, reg_key, 0, winreg.KEY_SET_VALUE) as key:
-            # Set the LockScreenImagePath as a REG_SZ (string)
-            winreg.SetValueEx(key, "LockScreenImagePath", 0, winreg.REG_SZ, image_path_str)
-            # Set the LockScreenImageStatus as a REG_DWORD (integer)
-            winreg.SetValueEx(key, "LockScreenImageStatus", 0, winreg.REG_DWORD, 1)
-
-        logging.info(f"Lock screen wallpaper set to {image_path_str}")
-    except Exception as e:
-        logging.error(f"Failed to set lock screen wallpaper: {e}")
 
 def update_wallpaper():
     """Function to update the wallpaper based on a random choice of sources."""
@@ -110,7 +34,9 @@ def update_wallpaper():
         unsplash_wallpaper_path = get_latest_wallpaper(save_location / "unsplash_wallpapers")
         if unsplash_wallpaper_path:
             set_unsplash_wallpaper(unsplash_wallpaper_path)
+            set_wallpaper_style()  # Set desktop wallpaper style to 'fit'
             set_lock_screen_wallpaper(unsplash_wallpaper_path)  # Set lock screen wallpaper
+            set_lock_screen_wallpaper_style()  # Set lock screen wallpaper style to 'fit'
             close_wallpaper_engine()
         cleanup_old_wallpapers(save_location / "unsplash_wallpapers", max_wallpapers)
     
@@ -121,7 +47,9 @@ def update_wallpaper():
         pexels_wallpaper_path = get_latest_wallpaper(save_location / "pexels_wallpapers")
         if pexels_wallpaper_path:
             set_pexels_wallpaper(pexels_wallpaper_path)
+            set_wallpaper_style()  # Set desktop wallpaper style to 'fit'
             set_lock_screen_wallpaper(pexels_wallpaper_path)  # Set lock screen wallpaper
+            # set_lock_screen_wallpaper_style()  # Set lock screen wallpaper style to 'fit'
             close_wallpaper_engine()
         cleanup_old_wallpapers(save_location / "pexels_wallpapers", max_wallpapers)
     

@@ -1,9 +1,11 @@
-# utils.py
 import os
 import json
 from pathlib import Path
 from dotenv import load_dotenv
 import logging
+import threading
+
+config_lock = threading.Lock()
 
 def load_env_vars():
     """Load environment variables from .env file."""
@@ -11,24 +13,33 @@ def load_env_vars():
     load_dotenv(dotenv_path)
 
 def load_config():
-    """Load configuration from config.json file."""
-    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-    if not os.path.exists(config_path):
-        logging.error("Configuration file does not exist.")
-        return {}
+    with config_lock:
+        try:
+            with open('config.json', 'r') as f:
+                config = json.load(f)
+            logging.info(f"Configuration loaded successfully: {config}")
+        except FileNotFoundError:
+            logging.error("Configuration file not found.")
+            config = {}
+        except json.JSONDecodeError as e:
+            logging.error(f"Error decoding JSON: {e}")
+            config = {}
 
-    try:
-        with open(config_path, 'r') as config_file:
-            return json.load(config_file)
-    except json.JSONDecodeError as e:
-        logging.error(f"Invalid JSON in configuration file: {e}")
-        return {}
+        if 'SAVE_LOCATION' not in config:
+            logging.error("'SAVE_LOCATION' key is missing in the configuration.")
+        else:
+            logging.info(f"'SAVE_LOCATION' found: {config['SAVE_LOCATION']}")
+
+        return config
 
 def save_config(config):
-    """Save configuration to config.json file."""
-    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-    with open(config_path, 'w') as config_file:
-        json.dump(config, config_file, indent=4)
+    with config_lock:
+        try:
+            with open('config.json', 'w') as f:
+                json.dump(config, f, indent=4)
+            logging.info("Configuration saved successfully.")
+        except Exception as e:
+            logging.error(f"Error saving configuration: {e}")
 
 # Load environment variables at the start of the script
 load_env_vars()

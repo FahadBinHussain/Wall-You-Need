@@ -11,6 +11,10 @@ import winreg as reg
 from utils import load_env_vars, load_config, save_config
 import main
 from pathlib import Path
+import queue
+import logging_setup
+from startup_gui import set_startup, is_startup_enabled
+from registry_utils import set_wallpaper_style, set_lock_screen_wallpaper, set_lock_screen_wallpaper_style
 
 # Load environment variables
 load_env_vars()
@@ -22,54 +26,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 stop_event = threading.Event()
 selected_sources = []
 update_thread = None  # Initialize update_thread
-
-class TextHandler(logging.Handler):
-    """Class to handle logging messages and display them in a Tkinter Text widget."""
-    def __init__(self, text_widget):
-        logging.Handler.__init__(self)
-        self.text_widget = text_widget
-
-    def emit(self, record):
-        msg = self.format(record)
-        def append():
-            self.text_widget.configure(state='normal')
-            self.text_widget.insert(tk.END, msg + '\n')
-            self.text_widget.configure(state='disabled')
-            self.text_widget.yview(tk.END)
-        self.text_widget.after(0, append)
-
-def set_startup(enable):
-    s_name = "WallpaperUpdater"
-    exe_path = sys.executable
-
-    key = reg.HKEY_CURRENT_USER
-    key_value = r"Software\Microsoft\Windows\CurrentVersion\Run"
-
-    if enable:
-        open_key = reg.OpenKey(key, key_value, 0, reg.KEY_ALL_ACCESS)
-        reg.SetValueEx(open_key, s_name, 0, reg.REG_SZ, exe_path)
-        reg.CloseKey(open_key)
-        logging.info("Added to startup")
-    else:
-        try:
-            open_key = reg.OpenKey(key, key_value, 0, reg.KEY_ALL_ACCESS)
-            reg.DeleteValue(open_key, s_name)
-            reg.CloseKey(open_key)
-            logging.info("Removed from startup")
-        except FileNotFoundError:
-            logging.info("Already removed from startup")
-
-def is_startup_enabled():
-    s_name = "WallpaperUpdater"
-    key = reg.HKEY_CURRENT_USER
-    key_value = r"Software\Microsoft\Windows\CurrentVersion\Run"
-    try:
-        open_key = reg.OpenKey(key, key_value, 0, reg.KEY_READ)
-        value, _ = reg.QueryValueEx(open_key, s_name)
-        reg.CloseKey(open_key)
-        return value == sys.executable
-    except FileNotFoundError:
-        return False
+log_queue = queue.Queue()  # Create a queue for logging messages
 
 def start_wallpaper_update():
     global selected_sources
@@ -94,6 +51,9 @@ def start_wallpaper_update():
             unsplash_wallpaper_path = main.get_latest_wallpaper(save_location_path / "unsplash_wallpapers")
             if unsplash_wallpaper_path:
                 main.set_unsplash_wallpaper(unsplash_wallpaper_path)
+                set_wallpaper_style()  # Set desktop wallpaper style to 'fit'
+                set_lock_screen_wallpaper(unsplash_wallpaper_path)  # Set lock screen wallpaper
+                set_lock_screen_wallpaper_style()  # Set lock screen wallpaper style to 'fit'
                 main.close_wallpaper_engine()
             main.cleanup_old_wallpapers(save_location_path / "unsplash_wallpapers", int(config['MAX_WALLPAPERS']))
         
@@ -103,13 +63,16 @@ def start_wallpaper_update():
             pexels_wallpaper_path = main.get_latest_wallpaper(save_location_path / "pexels_wallpapers")
             if pexels_wallpaper_path:
                 main.set_pexels_wallpaper(pexels_wallpaper_path)
+                set_wallpaper_style()  # Set desktop wallpaper style to 'fit'
+                set_lock_screen_wallpaper(pexels_wallpaper_path)  # Set lock screen wallpaper
+                set_lock_screen_wallpaper_style()  # Set lock screen wallpaper style to 'fit'
                 main.close_wallpaper_engine()
             main.cleanup_old_wallpapers(save_location_path / "pexels_wallpapers", int(config['MAX_WALLPAPERS']))
         
         elif source == "wallpaper_engine":
             main.automate_wallpaper_update()
             main.cleanup_old_wallpapers(save_location_path, int(config['MAX_WALLPAPERS']))
-        
+
         # Check stop_event periodically during sleep
         interval = int(config['CHECK_INTERVAL'])
         for _ in range(interval):
@@ -127,7 +90,7 @@ def update_config_file():
     config['COLLECTIONS_URL'] = entry_collections_url.get()
     config['WALLPAPER_DOWNLOAD_LIMIT'] = entry_wallpaper_download_limit.get()
     config['MAX_WALLPAPERS'] = entry_max_wallpapers.get()
-    config['SAVE_OLD_WALLPAPERS'] = str(var_save_old_wallpapers.get())
+    config['SAVE_OLD_WALLPAPERS'] = var_save_old_wallpapers.get()
     
     # Save the state of the source buttons
     config['SOURCE_UNSPLASH'] = var_unsplash.get()
@@ -138,6 +101,7 @@ def update_config_file():
     config['UPDATE_RUNNING'] = update_thread is not None and update_thread.is_alive()
     
     save_config(config)
+    logging.info("Configuration updated in real-time.")
 
 def on_start():
     global stop_event, selected_sources, update_thread
@@ -219,6 +183,16 @@ def on_close():
         update_thread.join()  # Wait for the thread to finish
     root.destroy()  # Destroy the main window and exit the application
 
+def process_log_queue():
+    """Process log messages from the queue and display them in the Text widget."""
+    while not log_queue.empty():
+        msg = log_queue.get()
+        log_text.configure(state='normal')
+        log_text.insert(tk.END, msg + '\n')
+        log_text.configure(state='disabled')
+        log_text.yview(tk.END)
+    root.after(100, process_log_queue)
+
 root = tk.Tk()
 root.title("Wallpaper Updater")
 root.geometry("800x600")  # Set window size larger to accommodate all widgets
@@ -293,7 +267,7 @@ log_text = scrolledtext.ScrolledText(frame_logs, state='disabled', width=70, hei
 log_text.grid(row=0, column=0, padx=5, pady=5)
 
 # Set up logging to use the TextHandler
-text_handler = TextHandler(log_text)
+text_handler = logging_setup.TextHandler(log_text, log_queue)
 logging.getLogger().addHandler(text_handler)
 
 frame_actions = ttk.Frame(root, padding="10")
@@ -327,12 +301,21 @@ if 'SOURCE_PEXELS' in config:
 if 'SOURCE_WALLPAPER_ENGINE' in config:
     var_wallpaper_engine.set(config['SOURCE_WALLPAPER_ENGINE'])
 
+# Bind the update_config_file function to the checkbox state changes
+var_unsplash.trace_add('write', lambda *args: update_config_file())
+var_pexels.trace_add('write', lambda *args: update_config_file())
+var_wallpaper_engine.trace_add('write', lambda *args: update_config_file())
+var_save_old_wallpapers.trace_add('write', lambda *args: update_config_file())
+
 # Automatically start the update process if it was running previously
 if config.get('UPDATE_RUNNING', False):
     on_start()
 
 # Bind the on_close function to the window close event
 root.protocol("WM_DELETE_WINDOW", on_close)
+
+# Start processing the log queue
+root.after(100, process_log_queue)
 
 # Run the Tkinter event loop
 root.mainloop()
