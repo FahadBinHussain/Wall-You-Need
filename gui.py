@@ -11,13 +11,33 @@ import winreg as reg
 from utils import load_env_vars, load_config, save_config
 import main
 from pathlib import Path
-import queue
-import logging_setup
 from startup_gui import set_startup, is_startup_enabled
 from registry_utils import set_wallpaper_style, set_lock_screen_wallpaper, set_lock_screen_wallpaper_style
+import queue
 
 # Load environment variables
 load_env_vars()
+
+class TextHandler(logging.Handler):
+    """Class to handle logging messages and display them in a Tkinter Text widget."""
+
+    def __init__(self, text_widget, log_queue):
+        logging.Handler.__init__(self)
+        self.text_widget = text_widget
+        self.log_queue = log_queue
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.log_queue.put(msg)
+
+def process_log_queue():
+    while not log_queue.empty():
+        msg = log_queue.get_nowait()
+        log_text.configure(state='normal')
+        log_text.insert(tk.END, msg + '\n')
+        log_text.configure(state='disabled')
+        log_text.yview(tk.END)
+    root.after(100, process_log_queue)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,7 +46,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 stop_event = threading.Event()
 selected_sources = []
 update_thread = None  # Initialize update_thread
-log_queue = queue.Queue()  # Create a queue for logging messages
+log_queue = queue.Queue()
 
 def start_wallpaper_update():
     global selected_sources
@@ -53,7 +73,7 @@ def start_wallpaper_update():
                 main.set_unsplash_wallpaper(unsplash_wallpaper_path)
                 set_wallpaper_style()  # Set desktop wallpaper style to 'fit'
                 set_lock_screen_wallpaper(unsplash_wallpaper_path)  # Set lock screen wallpaper
-                set_lock_screen_wallpaper_style()  # Set lock screen wallpaper style to 'fit'
+                # set_lock_screen_wallpaper_style()  # Set lock screen wallpaper style to 'fit'
                 main.close_wallpaper_engine()
             main.cleanup_old_wallpapers(save_location_path / "unsplash_wallpapers", int(config['MAX_WALLPAPERS']))
         
@@ -65,7 +85,7 @@ def start_wallpaper_update():
                 main.set_pexels_wallpaper(pexels_wallpaper_path)
                 set_wallpaper_style()  # Set desktop wallpaper style to 'fit'
                 set_lock_screen_wallpaper(pexels_wallpaper_path)  # Set lock screen wallpaper
-                set_lock_screen_wallpaper_style()  # Set lock screen wallpaper style to 'fit'
+                # set_lock_screen_wallpaper_style()  # Set lock screen wallpaper style to 'fit'
                 main.close_wallpaper_engine()
             main.cleanup_old_wallpapers(save_location_path / "pexels_wallpapers", int(config['MAX_WALLPAPERS']))
         
@@ -75,12 +95,11 @@ def start_wallpaper_update():
 
         # Check stop_event periodically during sleep
         interval = int(config['CHECK_INTERVAL'])
+        logging.info(f"Sleeping for {interval} seconds before the next update.")
         for _ in range(interval):
             if stop_event.is_set():
                 return
             time.sleep(1)
-
-        logging.info(f"Sleeping for {interval} seconds before the next update.")
 
 def update_config_file():
     config = load_config()
@@ -183,16 +202,6 @@ def on_close():
         update_thread.join()  # Wait for the thread to finish
     root.destroy()  # Destroy the main window and exit the application
 
-def process_log_queue():
-    """Process log messages from the queue and display them in the Text widget."""
-    while not log_queue.empty():
-        msg = log_queue.get()
-        log_text.configure(state='normal')
-        log_text.insert(tk.END, msg + '\n')
-        log_text.configure(state='disabled')
-        log_text.yview(tk.END)
-    root.after(100, process_log_queue)
-
 root = tk.Tk()
 root.title("Wallpaper Updater")
 root.geometry("800x600")  # Set window size larger to accommodate all widgets
@@ -267,7 +276,7 @@ log_text = scrolledtext.ScrolledText(frame_logs, state='disabled', width=70, hei
 log_text.grid(row=0, column=0, padx=5, pady=5)
 
 # Set up logging to use the TextHandler
-text_handler = logging_setup.TextHandler(log_text, log_queue)
+text_handler = TextHandler(log_text, log_queue)
 logging.getLogger().addHandler(text_handler)
 
 frame_actions = ttk.Frame(root, padding="10")

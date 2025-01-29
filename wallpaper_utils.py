@@ -54,3 +54,4 @@ def cleanup_old_wallpapers(directory, max_wallpapers):
                     logging.error(f"PermissionError: Could not delete {dir_to_delete}. {e}")
                 except Exception as e:
                     logging.error(f"Unexpected error while deleting {dir_to_delete}: {e}")
+                    
