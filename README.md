@@ -1,5 +1,7 @@
 # Wall-You-Need
 
+![Wakapi Badge](https://wakapi-qt1b.onrender.com/api/badge/fahad/interval:any/project:Wall-You-Need)
+
 tldr;
 download wallpapers from pexels, unsplash and wallpaper engine steam workshop and set random wallpaper every X minutes 
 <br>
@@ -30,8 +32,3 @@ more features coming soon!
 # Thanks to
 https://github.com/oureveryday/WallpaperEngineWorkshopDownloader for acc
 https://github.com/oureveryday/DepotDownloaderMod for wallpaper engine downloader
-
-# Total Time Spent on Project
-<!--START_SECTION:waka-->
-Total Time Spent: 33 hrs 38 mins
-<!--END_SECTION:waka-->
