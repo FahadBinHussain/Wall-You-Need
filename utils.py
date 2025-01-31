@@ -4,6 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import logging
 import threading
+import sys
 
 config_lock = threading.Lock()
 
@@ -15,7 +16,16 @@ def load_env_vars():
 def load_config():
     with config_lock:
         try:
-            with open('config.json', 'r') as f:
+            # Determine the base path for the config file
+            if hasattr(sys, '_MEIPASS'):
+                # If running as a PyInstaller bundle
+                base_path = sys._MEIPASS
+            else:
+                # If running as a plain Python script
+                base_path = os.path.dirname(os.path.abspath(__file__))
+
+            config_path = os.path.join(base_path, 'config.json')
+            with open(config_path, 'r') as f:
                 config = json.load(f)
             logging.info(f"Configuration loaded successfully: {config}")
         except FileNotFoundError:

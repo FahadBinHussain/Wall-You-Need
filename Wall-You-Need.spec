@@ -13,7 +13,10 @@ a = Analysis(
         ('unsplash.py', '.'),
         ('wallpaper_engine.py', '.'),
         ('DepotDownloaderMod', 'DepotDownloaderMod'),
-        ('.env', '.')
+        ('.env', '.'),
+        ('registry_utils.py', '.'),
+        ('startup_gui.py', '.'),
+        ('wallpaper_utils.py', '.'),
     ],
     hiddenimports=[],
     hookspath=[],
