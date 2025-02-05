@@ -7,3 +7,5 @@ wallpaper_history.json
 wakatime_data.json
 build
 dist
+venv
+config.json
