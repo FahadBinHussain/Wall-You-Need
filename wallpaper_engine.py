@@ -7,9 +7,9 @@ from bs4 import BeautifulSoup
 import random
 import logging
 import psutil
-from dotenv import load_dotenv
 import os
-from utils import load_env_vars, load_config, save_config  # Import utility functions
+from utils import load_env_vars, load_config  # Import utility functions
+import sys
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Load environment variables
 load_env_vars()
 
-# Load configuration
+# Load configuration fresh each time
 config = load_config()
 
 # Wallpaper Engine related functions
@@ -27,14 +27,18 @@ def printlog(log):
     print(log)
     logging.info(log)
 
-def fetch_page_content(url):
+def fetch_page_content(url, stop_event):
     """Fetch a webpage's content."""
     try:
-        config = load_config()
-        response = requests.get(url)
+        if stop_event and stop_event.is_set():
+            return None
+            
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
         return response.text
     except requests.RequestException as e:
+        if stop_event and stop_event.is_set():  # Check first if we should abort
+            return None
         logging.warning(f"Failed to fetch {url}: {e}")
         return None
 
@@ -68,53 +72,74 @@ def log_downloaded_wallpaper(pubfileid):
     except (json.JSONDecodeError, IOError) as e:
         logging.error(f"Error logging wallpaper: {e}")
 
-def set_downloaded_wallpaper(pubfileid):
-    """Set the wallpaper using the provided command."""
-    save_location = Path(config['SAVE_LOCATION'])
-    wallpaper_dir = save_location / "projects" / "myprojects" / pubfileid
-    scene_file = wallpaper_dir / "scene.pkg"
-    mp4_file = next(wallpaper_dir.glob("*.mp4"), None)
+# def validate_we_path():
+#     """Validate Wallpaper Engine installation path."""
+#     config = load_config()
+#     required_files = ["wallpaper32.exe", "wallpaper64.exe"]
+#     path = Path(config['SAVE_LOCATION'])
+#     if not path.exists():
+#         logging.error(f"Wallpaper Engine path not found: {path}")
+#         return False
+#     return all((path / file).exists() for file in required_files)
 
-    if scene_file.exists():
-        logging.info(f"Setting wallpaper using scene.pkg for {pubfileid}")
-        command = f'"{save_location}\\wallpaper64.exe" -control openWallpaper -file "{scene_file}" play'
-        try:
-            subprocess.Popen(command, shell=True)
-            time.sleep(2.5)  # Wait for the wallpaper to load
-            logging.info(f"Successfully set wallpaper with scene.pkg for {pubfileid}")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"Failed to set wallpaper with scene.pkg for {pubfileid}: {e}")
-            return False
-    elif mp4_file:
-        logging.info(f"Setting wallpaper using {mp4_file} for {pubfileid}")
-        command = f'"{save_location}\\wallpaper64.exe" -control openWallpaper -file "{mp4_file}" play'
-        try:
-            subprocess.Popen(command, shell=True)
-            time.sleep(2.5)  # Wait for the wallpaper to load
-            logging.info(f"Successfully set wallpaper with {mp4_file} for {pubfileid}")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"Failed to set wallpaper with {mp4_file} for {pubfileid}: {e}")
-            return False
-    else:
-        logging.warning(f"No valid wallpaper file (scene.pkg or .mp4) found for {pubfileid}")
+def set_downloaded_wallpaper(wallpaper_path):
+    """Set the downloaded wallpaper using Wallpaper Engine's CLI."""
+    config = load_config()
+    we_path = Path(config['SAVE_LOCATION'])
+    
+    # Try different executable variants
+    exe_names = ["wallpaper64.exe", "wallpaper32.exe"]
+    we_exe = next((we_path / exe for exe in exe_names if (we_path / exe).exists()), None)
+    
+    if not we_exe:
+        logging.error("No valid Wallpaper Engine executable found")
         return False
 
-    # Log the wallpaper change
-    log_downloaded_wallpaper(pubfileid)
-    return True
-
-def should_perform_scrape():
-    """Determine if scraping should be performed based on interval."""
     try:
-        last_scrape = Path("last_scrape_time.txt").stat().st_mtime
-        return (time.time() - last_scrape) > int(config['SCRAPE_INTERVAL'])
-    except (FileNotFoundError, OSError):
-        return True
+        # Check if PKG exists, fallback to MP4
+        wp_path = Path(wallpaper_path)
+        if not wp_path.exists():
+            # Look for MP4 files in the same directory
+            mp4_files = list(wp_path.parent.glob("*.mp4"))
+            if not mp4_files:
+                logging.error(f"No wallpaper files found in {wp_path.parent}")
+                return False
+            wallpaper_path = str(mp4_files[0])
+            logging.info(f"Using MP4 wallpaper: {wallpaper_path}")
 
-def update_last_scrape_time():
-    """Update the last scrape timestamp."""
-    with open("last_scrape_time.txt", "w") as f:
-        f.write(str(time.time()))
+        command = [
+            str(we_exe),
+            "-control", "openWallpaper",
+            "-file", str(wallpaper_path),
+            "play"
+        ]
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_BREAKAWAY_FROM_JOB
+        )
+        for line in process.stdout:
+            logging.info(f"[Wallpaper Engine] {line.strip()}")
+        time.sleep(10)  # Add safety delay before cleanup
+        return True
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        logging.error(f"Failed to set wallpaper: {e}")
+        return False
+
+# def should_perform_scrape():
+#     """Determine if scraping should be performed based on interval."""
+#     try:
+#         last_scrape = Path("last_scrape_time.txt").stat().st_mtime
+#         return (time.time() - last_scrape) > int(config['SCRAPE_INTERVAL'])
+#     except (FileNotFoundError, OSError):
+#         return True
+
+# def update_last_scrape_time():
+#     """Update the last scrape timestamp."""
+#     with open("last_scrape_time.txt", "w") as f:
+#         f.write(str(time.time()))
 
 def clean_and_filter_wallpaper_links(links):
     """Filter and clean wallpaper links to ensure they match the required format."""
@@ -122,14 +147,14 @@ def clean_and_filter_wallpaper_links(links):
     logging.info(f"Filtered {len(filtered_links)} valid wallpaper links.")
     return filtered_links
 
-def scrape_wallpapers():
+def scrape_wallpapers(stop_event):
     """Scrape wallpapers and return unique links."""
     random_page = random.randint(1, 1000)
     config = load_config()
     collections_url = config['COLLECTIONS_URL'].format(page=random_page)
     logging.info(f"Fetching wallpaper links from page {random_page}...")
 
-    wallpapers_page = fetch_page_content(collections_url)
+    wallpapers_page = fetch_page_content(collections_url, stop_event)
     if wallpapers_page:
         logging.info("Parsing wallpapers...")
         soup = BeautifulSoup(wallpapers_page, 'html.parser')
@@ -143,48 +168,84 @@ def scrape_wallpapers():
         logging.warning(f"Failed to fetch or parse page {random_page}.")
     return []
 
-def download_random_wallpapers(wallpaper_links):
-    """Download random wallpapers using the provided links."""
-    wallpaper_download_limit = int(config['WALLPAPER_DOWNLOAD_LIMIT'])
-    if len(wallpaper_links) < wallpaper_download_limit:
-        logging.warning("Not enough wallpapers to download.")
-        return
+def download_random_wallpapers(wallpaper_links, stop_event=None):
+    """Download random wallpapers using depotdownloader."""
+    try:
+        config = load_config()
+        if stop_event and stop_event.is_set():
+            return
 
-    selected_links = random.sample(wallpaper_links, wallpaper_download_limit)
-    for link in selected_links:
-        pubfileid = link.split("id=")[1]
-        logging.info(f"Extracted pubfileid: {pubfileid} from link: {link}")
-        username, password = get_random_credential_pair()
-        if not username or not password:
-            logging.error("Username or password is missing. Skipping download.")
-            continue
+        wallpaper_download_limit = int(config['WALLPAPER_DOWNLOAD_LIMIT'])
+        if len(wallpaper_links) < wallpaper_download_limit:
+            logging.warning("Not enough wallpapers to download.")
+            return
 
-        # Create the directory for this wallpaper
-        save_location = Path(config['SAVE_LOCATION'])
-        directory = save_location / "projects" / "myprojects" / pubfileid
-        directory.mkdir(parents=True, exist_ok=True)
+        selected_links = random.sample(wallpaper_links, wallpaper_download_limit)
+        
+        base_path = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
+        depot_path = os.path.join(base_path, "DepotDownloaderMod", "DepotDownloadermod.exe")
+        
+        # For EXE builds, check one level up if needed
+        if not os.path.exists(depot_path) and getattr(sys, 'frozen', False):
+            exe_parent = Path(sys.executable).parent
+            depot_path = exe_parent.parent / "DepotDownloaderMod" / "DepotDownloadermod.exe"
+        
+        logging.info(f"Resolved depotdownloader path: {depot_path}")
+        
+        if not os.path.exists(depot_path):
+            logging.error(f"DepotDownloader not found at: {depot_path}")
+            return
 
-        command_template = "DepotdownloaderMod\\DepotDownloadermod.exe -app 431960 -pubfile {pubfileid} -verify-all -username {username} -password {password} -dir \"{directory}\""
-        command = command_template.format(pubfileid=pubfileid, username=username, password=password, directory=directory)
-        logging.info(f"Downloading wallpaper with ID {pubfileid} using {username}...")
+        for link in selected_links:
+            if stop_event and stop_event.is_set():
+                return
+                
+            pubfileid = link.split("id=")[1]
+            logging.info(f"Downloading wallpaper ID {pubfileid}")
+            
+            # Create specific directory for this wallpaper
+            save_location = Path(config['SAVE_LOCATION'])
+            directory = save_location / "projects" / "myprojects" / pubfileid
+            directory.mkdir(parents=True, exist_ok=True)
 
-        try:
-            # Run the command and capture output
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            for line in process.stdout:
-                printlog(line)
-            process.stdout.close()
-            process.wait()
+            username, password = get_random_credential_pair()
+            if not username or not password:
+                logging.error("Invalid credentials, skipping download")
+                continue
 
-            if process.returncode != 0:
-                logging.error(f"Command failed with return code {process.returncode}")
-                return False
+            try:
+                process = subprocess.Popen(
+                    [
+                        depot_path,
+                        "-app", "431960",
+                        "-pubfile", pubfileid,
+                        "-verify-all",
+                        "-username", username,
+                        "-password", password,
+                        "-dir", str(directory)
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_BREAKAWAY_FROM_JOB
+                )
+                for line in process.stdout:
+                    logging.info(f"[DepotDownloader] {line.strip()}")
+                
+                log_downloaded_wallpaper(pubfileid)
+                wallpaper_path = directory / "scene.pkg"
+                set_downloaded_wallpaper(str(wallpaper_path))
+                time.sleep(10)  # Add safety delay before cleanup
+                
+                if stop_event and stop_event.is_set():
+                    process.terminate()
+                    return
+                
+            except subprocess.CalledProcessError as e:
+                logging.error(f"Download failed for {pubfileid}: {e}")
 
-            log_downloaded_wallpaper(pubfileid)
-            if not set_downloaded_wallpaper(pubfileid):
-                logging.error(f"Failed to set wallpaper with ID {pubfileid}")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"Failed to download wallpaper with ID {pubfileid}: {e}")
+    except Exception as e:
+        logging.error(f"Error in download process: {e}")
 
 def close_wallpaper_engine():
     """Close Wallpaper Engine if it is running."""
@@ -196,17 +257,13 @@ def close_wallpaper_engine():
             logging.info(f"{process.info['name']} terminated.")
             return
 
-def automate_wallpaper_update():
+def automate_wallpaper_update(stop_event=None):
     """Automate the process of scraping, downloading, and setting wallpapers."""
     logging.info("Starting automated wallpaper update.")
-    if should_perform_scrape():
-        wallpaper_links = scrape_wallpapers()
-        update_last_scrape_time()
-    else:
-        wallpaper_links = []
+    wallpaper_links = scrape_wallpapers(stop_event)
 
     if wallpaper_links:
-        download_random_wallpapers(wallpaper_links)
+        download_random_wallpapers(wallpaper_links, stop_event)
     else:
         logging.warning("No new wallpapers to download.")
     logging.info("Completed automated wallpaper update.")

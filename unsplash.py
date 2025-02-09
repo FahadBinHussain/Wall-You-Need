@@ -7,7 +7,7 @@ import platform
 import subprocess
 import ctypes
 import random
-from utils import load_env_vars, load_config, save_config  # Import utility functions
+from utils import load_env_vars, load_config
 
 # Load environment variables
 load_env_vars()
@@ -37,7 +37,7 @@ def fetch_unsplash_wallpapers(query="wallpapers", count=10):
         logging.error(f"Failed to fetch from Unsplash: {e}")
         return []
 
-def save_wallpapers(wallpapers, directory):
+def save_unsplash_wallpapers(wallpapers, directory):
     """Save wallpapers from URLs to the specified directory."""
     directory.mkdir(parents=True, exist_ok=True)
     
@@ -52,7 +52,7 @@ def save_wallpapers(wallpapers, directory):
         except requests.RequestException as e:
             logging.error(f"Failed to download wallpaper from {wallpaper['url']}: {e}")
 
-def set_wallpaper(file_path):
+def set_unsplash_wallpaper(file_path):
     """Set the wallpaper using a given file path depending on the OS."""
     system = platform.system()
     if system == "Windows":

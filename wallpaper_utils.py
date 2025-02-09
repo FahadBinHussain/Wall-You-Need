@@ -2,7 +2,7 @@ import logging
 import os
 import shutil
 import subprocess
-from pathlib import Path
+import time
 
 def get_latest_wallpaper(directory):
     """Get the latest wallpaper file from the specified directory."""
@@ -14,12 +14,17 @@ def get_latest_wallpaper(directory):
     return latest_wallpaper
 
 def terminate_depotdownloader():
-    """Terminate DepotDownloadermod.exe if it is running."""
+    """Terminate DepotDownloaderMod.exe if it is running."""
     try:
-        subprocess.run(["taskkill", "/f", "/im", "DepotDownloadermod.exe"], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
-        logging.info("Successfully terminated DepotDownloadermod.exe")
+        # Check if process exists before killing
+        result = subprocess.run(["tasklist", "/fi", "imagename eq DepotDownloaderMod.exe"], 
+                              capture_output=True, text=True)
+        if "DepotDownloaderMod.exe" in result.stdout:
+            subprocess.run(["taskkill", "/f", "/im", "DepotDownloaderMod.exe"], 
+                          check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            logging.info("Successfully terminated DepotDownloaderMod.exe")
     except subprocess.CalledProcessError as e:
-        logging.error(f"Failed to terminate DepotDownloadermod.exe: {e}")
+        logging.error(f"Failed to terminate DepotDownloaderMod.exe: {e}")
 
 def cleanup_old_wallpapers(directory, max_wallpapers):
     """Delete old wallpapers to save space."""
@@ -42,16 +47,20 @@ def cleanup_old_wallpapers(directory, max_wallpapers):
         if len(wallpaper_dirs) > max_wallpapers:
             wallpaper_dirs.sort(key=os.path.getctime)
             for dir_to_delete in wallpaper_dirs[:len(wallpaper_dirs) - max_wallpapers]:
-                logging.info(f"Deleting old wallpaper directory: {dir_to_delete}")
+                # logging.info(f"Deleting old wallpaper directory: {dir_to_delete}")
+                logging.info(f"Deleting old wallpaper directory")
                 try:
                     for root, dirs, files in os.walk(dir_to_delete):
                         for file in files:
                             file_path = os.path.join(root, file)
                             os.chmod(file_path, 0o777)
                     shutil.rmtree(dir_to_delete)
-                    logging.info(f"Successfully deleted: {dir_to_delete}")
+                    # logging.info(f"Successfully deleted: {dir_to_delete}")
+                    logging.info(f"Successfully deleted")
                 except PermissionError as e:
-                    logging.error(f"PermissionError: Could not delete {dir_to_delete}. {e}")
+                    logging.warning(f"Retrying cleanup after error: {e}")
+                    time.sleep(2)
+                    # Retry logic here
                 except Exception as e:
                     logging.error(f"Unexpected error while deleting {dir_to_delete}: {e}")
                     
