@@ -1,5 +1,7 @@
 # Wall-You-Need
-![Wakapi Badge](https://wakapi-qt1b.onrender.com/api/badge/fahad/interval:any/project:Wall-You-Need)
+<img src="https://wakapi-qt1b.onrender.com/api/badge/fahad/interval:any/project:Wall-You-Need" 
+     alt="Wakapi Time Tracking" 
+     title="Minimum amount of time spent on this project">
 
 tldr;
 download wallpapers from pexels, unsplash and wallpaper engine steam workshop and set random wallpaper every X minutes 

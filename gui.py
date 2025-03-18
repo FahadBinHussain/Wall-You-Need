@@ -17,6 +17,10 @@ from pexels import fetch_pexels_wallpapers, save_pexels_wallpapers, set_pexels_w
 from wallpaper_engine import automate_wallpaper_update, close_wallpaper_engine
 from wallpaper_utils import get_latest_wallpaper, terminate_depotdownloader, cleanup_old_wallpapers
 
+# Add this at the very start of the file (before config loading)
+if getattr(sys, 'frozen', False):
+    os.chdir(os.path.dirname(sys.executable))
+
 class TextHandler(logging.Handler):
     """Class to handle logging messages and display them in a Tkinter Text widget."""
     
@@ -160,6 +164,7 @@ def on_start():
 
     # Update config FIRST before validation
     update_config_file()
+    time.sleep(0.5)  # Add small delay for file I/O
     config = load_config()
     
     # Validate WE path using FRESH config

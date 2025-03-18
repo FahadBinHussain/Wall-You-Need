@@ -62,7 +62,12 @@ def load_config():
 def save_config(config):
     with config_lock:
         try:
-            with open('config.json', 'w') as f:
+            # Get the correct config path using same logic as load_config()
+            base_path = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) \
+                else os.path.dirname(os.path.abspath(__file__))
+            config_path = os.path.join(base_path, 'config.json')
+            
+            with open(config_path, 'w') as f:
                 json.dump(config, f, indent=4)
             logging.info("Configuration saved successfully.")
         except Exception as e:
