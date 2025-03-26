@@ -4,10 +4,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 using WallYouNeed.Core.Services.Interfaces;
 using WallYouNeed.Core.Models;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+using WallYouNeed.App.Pages;
 
 namespace WallYouNeed.App
 {
@@ -32,7 +34,7 @@ namespace WallYouNeed.App
             HomeButton.Click += HomeButton_Click;
             CollectionButton.Click += CollectionButton_Click;
             SettingsButton.Click += SettingsButton_Click;
-            ApplyRandomWallpaperButton.Click += ApplyRandomWallpaper_Click;
+            // ApplyRandomWallpaperButton was moved to the Home page and will be initialized there
 
             // Navigate to home page by default
             NavigateToPage("Home");
@@ -139,67 +141,29 @@ namespace WallYouNeed.App
 
             try
             {
-                // Create a simple placeholder content for each page
-                var content = new System.Windows.Controls.StackPanel { Margin = new Thickness(20) };
-                
-                // Add a title
-                var titleText = new System.Windows.Controls.TextBlock
-                {
-                    Text = $"{pageName} Page",
-                    FontSize = 24,
-                    FontWeight = FontWeights.Bold,
-                    Margin = new Thickness(0, 0, 0, 20),
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center
-                };
-                content.Children.Add(titleText);
-                
-                // Add description
-                var descriptionText = new System.Windows.Controls.TextBlock
-                {
-                    TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 0, 0, 30),
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center
-                };
+                // Get the right page from service provider
+                var app = System.Windows.Application.Current as App;
+                Page page = null;
                 
                 switch (pageName)
                 {
                     case "Home":
-                        descriptionText.Text = "Welcome to the Home page. This is where you can see your recent wallpapers and apply random wallpapers.";
+                        page = app.Services.GetRequiredService<HomePage>();
                         break;
                     case "Collections":
-                        descriptionText.Text = "This is the Collections page where you can organize your wallpapers into different collections.";
+                        page = app.Services.GetRequiredService<CollectionsPage>();
                         break;
                     case "Settings":
-                        descriptionText.Text = "This is the Settings page where you can customize the application behavior.";
+                        page = app.Services.GetRequiredService<SettingsPage>();
                         break;
                 }
                 
-                content.Children.Add(descriptionText);
-                
-                // Add a placeholder image or icon for each page
-                var placeholderBorder = new System.Windows.Controls.Border
+                if (page != null)
                 {
-                    Width = 200,
-                    Height = 200,
-                    Background = new SolidColorBrush(Colors.LightGray),
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 0, 0, 20)
-                };
-                
-                var placeholderText = new System.Windows.Controls.TextBlock
-                {
-                    Text = pageName,
-                    FontSize = 24,
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                    VerticalAlignment = System.Windows.VerticalAlignment.Center
-                };
-                
-                placeholderBorder.Child = placeholderText;
-                content.Children.Add(placeholderBorder);
-                
-                // Set the content presenter
-                ContentPresenter.Content = content;
-                _logger.LogInformation("Successfully navigated to {PageName}", pageName);
+                    // Use Frame navigation instead of direct content assignment
+                    ContentFrame.Navigate(page);
+                    _logger.LogInformation("Successfully navigated to {PageName}", pageName);
+                }
             }
             catch (Exception ex)
             {
