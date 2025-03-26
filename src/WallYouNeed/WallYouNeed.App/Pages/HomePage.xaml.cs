@@ -14,6 +14,7 @@ using Wpf.Ui.Controls;
 using WallYouNeed.Core.Models;
 using WallYouNeed.Core.Services;
 using WallYouNeed.Core.Services.Interfaces;
+using System.Collections.Generic;
 
 namespace WallYouNeed.App.Pages
 {
@@ -52,9 +53,50 @@ namespace WallYouNeed.App.Pages
 
         private async void HomePage_Loaded(object sender, RoutedEventArgs e)
         {
-            await LoadStatisticsAsync();
-            await LoadRecentWallpapersAsync();
-            await LoadCurrentWallpaperAsync();
+            try
+            {
+                // Set a dark background color for better contrast
+                this.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30));
+
+                // Set text colors for better visibility
+                foreach (System.Windows.Controls.TextBlock textBlock in FindVisualChildren<System.Windows.Controls.TextBlock>(this))
+                {
+                    if (textBlock.Foreground == null || textBlock.Foreground == System.Windows.Media.Brushes.Black)
+                    {
+                        textBlock.Foreground = System.Windows.Media.Brushes.White;
+                    }
+                }
+
+                await LoadStatisticsAsync();
+                await LoadRecentWallpapersAsync();
+                await LoadCurrentWallpaperAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load home page");
+                _snackbarService.Show("Error", "Failed to load home page", Wpf.Ui.Controls.ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+            }
+        }
+
+        // Helper method to find visual children of a specific type
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+                    if (child != null && child is T)
+                    {
+                        yield return (T)child;
+                    }
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
+                    }
+                }
+            }
         }
 
         private async Task LoadStatisticsAsync()

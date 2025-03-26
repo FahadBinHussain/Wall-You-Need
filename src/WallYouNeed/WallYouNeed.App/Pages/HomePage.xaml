@@ -9,7 +9,7 @@
       d:DesignHeight="650" d:DesignWidth="800"
       Title="Home">
 
-    <Grid Margin="18">
+    <Grid Margin="18" Background="{ui:ThemeResource ApplicationBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -88,8 +88,8 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Total Wallpapers" Grid.Column="0"/>
-                            <TextBlock x:Name="TotalWallpapersText" Text="0" Grid.Column="1" FontWeight="SemiBold"/>
+                            <TextBlock Text="Total Wallpapers" Grid.Column="0" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock x:Name="TotalWallpapersText" Text="0" Grid.Column="1" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
                         </Grid>
                         <Separator Margin="0,8"/>
                         <Grid>
@@ -97,8 +97,8 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Collections" Grid.Column="0"/>
-                            <TextBlock x:Name="CollectionsText" Text="0" Grid.Column="1" FontWeight="SemiBold"/>
+                            <TextBlock Text="Collections" Grid.Column="0" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock x:Name="CollectionsText" Text="0" Grid.Column="1" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
                         </Grid>
                         <Separator Margin="0,8"/>
                         <Grid>
@@ -106,8 +106,8 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Favorites" Grid.Column="0"/>
-                            <TextBlock x:Name="FavoritesText" Text="0" Grid.Column="1" FontWeight="SemiBold"/>
+                            <TextBlock Text="Favorites" Grid.Column="0" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock x:Name="FavoritesText" Text="0" Grid.Column="1" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
                         </Grid>
                     </StackPanel>
                 </ui:CardExpander>
@@ -140,7 +140,7 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         
-                        <TextBlock Grid.Row="0" x:Name="CurrentWallpaperNameText" Text="No wallpaper set" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="0" x:Name="CurrentWallpaperNameText" Text="No wallpaper set" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" />
                         <TextBlock Grid.Row="1" x:Name="CurrentWallpaperSourceText" Text="" FontSize="12" Margin="0,4,0,8" 
                                    Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
                         

@@ -9,6 +9,11 @@
                 <ui:ThemesDictionary Theme="Dark" />
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Override text colors to ensure visibility -->
+            <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="White" />
+            <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#E0E0E0" />
+            <SolidColorBrush x:Key="TextFillColorTertiaryBrush" Color="#B0B0B0" />
         </ResourceDictionary>
     </Application.Resources>
 </Application> 
