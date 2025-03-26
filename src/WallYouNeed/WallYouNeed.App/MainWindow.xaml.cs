@@ -23,13 +23,18 @@ namespace WallYouNeed.App
         public MainWindow(
             ILogger<MainWindow> logger,
             IWallpaperService wallpaperService,
-            ISettingsService settingsService)
+            ISettingsService settingsService,
+            Wpf.Ui.ISnackbarService snackbarService)
         {
             _logger = logger;
             _wallpaperService = wallpaperService;
             _settingsService = settingsService;
 
             InitializeComponent();
+            
+            // Register the SnackbarPresenter with the SnackbarService
+            snackbarService.SetSnackbarPresenter(SnackbarPresenter);
+            _logger.LogInformation("SnackbarPresenter registered successfully");
 
             // Initialize UI
             HomeButton.Click += HomeButton_Click;

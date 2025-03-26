@@ -220,5 +220,8 @@
                 <Frame x:Name="ContentFrame" NavigationUIVisibility="Hidden" />
             </Grid>
         </Grid>
+
+        <!-- Snackbar Presenter -->
+        <ui:SnackbarPresenter x:Name="SnackbarPresenter" Grid.Row="0" Grid.RowSpan="2" />
     </Grid>
 </Window> 

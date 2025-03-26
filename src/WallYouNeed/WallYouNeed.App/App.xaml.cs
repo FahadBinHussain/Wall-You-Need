@@ -31,6 +31,11 @@ namespace WallYouNeed.App
         {
             Services = ConfigureServices();
             InitializeComponent();
+            
+            // Add unhandled exception handlers
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+            DispatcherUnhandledException += App_DispatcherUnhandledException;
+            TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
         }
 
         private static IServiceProvider ConfigureServices()
@@ -148,6 +153,74 @@ namespace WallYouNeed.App
             }
 
             base.OnExit(e);
+        }
+
+        private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            try
+            {
+                var exception = e.ExceptionObject as Exception;
+                _logger?.LogCritical(exception, "Unhandled AppDomain exception: {Message}", exception?.Message);
+                
+                System.Windows.MessageBox.Show(
+                    $"A critical error occurred: {exception?.Message}\nThe application will continue running but may be unstable.",
+                    "Critical Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            }
+            catch
+            {
+                // If logging fails, at least show a message box
+                System.Windows.MessageBox.Show(
+                    "A critical error occurred but details could not be logged.",
+                    "Critical Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            }
+        }
+
+        private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            try
+            {
+                _logger?.LogError(e.Exception, "Unhandled UI thread exception: {Message}", e.Exception.Message);
+                
+                System.Windows.MessageBox.Show(
+                    $"An error occurred: {e.Exception.Message}\nThe application will continue running.",
+                    "Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+                
+                // Mark as handled so the application doesn't crash
+                e.Handled = true;
+            }
+            catch
+            {
+                // If logging fails, at least show a message box
+                System.Windows.MessageBox.Show(
+                    "An error occurred but details could not be logged.",
+                    "Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+                
+                e.Handled = true;
+            }
+        }
+
+        private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            try
+            {
+                _logger?.LogError(e.Exception, "Unobserved Task exception: {Message}", e.Exception.Message);
+                
+                // Mark as observed so it doesn't crash the process
+                e.SetObserved();
+            }
+            catch
+            {
+                // If logging fails, just observe the exception to prevent crashing
+                e.SetObserved();
+            }
         }
     }
 } 

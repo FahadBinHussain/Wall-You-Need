@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -52,7 +53,17 @@ public class WallpaperRotationService : BackgroundService, IWallpaperRotationSer
             var settings = await _settingsService.LoadSettingsAsync();
             
             // Get available wallpapers based on settings
-            var wallpapers = await GetWallpapersBasedOnSettings(settings);
+            List<Wallpaper> wallpapers;
+            try
+            {
+                wallpapers = await GetWallpapersBasedOnSettings(settings);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting wallpapers for random selection");
+                return false;
+            }
+            
             if (wallpapers.Count == 0)
             {
                 _logger.LogWarning("No wallpapers available for random selection");
@@ -60,10 +71,35 @@ public class WallpaperRotationService : BackgroundService, IWallpaperRotationSer
             }
 
             // Select a random wallpaper
-            var selectedWallpaper = wallpapers[_random.Next(wallpapers.Count)];
+            Wallpaper selectedWallpaper;
+            try
+            {
+                var randomIndex = _random.Next(wallpapers.Count);
+                selectedWallpaper = wallpapers[randomIndex];
+                
+                if (string.IsNullOrEmpty(selectedWallpaper.FilePath) || !File.Exists(selectedWallpaper.FilePath))
+                {
+                    _logger.LogWarning("Selected wallpaper file does not exist: {FilePath}", selectedWallpaper.FilePath);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error selecting random wallpaper");
+                return false;
+            }
             
             // Apply to all monitors (single wallpaper)
-            var success = await _wallpaperService.ApplyWallpaperAsync(selectedWallpaper.Id);
+            bool success;
+            try
+            {
+                success = await _wallpaperService.ApplyWallpaperAsync(selectedWallpaper.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ApplyWallpaperAsync call: {Id}", selectedWallpaper.Id);
+                return false;
+            }
             
             if (success)
             {

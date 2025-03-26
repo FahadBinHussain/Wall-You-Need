@@ -263,27 +263,161 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                _snackbarService.Show("Wallpaper", "Applying random wallpaper...", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
-                
-                var wallpapers = await _wallpaperService.GetAllWallpapersAsync();
-                var wallpaperList = wallpapers.ToList();
-                if (wallpaperList.Count == 0)
+                // Try to show snackbar with try-catch protection
+                try
                 {
-                    _snackbarService.Show("Wallpaper", "No wallpapers available. Please add some wallpapers first!", ControlAppearance.Caution, null, TimeSpan.FromSeconds(2));
+                    _snackbarService?.Show("Wallpaper", "Applying random wallpaper...", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Failed to show snackbar: {Message}", ex.Message);
+                    // We'll continue without the snackbar
+                }
+                
+                // Log all steps for diagnostics
+                _logger.LogInformation("Getting all wallpapers for random selection");
+                
+                // Safety check - ensure we have wallpapers
+                var wallpapers = await _wallpaperService.GetAllWallpapersAsync();
+                var availableWallpapers = wallpapers.ToList();
+                
+                _logger.LogInformation("Wallpapers found: {Count}", availableWallpapers.Count);
+                
+                // Display diagnostics if no wallpapers are found
+                if (availableWallpapers.Count == 0)
+                {
+                    var message = "No wallpapers available. Please add some wallpapers first!";
+                    _logger.LogWarning(message);
+                    
+                    // Try through snackbar with fallback to MessageBox
+                    try
+                    {
+                        _snackbarService?.Show("Wallpaper", message, ControlAppearance.Caution, null, TimeSpan.FromSeconds(5));
+                    }
+                    catch
+                    {
+                        System.Windows.MessageBox.Show(
+                            message,
+                            "Wallpaper",
+                            System.Windows.MessageBoxButton.OK,
+                            System.Windows.MessageBoxImage.Warning);
+                    }
+                    
+                    // Refresh the UI to ensure it reflects the current state
+                    await LoadStatisticsAsync();
+                    await LoadRecentWallpapersAsync();
+                    
                     return;
                 }
                 
-                // Select random
-                Random random = new Random();
-                var randomIndex = random.Next(0, wallpaperList.Count);
-                var selectedWallpaper = wallpaperList[randomIndex];
+                // Log available wallpapers for diagnostics
+                foreach (var wp in availableWallpapers)
+                {
+                    _logger.LogInformation("Available wallpaper: ID={Id}, Title={Title}, FilePath={FilePath}", 
+                        wp.Id, wp.Title, wp.FilePath);
+                }
                 
-                await ApplyWallpaper(selectedWallpaper.Id);
+                // Get a random wallpaper
+                Random random = new Random();
+                var randomIndex = random.Next(0, availableWallpapers.Count);
+                var selectedWallpaper = availableWallpapers[randomIndex];
+                
+                _logger.LogInformation("Selected random wallpaper: ID={Id}, Title={Title}, FilePath={FilePath}",
+                    selectedWallpaper.Id, selectedWallpaper.Title, selectedWallpaper.FilePath);
+                
+                // Safety check - ensure wallpaper file exists
+                if (string.IsNullOrEmpty(selectedWallpaper.FilePath) || !File.Exists(selectedWallpaper.FilePath))
+                {
+                    var message = $"Wallpaper file not found: {selectedWallpaper.Title} (Path: {selectedWallpaper.FilePath})";
+                    _logger.LogError(message);
+                    
+                    try
+                    {
+                        _snackbarService?.Show("Error", message,
+                            ControlAppearance.Danger, null, TimeSpan.FromSeconds(5));
+                    }
+                    catch
+                    {
+                        System.Windows.MessageBox.Show(
+                            message,
+                            "Error",
+                            System.Windows.MessageBoxButton.OK,
+                            System.Windows.MessageBoxImage.Error);
+                    }
+                    return;
+                }
+                
+                // Apply the wallpaper with comprehensive exception handling
+                try
+                {
+                    _logger.LogInformation("Applying wallpaper: {Id}", selectedWallpaper.Id);
+                    var success = await _wallpaperService.ApplyWallpaperAsync(selectedWallpaper.Id);
+                    
+                    if (success)
+                    {
+                        var message = $"Applied wallpaper: {selectedWallpaper.Title}";
+                        _logger.LogInformation(message);
+                        
+                        try
+                        {
+                            _snackbarService?.Show("Success", message,
+                                ControlAppearance.Success, null, TimeSpan.FromSeconds(2));
+                        }
+                        catch
+                        {
+                            System.Windows.MessageBox.Show(
+                                message,
+                                "Success",
+                                System.Windows.MessageBoxButton.OK,
+                                System.Windows.MessageBoxImage.Information);
+                        }
+                            
+                        // Refresh current wallpaper display
+                        await LoadCurrentWallpaperAsync();
+                    }
+                    else
+                    {
+                        var message = "Failed to apply wallpaper";
+                        _logger.LogWarning(message + ": {Id}", selectedWallpaper.Id);
+                        
+                        try
+                        {
+                            _snackbarService?.Show("Error", message,
+                                ControlAppearance.Danger, null, TimeSpan.FromSeconds(5));
+                        }
+                        catch
+                        {
+                            System.Windows.MessageBox.Show(
+                                message,
+                                "Error",
+                                System.Windows.MessageBoxButton.OK,
+                                System.Windows.MessageBoxImage.Error);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var message = $"Error applying wallpaper: {ex.Message}";
+                    _logger.LogError(ex, "Error in ApplyWallpaperAsync: {Id}", selectedWallpaper.Id);
+                    
+                    System.Windows.MessageBox.Show(
+                        message,
+                        "Error",
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Error);
+                }
             }
             catch (Exception ex)
             {
-                _snackbarService.Show("Error", $"Failed to apply random wallpaper: {ex.Message}", ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
-                _logger.LogError(ex, "Error applying random wallpaper");
+                // Handle any exception that might occur
+                var message = $"Something went wrong: {ex.Message}";
+                _logger.LogError(ex, "Critical error in RandomWallpaperButton_Click");
+                
+                System.Windows.MessageBox.Show(
+                    message,
+                    "Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
             }
         }
 
@@ -301,35 +435,80 @@ namespace WallYouNeed.App.Pages
                 
                 if (openFileDialog.ShowDialog() == true)
                 {
-                    _snackbarService.Show("Wallpaper", "Importing wallpaper...", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+                    try
+                    {
+                        _snackbarService?.Show("Wallpaper", "Importing wallpaper...", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("Failed to show snackbar: {Message}", ex.Message);
+                    }
                     
                     string filePath = openFileDialog.FileName;
                     string fileName = Path.GetFileName(filePath);
                     
+                    // Create a proper wallpaper with a unique ID
                     var wallpaper = new Wallpaper
                     {
+                        Id = Guid.NewGuid().ToString(),
                         Title = Path.GetFileNameWithoutExtension(fileName),
+                        Name = Path.GetFileNameWithoutExtension(fileName),
                         FilePath = filePath,
-                        Width = 0, // Will be updated after import
-                        Height = 0, // Will be updated after import
+                        Width = 1920, // Default width
+                        Height = 1080, // Default height
                         Source = WallpaperSource.Local,
                         CreatedAt = DateTime.Now,
-                        IsFavorite = false
+                        LastUsedAt = DateTime.Now,
+                        IsFavorite = false,
+                        Tags = new List<string> { "imported" }
                     };
                     
-                    // Use the UpdateWallpaperAsync method as a fallback if AddWallpaperAsync doesn't exist
-                    await _wallpaperService.UpdateWallpaperAsync(wallpaper);
-                    _snackbarService.Show("Success", $"Imported wallpaper: {wallpaper.Title}", ControlAppearance.Success, null, TimeSpan.FromSeconds(2));
-                    _logger.LogInformation("Imported wallpaper: {WallpaperId}", wallpaper.Id);
+                    // Use SaveWallpaperAsync to properly add the wallpaper to the database
+                    bool success = await _wallpaperService.SaveWallpaperAsync(wallpaper);
                     
-                    // Refresh the UI
-                    await LoadStatisticsAsync();
-                    await LoadRecentWallpapersAsync();
+                    if (success)
+                    {
+                        try
+                        {
+                            _snackbarService?.Show("Success", $"Imported wallpaper: {wallpaper.Title}", ControlAppearance.Success, null, TimeSpan.FromSeconds(2));
+                        }
+                        catch
+                        {
+                            System.Windows.MessageBox.Show(
+                                $"Imported wallpaper: {wallpaper.Title}",
+                                "Success",
+                                System.Windows.MessageBoxButton.OK,
+                                System.Windows.MessageBoxImage.Information);
+                        }
+                        _logger.LogInformation("Imported wallpaper: {WallpaperId}", wallpaper.Id);
+                        
+                        // Refresh the UI
+                        await LoadStatisticsAsync();
+                        await LoadRecentWallpapersAsync();
+                        await LoadCurrentWallpaperAsync();
+                        
+                        // Force refresh of available wallpapers
+                        var wallpapers = await _wallpaperService.GetAllWallpapersAsync();
+                        _logger.LogInformation("Refreshed wallpapers list, count: {Count}", wallpapers.Count());
+                    }
+                    else
+                    {
+                        System.Windows.MessageBox.Show(
+                            "Failed to save the wallpaper to the database.",
+                            "Error",
+                            System.Windows.MessageBoxButton.OK,
+                            System.Windows.MessageBoxImage.Error);
+                        _logger.LogError("Failed to save wallpaper to database");
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _snackbarService.Show("Error", $"Failed to import wallpaper: {ex.Message}", ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                System.Windows.MessageBox.Show(
+                    $"Failed to import wallpaper: {ex.Message}",
+                    "Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
                 _logger.LogError(ex, "Error importing wallpaper");
             }
         }
