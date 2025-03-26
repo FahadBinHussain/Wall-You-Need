@@ -46,11 +46,18 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
+                // Use a default light background and dark text to ensure visibility
+                this.Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(30, 30, 30));
+
                 _settings = await _settingsService.LoadSettingsAsync();
                 UpdateUIFromSettings();
                 await UpdateStorageSizeInfoAsync();
                 
                 _isInitializing = false;
+                
+                // Log that the page was loaded successfully
+                _logger.LogInformation("Settings page loaded successfully");
             }
             catch (Exception ex)
             {

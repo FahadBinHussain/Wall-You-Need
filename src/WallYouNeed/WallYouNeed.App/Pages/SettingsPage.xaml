@@ -9,7 +9,7 @@
       d:DesignHeight="650" d:DesignWidth="800"
       Title="Settings">
 
-    <Grid Margin="18">
+    <Grid Margin="18" Background="{ui:ThemeResource ApplicationBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
