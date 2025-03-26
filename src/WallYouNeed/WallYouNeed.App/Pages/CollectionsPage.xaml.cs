@@ -89,17 +89,58 @@ namespace WallYouNeed.App.Pages
                     Stretch = Stretch.UniformToFill
                 };
                 
-                // Try to get the first wallpaper as thumbnail or use a placeholder
-                if (collection.WallpaperIds != null && collection.WallpaperIds.Any())
+                // Use the collection's cover image if available
+                if (!string.IsNullOrEmpty(collection.CoverImagePath) && System.IO.File.Exists(collection.CoverImagePath))
                 {
                     try
                     {
-                        // Just use a placeholder for now as the method doesn't exist
+                        _logger.LogInformation("Loading collection cover image: {Path}", collection.CoverImagePath);
+                        var bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.UriSource = new Uri(collection.CoverImagePath);
+                        bitmap.EndInit();
+                        image.Source = bitmap;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to load collection cover image: {Path}", collection.CoverImagePath);
+                        // Fallback to placeholder
                         image.Source = new BitmapImage(new Uri($"https://picsum.photos/250/140?random={collection.Id}"));
                     }
-                    catch
+                }
+                // If no cover image, try to load the first wallpaper in the collection
+                else if (collection.WallpaperIds != null && collection.WallpaperIds.Any())
+                {
+                    try
                     {
-                        // Fallback to placeholder
+                        // Get the first wallpaper in the collection
+                        var wallpaper = _collectionService.GetWallpaperFromCollectionAsync(collection.Id, collection.WallpaperIds[0]).Result;
+                        
+                        if (wallpaper != null && !string.IsNullOrEmpty(wallpaper.FilePath) && System.IO.File.Exists(wallpaper.FilePath))
+                        {
+                            _logger.LogInformation("Using first wallpaper as collection cover: {Path}", wallpaper.FilePath);
+                            var bitmap = new BitmapImage();
+                            bitmap.BeginInit();
+                            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                            bitmap.UriSource = new Uri(wallpaper.FilePath);
+                            bitmap.EndInit();
+                            image.Source = bitmap;
+                            
+                            // Update the collection's cover image for next time
+                            collection.CoverImagePath = wallpaper.FilePath;
+                            _collectionService.UpdateCollectionAsync(collection).Wait();
+                        }
+                        else
+                        {
+                            // Placeholder image
+                            image.Source = new BitmapImage(new Uri($"https://picsum.photos/250/140?random={collection.Id}"));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to get first wallpaper for collection cover");
+                        // Placeholder image
                         image.Source = new BitmapImage(new Uri($"https://picsum.photos/250/140?random={collection.Id}"));
                     }
                 }

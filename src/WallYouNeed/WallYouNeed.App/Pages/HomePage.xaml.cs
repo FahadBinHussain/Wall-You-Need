@@ -482,9 +482,74 @@ namespace WallYouNeed.App.Pages
                         }
                         _logger.LogInformation("Imported wallpaper: {WallpaperId}", wallpaper.Id);
                         
-                        // Refresh the UI
-                        await LoadStatisticsAsync();
-                        await LoadRecentWallpapersAsync();
+                        // Add to 'Imported' collection
+                        try
+                        {
+                            _logger.LogInformation("Adding wallpaper to Imported collection");
+                            
+                            // Check if 'Imported' collection exists
+                            var collections = await _collectionService.GetAllCollectionsAsync();
+                            var importedCollection = collections.FirstOrDefault(c => c.Name == "Imported");
+                            
+                            if (importedCollection == null)
+                            {
+                                // Create a new collection
+                                _logger.LogInformation("Creating new Imported collection");
+                                importedCollection = await _collectionService.CreateCollectionAsync(
+                                    "Imported", 
+                                    "Automatically imported wallpapers"
+                                );
+                                
+                                // Set the imported wallpaper as the cover - try both methods
+                                try 
+                                {
+                                    // First try to update the collection directly with the file path
+                                    importedCollection.CoverImagePath = wallpaper.FilePath;
+                                    await _collectionService.UpdateCollectionAsync(importedCollection);
+                                    _logger.LogInformation("Set collection cover image path directly to: {FilePath}", wallpaper.FilePath);
+                                }
+                                catch (Exception coverEx)
+                                {
+                                    _logger.LogError(coverEx, "Failed to update collection cover path directly");
+                                }
+                                
+                                // Also try the API method
+                                await _collectionService.SetCollectionCoverAsync(importedCollection.Id, wallpaper.Id);
+                            }
+                            else
+                            {
+                                // Check if the existing collection needs a cover image update
+                                if (string.IsNullOrEmpty(importedCollection.CoverImagePath) || 
+                                    !File.Exists(importedCollection.CoverImagePath))
+                                {
+                                    _logger.LogInformation("Updating cover image for existing collection");
+                                    try
+                                    {
+                                        importedCollection.CoverImagePath = wallpaper.FilePath;
+                                        await _collectionService.UpdateCollectionAsync(importedCollection);
+                                        _logger.LogInformation("Updated collection cover image to: {FilePath}", 
+                                            wallpaper.FilePath);
+                                    }
+                                    catch (Exception updateEx)
+                                    {
+                                        _logger.LogError(updateEx, "Failed to update existing collection's cover image");
+                                    }
+                                }
+                            }
+                            
+                            // Add wallpaper to the collection
+                            await _collectionService.AddWallpaperToCollectionAsync(importedCollection.Id, wallpaper.Id);
+                            _logger.LogInformation("Added wallpaper to Imported collection");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to add wallpaper to Imported collection");
+                            // Continue even if collection operation fails
+                        }
+                    
+                    // Refresh the UI
+                    await LoadStatisticsAsync();
+                    await LoadRecentWallpapersAsync();
                         await LoadCurrentWallpaperAsync();
                         
                         // Force refresh of available wallpapers
