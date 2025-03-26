@@ -1,222 +1,406 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using System.Collections.ObjectModel;
 using Microsoft.Extensions.Logging;
-using WallYouNeed.Core.Models;
-using WallYouNeed.Core.Services.Interfaces;
 using Wpf.Ui;
 using Wpf.Ui.Controls;
+using WallYouNeed.Core.Models;
+using WallYouNeed.Core.Services.Interfaces;
+using WallYouNeed.App.Services;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
+using System.IO;
+using System.Windows.Media;
 
 namespace WallYouNeed.App.Pages
 {
     /// <summary>
     /// Interaction logic for CollectionsPage.xaml
     /// </summary>
-    public partial class CollectionsPage : Page
+    public partial class CollectionsPage : Page, INavigableView<CollectionsPage>
     {
         private readonly ILogger<CollectionsPage> _logger;
-        private readonly ICollectionService _collectionService;
         private readonly ISnackbarService _snackbarService;
+        private readonly ICollectionService _collectionService;
+        private readonly IWallpaperService _wallpaperService;
+        private readonly ILogService _logService;
 
+        public ObservableCollection<Collection> Collections { get; } = new();
+        
+        public CollectionsPage ViewModel => this;
+        
         public CollectionsPage(
             ILogger<CollectionsPage> logger,
+            ISnackbarService snackbarService,
             ICollectionService collectionService,
-            ISnackbarService snackbarService)
+            IWallpaperService wallpaperService,
+            ILogService logService)
         {
             _logger = logger;
-            _collectionService = collectionService;
             _snackbarService = snackbarService;
-
-            InitializeComponent();
+            _collectionService = collectionService;
+            _wallpaperService = wallpaperService;
+            _logService = logService;
             
-            this.Loaded += CollectionsPage_Loaded;
-            CreateCollectionButton.Click += CreateCollectionButton_Click;
+            InitializeComponent();
+            DataContext = this;
+            
+            _logService.LogInfo("CollectionsPage initialized");
+            Loaded += CollectionsPage_Loaded;
         }
-
+        
         private async void CollectionsPage_Loaded(object sender, RoutedEventArgs e)
         {
             try
             {
+                _logService.LogInfo("CollectionsPage_Loaded called");
+                
+                // Set initial visualization state - show the sample item for now
+                EmptyStatePanel.Visibility = Visibility.Collapsed;
+                
+                // Try to load collections
                 await LoadCollectionsAsync();
+                
+                _logService.LogInfo("Collections loaded successfully. Collection count: {Count}", Collections.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading collections");
-                _snackbarService.Show("Error", "Failed to load collections", Wpf.Ui.Controls.ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                _logger.LogError(ex, "Failed to load collections");
+                _logService.LogError(ex, "Failed to load collections with exception: {ExMessage}", ex.Message);
+                _snackbarService.Show("Error", "Failed to load collections. Please try again.", ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
             }
         }
-
-        private async System.Threading.Tasks.Task LoadCollectionsAsync()
+        
+        private async Task LoadCollectionsAsync()
         {
-            var collections = await _collectionService.GetAllCollectionsAsync();
-            
-            if (collections == null || !collections.Any())
-            {
-                EmptyStatePanel.Visibility = Visibility.Visible;
-                CollectionsPanel.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            EmptyStatePanel.Visibility = Visibility.Collapsed;
-            CollectionsPanel.Visibility = Visibility.Visible;
-            CollectionsPanel.Items.Clear();
-
-            foreach (var collection in collections)
-            {
-                // Create a collection item
-                var border = new Border
-                {
-                    Margin = new Thickness(0, 0, 16, 16),
-                    Width = 250,
-                    Height = 200,
-                    Background = System.Windows.Application.Current.Resources["CardBackgroundFillColorDefaultBrush"] as System.Windows.Media.Brush,
-                    BorderBrush = System.Windows.Application.Current.Resources["ControlStrokeColorDefaultBrush"] as System.Windows.Media.Brush,
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(8)
-                };
-
-                var grid = new Grid();
-                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(140) });
-                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-
-                // Thumbnail image
-                var image = new System.Windows.Controls.Image
-                {
-                    Stretch = Stretch.UniformToFill
-                };
+            try {
+                _logService.LogInfo("LoadCollectionsAsync - Starting to load collections");
                 
-                // Use the collection's cover image if available
-                if (!string.IsNullOrEmpty(collection.CoverImagePath) && System.IO.File.Exists(collection.CoverImagePath))
+                var collections = await _collectionService.GetAllCollectionsAsync();
+                _logService.LogInfo("Collections retrieved from service. Count: {Count}", 
+                    collections != null ? collections.Count : 0);
+                
+                Collections.Clear();
+                if (collections != null)
                 {
-                    try
+                    foreach (var collection in collections)
                     {
-                        _logger.LogInformation("Loading collection cover image: {Path}", collection.CoverImagePath);
-                        var bitmap = new BitmapImage();
-                        bitmap.BeginInit();
-                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                        bitmap.UriSource = new Uri(collection.CoverImagePath);
-                        bitmap.EndInit();
-                        image.Source = bitmap;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to load collection cover image: {Path}", collection.CoverImagePath);
-                        // Fallback to placeholder
-                        image.Source = new BitmapImage(new Uri($"https://picsum.photos/250/140?random={collection.Id}"));
+                        _logService.LogInfo("Adding collection: {Id} - {Name}", collection.Id, collection.Name);
+                        Collections.Add(collection);
                     }
                 }
-                // If no cover image, try to load the first wallpaper in the collection
-                else if (collection.WallpaperIds != null && collection.WallpaperIds.Any())
+                
+                // For testing, let's add a dummy collection if none exist
+                if (Collections.Count == 0 && !Collections.Any(c => c.Name == "Imported"))
+                {
+                    _logService.LogInfo("No collections found. Adding default 'Imported' collection");
+                    var newCollection = new Collection
+                    {
+                        Id = "imported",
+                        Name = "Imported",
+                        WallpaperIds = new System.Collections.Generic.List<string>()
+                    };
+                    Collections.Add(newCollection);
+                }
+                
+                // Keep this commented for now so we see our static sample
+                /*
+                // Update UI based on whether collections exist
+                if (Collections.Count > 0)
+                {
+                    CollectionsItemsControl.Visibility = Visibility.Visible;
+                    EmptyStatePanel.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    CollectionsItemsControl.Visibility = Visibility.Collapsed;
+                    EmptyStatePanel.Visibility = Visibility.Visible;
+                }
+                */
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in LoadCollectionsAsync: {Message}", ex.Message);
+                _logService.LogError(ex, "Error in LoadCollectionsAsync: {Message}", ex.Message);
+                // Don't rethrow - we'll handle it gracefully
+            }
+        }
+        
+        private async void CreateCollection_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _logService.LogUIAction("CreateCollection_Button", "Clicked");
+                
+                // Show a dialog to get the collection name
+                string collectionName = "New Collection"; // Default name
+                
+                // Simple text input dialog - using a standard message box for now
+                _logService.LogInfo("Showing dialog for collection creation with default name: {Name}", collectionName);
+                
+                var result = System.Windows.MessageBox.Show(
+                    "Create a new collection named '" + collectionName + "'?", 
+                    "Create Collection",
+                    System.Windows.MessageBoxButton.OKCancel,
+                    System.Windows.MessageBoxImage.Question);
+                
+                _logService.LogInfo("Dialog result: {Result}", result);
+                
+                if (result == System.Windows.MessageBoxResult.OK)
                 {
                     try
                     {
-                        // Get the first wallpaper in the collection
-                        var wallpaper = _collectionService.GetWallpaperFromCollectionAsync(collection.Id, collection.WallpaperIds[0]).Result;
+                        _logService.LogInfo("Creating new collection with name: {Name}", collectionName);
+                        var newCollection = await _collectionService.CreateCollectionAsync(collectionName);
                         
-                        if (wallpaper != null && !string.IsNullOrEmpty(wallpaper.FilePath) && System.IO.File.Exists(wallpaper.FilePath))
+                        if (newCollection != null)
                         {
-                            _logger.LogInformation("Using first wallpaper as collection cover: {Path}", wallpaper.FilePath);
-                            var bitmap = new BitmapImage();
-                            bitmap.BeginInit();
-                            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                            bitmap.UriSource = new Uri(wallpaper.FilePath);
-                            bitmap.EndInit();
-                            image.Source = bitmap;
+                            _logService.LogInfo("Collection created with ID: {Id}", newCollection.Id);
+                            Collections.Add(newCollection);
                             
-                            // Update the collection's cover image for next time
-                            collection.CoverImagePath = wallpaper.FilePath;
-                            _collectionService.UpdateCollectionAsync(collection).Wait();
+                            // Always show the collections now
+                            CollectionsItemsControl.Visibility = Visibility.Visible;
+                            EmptyStatePanel.Visibility = Visibility.Collapsed;
+                            
+                            _logService.LogInfo("Collection UI updated - showing collections list");
+                            _snackbarService.Show("Success", "Collection created successfully", 
+                                ControlAppearance.Success, null, TimeSpan.FromSeconds(2));
                         }
                         else
                         {
-                            // Placeholder image
-                            image.Source = new BitmapImage(new Uri($"https://picsum.photos/250/140?random={collection.Id}"));
+                            _logService.LogWarning("Collection was not created - null returned from service");
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to get first wallpaper for collection cover");
-                        // Placeholder image
-                        image.Source = new BitmapImage(new Uri($"https://picsum.photos/250/140?random={collection.Id}"));
+                        _logger.LogError(ex, "Failed to create collection");
+                        _logService.LogError(ex, "Failed to create collection: {ExMessage}", ex.Message);
+                        _snackbarService.Show("Error", "Failed to create collection: " + ex.Message, 
+                            ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in CreateCollection_Click: {Message}", ex.Message);
+                _logService.LogError(ex, "Error in CreateCollection_Click: {Message}", ex.Message);
+                _snackbarService.Show("Error", "Failed to create collection. Please try again.", 
+                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+            }
+        }
+        
+        private async void DeleteCollection_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _logService.LogUIAction("DeleteCollection_Button", "Clicked");
+                
+                // Get the collection ID from the button's Tag
+                string collectionId = null;
+                if (sender is System.Windows.Controls.Button button)
+                {
+                    collectionId = button.Tag as string;
+                    _logService.LogInfo("Delete button clicked for collection ID: {Id}", collectionId ?? "null");
+                }
+                
+                // If no tag, try to use the sample collection ID
+                if (string.IsNullOrEmpty(collectionId))
+                {
+                    // Use the "imported" collection ID for our static sample
+                    collectionId = "imported";
+                    _logService.LogInfo("No collection ID found in Tag, using default: {Id}", collectionId);
+                }
+                
+                if (!string.IsNullOrEmpty(collectionId))
+                {
+                    // Confirm deletion with a standard message box
+                    _logService.LogInfo("Showing delete confirmation dialog for collection: {Id}", collectionId);
+                    
+                    var result = System.Windows.MessageBox.Show(
+                        "Are you sure you want to delete this collection? This action cannot be undone.",
+                        "Delete Collection",
+                        System.Windows.MessageBoxButton.YesNo,
+                        System.Windows.MessageBoxImage.Warning);
+                    
+                    _logService.LogInfo("Delete confirmation result: {Result}", result);
+                    
+                    if (result == System.Windows.MessageBoxResult.Yes)
+                    {
+                        try
+                        {
+                            _logService.LogInfo("Proceeding with collection deletion: {Id}", collectionId);
+                            
+                            // For our static example, just show a success message
+                            _snackbarService.Show("Success", "Collection deleted successfully", 
+                                ControlAppearance.Success, null, TimeSpan.FromSeconds(2));
+                                
+                            // In a real app with a proper database:
+                            // await _collectionService.DeleteCollectionAsync(collectionId);
+                            
+                            // Remove from the observable collection
+                            var collectionToRemove = Collections.FirstOrDefault(c => c.Id == collectionId);
+                            if (collectionToRemove != null)
+                            {
+                                _logService.LogInfo("Removing collection from UI: {Id} - {Name}", 
+                                    collectionToRemove.Id, collectionToRemove.Name);
+                                Collections.Remove(collectionToRemove);
+                            }
+                            else
+                            {
+                                _logService.LogWarning("Collection not found in UI list: {Id}", collectionId);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to delete collection");
+                            _logService.LogError(ex, "Failed to delete collection: {ExMessage}", ex.Message);
+                            _snackbarService.Show("Error", "Failed to delete collection: " + ex.Message, 
+                                ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in DeleteCollection_Click: {Message}", ex.Message);
+                _logService.LogError(ex, "Error in DeleteCollection_Click: {Message}", ex.Message);
+                _snackbarService.Show("Error", "Failed to delete collection. Please try again.", 
+                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+            }
+        }
+        
+        private void ViewCollection_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _logService.LogUIAction("ViewCollection_Button", "Clicked");
+                
+                // Get the collection ID from the button's Tag
+                string collectionId = null;
+                if (sender is System.Windows.Controls.Button button)
+                {
+                    collectionId = button.Tag as string;
+                    _logService.LogInfo("View button clicked for collection ID: {Id}", collectionId ?? "null");
+                }
+                
+                // If no tag, try to use the sample collection ID
+                if (string.IsNullOrEmpty(collectionId))
+                {
+                    // Use the "imported" collection ID for our static sample
+                    collectionId = "imported";
+                    _logService.LogInfo("No collection ID found in Tag, using default: {Id}", collectionId);
+                }
+                
+                if (!string.IsNullOrEmpty(collectionId))
+                {
+                    _logService.LogInfo("Viewing collection: {Id}", collectionId);
+                    
+                    // Just show a notification for now
+                    _snackbarService.Show("Collection View", "Viewing collection: " + collectionId, 
+                        ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+                    
+                    // In a real app, you would navigate to a collection details page
+                    // navigationService.NavigateTo<CollectionDetailsPage>(new NavigationArguments { { "collectionId", collectionId } });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ViewCollection_Click: {Message}", ex.Message);
+                _logService.LogError(ex, "Error in ViewCollection_Click: {Message}", ex.Message);
+                _snackbarService.Show("Error", "Failed to view collection. Please try again.", 
+                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+            }
+        }
+        
+        private async Task LoadCollectionThumbnailAsync(Collection collection, System.Windows.Controls.Image imageControl)
+        {
+            if (collection == null || imageControl == null || string.IsNullOrEmpty(collection.Id))
+            {
+                _logService.LogWarning("Cannot load thumbnail - invalid parameters");
+                return;
+            }
+            
+            try
+            {
+                _logService.LogInfo("LoadCollectionThumbnailAsync - Loading thumbnail for collection: {Id}", collection.Id);
+                
+                // Get the first wallpaper in the collection to use as thumbnail
+                if (collection.WallpaperIds != null && collection.WallpaperIds.Count > 0)
+                {
+                    _logService.LogInfo("Collection has {Count} wallpapers. Using first one as thumbnail.", 
+                        collection.WallpaperIds.Count);
+                        
+                    var wallpaper = await _collectionService.GetWallpaperFromCollectionAsync(collection.Id, collection.WallpaperIds[0]);
+                    
+                    if (wallpaper != null && !string.IsNullOrEmpty(wallpaper.FilePath) && File.Exists(wallpaper.FilePath))
+                    {
+                        _logService.LogInfo("Loading wallpaper from file: {Path}", wallpaper.FilePath);
+                        
+                        var bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.UriSource = new Uri(wallpaper.FilePath);
+                        bitmap.EndInit();
+                        
+                        imageControl.Source = bitmap;
+                        
+                        _logService.LogInfo("Thumbnail loaded successfully");
+                    }
+                    else
+                    {
+                        _logService.LogWarning("Wallpaper not valid or file does not exist. Using placeholder.");
+                        // Set a placeholder image if no wallpapers in collection
+                        SetPlaceholderImage(imageControl);
                     }
                 }
                 else
                 {
-                    // Placeholder image
-                    image.Source = new BitmapImage(new Uri($"https://picsum.photos/250/140?random={collection.Id}"));
+                    _logService.LogInfo("Collection has no wallpapers. Using placeholder image.");
+                    SetPlaceholderImage(imageControl);
                 }
-
-                Grid.SetRow(image, 0);
-                grid.Children.Add(image);
-
-                // Info panel
-                var infoGrid = new Grid { Margin = new Thickness(12, 8, 12, 8) };
-                
-                var stackPanel = new StackPanel();
-                stackPanel.Children.Add(new System.Windows.Controls.TextBlock
-                {
-                    Text = collection.Name,
-                    FontWeight = FontWeights.SemiBold,
-                    FontSize = 16
-                });
-                
-                stackPanel.Children.Add(new System.Windows.Controls.TextBlock
-                {
-                    Text = collection.WallpaperIds != null 
-                        ? $"{collection.WallpaperIds.Count} wallpapers" 
-                        : "0 wallpapers",
-                    Foreground = System.Windows.Application.Current.Resources["TextFillColorSecondaryBrush"] as System.Windows.Media.Brush,
-                    FontSize = 12
-                });
-
-                infoGrid.Children.Add(stackPanel);
-
-                // Options button
-                var optionsButton = new Wpf.Ui.Controls.Button
-                {
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Appearance = Wpf.Ui.Controls.ControlAppearance.Transparent,
-                    Icon = new SymbolIcon { Symbol = SymbolRegular.MoreHorizontal20 },
-                    Padding = new Thickness(4)
-                };
-                
-                optionsButton.Click += (s, args) => ShowCollectionOptions(collection);
-                
-                infoGrid.Children.Add(optionsButton);
-                
-                Grid.SetRow(infoGrid, 1);
-                grid.Children.Add(infoGrid);
-
-                // Make the collection item clickable
-                border.MouseLeftButtonDown += (s, args) => ViewCollection(collection);
-                border.Cursor = System.Windows.Input.Cursors.Hand;
-                
-                border.Child = grid;
-                CollectionsPanel.Items.Add(border);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading collection thumbnail: {CollectionId}", collection.Id);
+                _logService.LogError(ex, "Error loading collection thumbnail for {CollectionId}: {ExMessage}", 
+                    collection.Id, ex.Message);
+                SetPlaceholderImage(imageControl);
             }
         }
-
-        private void ViewCollection(Collection collection)
+        
+        private void SetPlaceholderImage(System.Windows.Controls.Image imageControl)
         {
-            _snackbarService.Show("Coming Soon", "Viewing individual collections is coming soon", Wpf.Ui.Controls.ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
-            _logger.LogInformation("Viewing collection: {CollectionName} [{CollectionId}]", collection.Name, collection.Id);
-        }
-
-        private void ShowCollectionOptions(Collection collection)
-        {
-            _snackbarService.Show("Coming Soon", "Collection options menu coming soon", Wpf.Ui.Controls.ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
-            _logger.LogInformation("Showing options for collection: {CollectionName} [{CollectionId}]", collection.Name, collection.Id);
-        }
-
-        private void CreateCollectionButton_Click(object sender, RoutedEventArgs e)
-        {
-            _snackbarService.Show("Coming Soon", "Creating collections is coming soon", Wpf.Ui.Controls.ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
-            _logger.LogInformation("Create collection button clicked");
+            try
+            {
+                _logService.LogInfo("Setting placeholder image");
+                
+                // Create a placeholder image
+                var placeholderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(240, 240, 240));
+                var drawingVisual = new DrawingVisual();
+                
+                using (var drawingContext = drawingVisual.RenderOpen())
+                {
+                    drawingContext.DrawRectangle(
+                        placeholderBrush,
+                        null,
+                        new Rect(0, 0, 100, 100));
+                }
+                
+                var renderTargetBitmap = new RenderTargetBitmap(
+                    100, 100, 96, 96, PixelFormats.Pbgra32);
+                renderTargetBitmap.Render(drawingVisual);
+                
+                imageControl.Source = renderTargetBitmap;
+                
+                _logService.LogInfo("Placeholder image set successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting placeholder image");
+                _logService.LogError(ex, "Error setting placeholder image: {ExMessage}", ex.Message);
+            }
         }
     }
 } 

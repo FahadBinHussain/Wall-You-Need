@@ -9,148 +9,232 @@
       d:DesignHeight="650" d:DesignWidth="800"
       Title="Home">
 
-    <Grid Margin="18" Background="{ui:ThemeResource ApplicationBackgroundBrush}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="24,0,24,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock 
-                Text="Welcome to Wall-You-Need" 
-                FontSize="28" 
+            <!-- Page Title -->
+            <TextBlock Grid.Row="0" 
+                Text="Home" 
+                FontSize="32" 
                 FontWeight="SemiBold"
+                Margin="0,16,0,24"
                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
-            <TextBlock 
-                Text="Your personal wallpaper management solution" 
-                FontSize="16" 
-                Margin="0,8,0,0"
-                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
-        </StackPanel>
 
-        <!-- Content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <Grid>
+            <!-- Featured Wallpapers Section -->
+            <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
+                
+                <!-- Large Featured Card -->
+                <Border Grid.Column="0" Style="{StaticResource ContentCard}" Height="320" Margin="0,0,8,16">
+                    <Grid>
+                        <Image x:Name="FeaturedWallpaperImage" Source="https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d" Stretch="UniformToFill"/>
+                        
+                        <!-- Overlay -->
+                        <Border VerticalAlignment="Bottom" Background="#80000000" Height="100">
+                            <Grid Margin="24,16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="Latest wallpapers" FontSize="24" Foreground="White" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="1" Text="The latest wallpapers in one collection. You can find the freshest wallpapers here." 
+                                        FontSize="14" Foreground="#E0E0E0" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Border>
+                
+                <!-- Right Side Cards -->
+                <Grid Grid.Column="1" Width="380">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <!-- 8K Ultra HD card -->
+                    <Border Grid.Row="0" Style="{StaticResource ContentCard}" Margin="0,0,0,8" Height="155">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1517976487492-5750f3195933" Stretch="UniformToFill"/>
+                            
+                            <!-- Overlay -->
+                            <Border VerticalAlignment="Bottom" Background="#80000000" Height="50">
+                                <TextBlock Text="8K UltraHD wallpapers" FontSize="16" Foreground="White" FontWeight="SemiBold" Margin="16,12" VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- AI Generated card -->
+                    <Border Grid.Row="1" Style="{StaticResource ContentCard}" Margin="0,8,0,0" Height="155">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1566808907643-7c0e79cbe703" Stretch="UniformToFill"/>
+                            
+                            <!-- Overlay -->
+                            <Border VerticalAlignment="Bottom" Background="#80000000" Height="50">
+                                <TextBlock Text="AI generated" FontSize="16" Foreground="White" FontWeight="SemiBold" Margin="16,12" VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+            
+            <!-- AI Wallpapers Promo Section -->
+            <Border Grid.Row="2" Style="{StaticResource ContentCard}" Margin="0,8,0,24" Background="#230D3A">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Left Text Content -->
+                    <StackPanel Grid.Column="0" Margin="24,24,0,24" VerticalAlignment="Center">
+                        <TextBlock Text="AI WALLPAPERS" FontSize="24" Foreground="#D896FF" FontWeight="SemiBold"/>
+                        <TextBlock Text="Imagine your AI generated background" FontSize="16" Foreground="White" Margin="0,8,0,16"/>
+                        
+                        <Button Style="{StaticResource ActionButton}" Content="Download now" Width="150" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                    
+                    <!-- Right Images Grid -->
+                    <Grid Grid.Column="1" Margin="8,16,24,16">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Border Grid.Row="0" Grid.Column="0" CornerRadius="8" Margin="8" Width="100" Height="70">
+                            <Border.Background>
+                                <ImageBrush ImageSource="https://images.unsplash.com/photo-1468276311594-df7cb65d8df6" Stretch="UniformToFill"/>
+                            </Border.Background>
+                        </Border>
+                        
+                        <Border Grid.Row="0" Grid.Column="1" CornerRadius="8" Margin="8" Width="100" Height="70">
+                            <Border.Background>
+                                <ImageBrush ImageSource="https://images.unsplash.com/photo-1493673272479-a20888bcee10" Stretch="UniformToFill"/>
+                            </Border.Background>
+                        </Border>
+                        
+                        <Border Grid.Row="1" Grid.Column="0" CornerRadius="8" Margin="8" Width="100" Height="70">
+                            <Border.Background>
+                                <ImageBrush ImageSource="https://images.unsplash.com/photo-1542332213-9b5a5a3fad35" Stretch="UniformToFill"/>
+                            </Border.Background>
+                        </Border>
+                        
+                        <Border Grid.Row="1" Grid.Column="1" CornerRadius="8" Margin="8" Width="100" Height="70">
+                            <Border.Background>
+                                <ImageBrush ImageSource="https://images.unsplash.com/photo-1418489098061-ce87b5dc3aee" Stretch="UniformToFill"/>
+                            </Border.Background>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+            
+            <!-- Daily Popular Wallpapers Section -->
+            <Grid Grid.Row="3">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-
-                <!-- Quick Actions -->
-                <ui:CardExpander 
-                    Grid.Column="0" 
-                    Grid.Row="0"
-                    Margin="0,0,6,12" 
-                    Icon="Wallpaper24" 
-                    Header="Quick Actions">
-                    <StackPanel Margin="8">
-                        <ui:Button
-                            x:Name="RandomWallpaperButton"
-                            Content="Apply Random Wallpaper"
-                            Icon="Play24"
-                            Appearance="Primary"
-                            Margin="0,0,0,8"
-                            HorizontalAlignment="Stretch" 
-                            Click="RandomWallpaperButton_Click"/>
-                        <ui:Button
-                            x:Name="ImportButton"
-                            Content="Import Local Wallpaper"
-                            Icon="FolderAdd24"
-                            Margin="0,0,0,8"
-                            HorizontalAlignment="Stretch" 
-                            Click="ImportButton_Click"/>
-                        <ui:Button
-                            x:Name="DownloadButton"
-                            Content="Download From Web"
-                            Icon="Globe24"
-                            Margin="0,0,0,8" 
-                            HorizontalAlignment="Stretch"
-                            Click="DownloadButton_Click"/>
-                    </StackPanel>
-                </ui:CardExpander>
-
-                <!-- Statistics -->
-                <ui:CardExpander 
-                    Grid.Column="1" 
-                    Grid.Row="0"
-                    Margin="6,0,0,12" 
-                    Icon="DataHistogram24" 
-                    Header="Statistics">
-                    <StackPanel Margin="8">
+                
+                <!-- Section Title with View All -->
+                <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <TextBlock Text="Daily popular wallpapers" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <Button Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
+                            Background="Transparent" Foreground="#0066ff" HorizontalAlignment="Right"/>
+                </Grid>
+                
+                <!-- Wallpaper Grid -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Wallpaper Card 1 -->
+                    <Border Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="200">
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="Total Wallpapers" Grid.Column="0" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
-                            <TextBlock x:Name="TotalWallpapersText" Text="0" Grid.Column="1" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
+                            <Image Source="https://images.unsplash.com/photo-1419242902214-272b3f66ee7a" Stretch="UniformToFill"/>
+                            <Border Style="{StaticResource ResolutionBadge}">
+                                <TextBlock Text="5K" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            </Border>
+                            
+                            <!-- Like/Download Overlay -->
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="34" Height="34" Margin="0,0,4,0">
+                                        <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" 
+                                              Fill="White" Width="16" Height="16"/>
+                                    </Button>
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="34" Height="34">
+                                        <Path Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" 
+                                              Fill="White" Width="16" Height="16"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
                         </Grid>
-                        <Separator Margin="0,8"/>
+                    </Border>
+                    
+                    <!-- Wallpaper Card 2 -->
+                    <Border Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="200">
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="Collections" Grid.Column="0" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
-                            <TextBlock x:Name="CollectionsText" Text="0" Grid.Column="1" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
+                            <Image Source="https://images.unsplash.com/photo-1505765050516-f72dcac9c60e" Stretch="UniformToFill"/>
+                            <Border Style="{StaticResource ResolutionBadge}">
+                                <TextBlock Text="4K" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            </Border>
+                            
+                            <!-- Like/Download Overlay -->
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="34" Height="34" Margin="0,0,4,0">
+                                        <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" 
+                                              Fill="White" Width="16" Height="16"/>
+                                    </Button>
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="34" Height="34">
+                                        <Path Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" 
+                                              Fill="White" Width="16" Height="16"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
                         </Grid>
-                        <Separator Margin="0,8"/>
+                    </Border>
+                    
+                    <!-- Wallpaper Card 3 -->
+                    <Border Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="200">
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="Favorites" Grid.Column="0" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
-                            <TextBlock x:Name="FavoritesText" Text="0" Grid.Column="1" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
+                            <Image Source="https://images.unsplash.com/photo-1534447677768-be436bb09401" Stretch="UniformToFill"/>
+                            <Border Style="{StaticResource ResolutionBadge}">
+                                <TextBlock Text="5K" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            </Border>
+                            
+                            <!-- Like/Download Overlay -->
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="34" Height="34" Margin="0,0,4,0">
+                                        <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" 
+                                              Fill="White" Width="16" Height="16"/>
+                                    </Button>
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="34" Height="34">
+                                        <Path Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" 
+                                              Fill="White" Width="16" Height="16"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
                         </Grid>
-                    </StackPanel>
-                </ui:CardExpander>
-
-                <!-- Recent Wallpapers -->
-                <ui:CardExpander 
-                    Grid.Column="0" 
-                    Grid.ColumnSpan="2"
-                    Grid.Row="1"
-                    Margin="0,0,0,12" 
-                    Icon="History24" 
-                    Header="Recent Wallpapers">
-                    <Grid x:Name="RecentWallpapersGrid" Margin="8">
-                        <TextBlock Text="No recent wallpapers" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}" />
-                    </Grid>
-                </ui:CardExpander>
-
-                <!-- Current Wallpaper -->
-                <ui:CardExpander 
-                    Grid.Column="0" 
-                    Grid.ColumnSpan="2"
-                    Grid.Row="2"
-                    Margin="0,0,0,12" 
-                    Icon="Image24" 
-                    Header="Current Wallpaper">
-                    <Grid Margin="8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock Grid.Row="0" x:Name="CurrentWallpaperNameText" Text="No wallpaper set" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" />
-                        <TextBlock Grid.Row="1" x:Name="CurrentWallpaperSourceText" Text="" FontSize="12" Margin="0,4,0,8" 
-                                   Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
-                        
-                        <Border Grid.Row="2" BorderThickness="1" BorderBrush="{ui:ThemeResource ControlStrokeColorDefaultBrush}" 
-                                CornerRadius="8" Height="200">
-                            <Image x:Name="CurrentWallpaperImage" Stretch="Uniform"/>
-                        </Border>
-                    </Grid>
-                </ui:CardExpander>
+                    </Border>
+                </Grid>
             </Grid>
-        </ScrollViewer>
-    </Grid>
+        </Grid>
+    </ScrollViewer>
 </Page> 

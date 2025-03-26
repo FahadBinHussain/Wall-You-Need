@@ -9,219 +9,360 @@
       d:DesignHeight="650" d:DesignWidth="800"
       Title="Settings">
 
-    <Grid Margin="18" Background="{ui:ThemeResource ApplicationBackgroundBrush}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="24,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock 
-                Text="Settings" 
-                FontSize="28" 
-                FontWeight="SemiBold"
-                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
-            <TextBlock 
-                Text="Customize your wallpaper experience" 
-                FontSize="16" 
-                Margin="0,8,0,0"
-                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
-        </StackPanel>
+            <!-- Header -->
+            <TextBlock Grid.Row="0" 
+                       Text="Settings" 
+                       FontSize="32" 
+                       FontWeight="SemiBold" 
+                       Margin="0,0,0,12"/>
 
-        <!-- Content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
+            <StackPanel Grid.Row="1" Margin="0,0,0,0">
+                
                 <!-- Appearance -->
-                <ui:CardExpander 
-                    Icon="ColorBackground24" 
-                    Header="Appearance"
-                    Margin="0,0,0,12">
-                    <StackPanel Margin="8">
-                        <ui:ToggleSwitch
-                            x:Name="DarkModeToggle"
-                            Content="Dark Mode"
-                            IsChecked="{Binding IsDarkTheme}"
-                            Margin="0,0,0,8"
-                            Click="DarkModeToggle_Click"/>
-                    </StackPanel>
-                </ui:CardExpander>
-
-                <!-- Wallpaper Rotation -->
-                <ui:CardExpander 
-                    Icon="ArrowRepeatAll24" 
-                    Header="Wallpaper Rotation"
-                    Margin="0,0,0,12">
-                    <StackPanel Margin="8">
-                        <ui:ToggleSwitch
-                            x:Name="AutoChangeWallpaperToggle"
-                            Content="Automatically change wallpaper"
-                            IsChecked="{Binding AutoChangeWallpaper}"
-                            Margin="0,0,0,8"
-                            Click="AutoChangeWallpaperToggle_Click"/>
+                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                        CornerRadius="8" 
+                        Padding="16"
+                        Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         
-                        <TextBlock 
-                            Text="Rotation Interval" 
-                            Margin="0,8,0,4"/>
-                        <ComboBox 
-                            x:Name="RotationIntervalComboBox"
-                            SelectedIndex="{Binding RotationIntervalIndex}"
-                            IsEnabled="{Binding AutoChangeWallpaper}"
-                            Margin="0,0,0,8"
-                            Width="200"
-                            HorizontalAlignment="Left"
-                            SelectionChanged="RotationIntervalComboBox_SelectionChanged">
-                            <ComboBoxItem Content="15 minutes"/>
-                            <ComboBoxItem Content="30 minutes"/>
-                            <ComboBoxItem Content="1 hour"/>
-                            <ComboBoxItem Content="3 hours"/>
-                            <ComboBoxItem Content="6 hours"/>
-                            <ComboBoxItem Content="12 hours"/>
-                            <ComboBoxItem Content="1 day"/>
-                        </ComboBox>
+                        <TextBlock Grid.Row="0" 
+                                   Text="Appearance" 
+                                   FontSize="18" 
+                                   FontWeight="SemiBold" 
+                                   Margin="0,0,0,12"/>
                         
-                        <TextBlock 
-                            Text="Wallpaper Sources" 
-                            Margin="0,8,0,4"/>
-                        <StackPanel>
-                            <CheckBox 
-                                x:Name="LocalSourceCheckBox"
-                                Content="Local Wallpapers" 
-                                IsChecked="{Binding UseLocalWallpapers}"
-                                Margin="0,4,0,4"
-                                Click="SourceCheckBox_Click"/>
-                            <CheckBox 
-                                x:Name="UnsplashSourceCheckBox"
-                                Content="Unsplash" 
-                                IsChecked="{Binding UseUnsplash}"
-                                Margin="0,4,0,4"
-                                Click="SourceCheckBox_Click"/>
-                            <CheckBox 
-                                x:Name="PexelsSourceCheckBox"
-                                Content="Pexels" 
-                                IsChecked="{Binding UsePexels}"
-                                Margin="0,4,0,4"
-                                Click="SourceCheckBox_Click"/>
+                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" 
+                                            Orientation="Horizontal" 
+                                            VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="DarkTheme24" 
+                                                  Margin="0,0,12,0" 
+                                                  VerticalAlignment="Center"/>
+                                    <TextBlock Text="Dark Mode" 
+                                              VerticalAlignment="Center"/>
+                                </StackPanel>
+                                
+                                <CheckBox Grid.Column="1" 
+                                         x:Name="ThemeToggle" 
+                                         Checked="ThemeToggle_Checked" 
+                                         Unchecked="ThemeToggle_Unchecked"
+                                         VerticalAlignment="Center"/>
+                            </Grid>
                         </StackPanel>
-                    </StackPanel>
-                </ui:CardExpander>
-
+                    </Grid>
+                </Border>
+                
+                <!-- Wallpaper Rotation -->
+                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                        CornerRadius="8" 
+                        Padding="16"
+                        Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Grid.Row="0" 
+                                   Text="Wallpaper Rotation" 
+                                   FontSize="18" 
+                                   FontWeight="SemiBold" 
+                                   Margin="0,0,0,12"/>
+                        
+                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" 
+                                            Orientation="Horizontal" 
+                                            VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="ArrowClockwise24" 
+                                                  Margin="0,0,12,0" 
+                                                  VerticalAlignment="Center"/>
+                                    <TextBlock Text="Auto-change wallpaper" 
+                                              VerticalAlignment="Center"/>
+                                </StackPanel>
+                                
+                                <CheckBox Grid.Column="1" 
+                                         x:Name="AutoChangeToggle" 
+                                         Checked="AutoChangeToggle_Checked" 
+                                         Unchecked="AutoChangeToggle_Unchecked"
+                                         VerticalAlignment="Center"/>
+                            </Grid>
+                            
+                            <Grid x:Name="RotationIntervalGrid" 
+                                  Visibility="Collapsed"
+                                  Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Grid.Column="0" 
+                                          Text="Change every:" 
+                                          VerticalAlignment="Center" 
+                                          Margin="24,0,12,0"/>
+                                
+                                <ComboBox Grid.Column="1" 
+                                         x:Name="RotationIntervalCombo" 
+                                         SelectionChanged="RotationIntervalCombo_SelectionChanged">
+                                    <ComboBoxItem Content="30 minutes"/>
+                                    <ComboBoxItem Content="1 hour"/>
+                                    <ComboBoxItem Content="2 hours"/>
+                                    <ComboBoxItem Content="4 hours"/>
+                                    <ComboBoxItem Content="Daily"/>
+                                </ComboBox>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                
                 <!-- API Keys -->
-                <ui:CardExpander 
-                    Icon="Key24" 
-                    Header="API Keys"
-                    Margin="0,0,0,12">
-                    <StackPanel Margin="8">
-                        <TextBlock 
-                            Text="Unsplash API Key" 
-                            Margin="0,0,0,4"/>
-                        <ui:PasswordBox 
-                            x:Name="UnsplashApiKeyBox"
-                            Password="{Binding UnsplashApiKey}"
-                            Margin="0,0,0,8"
-                            PlaceholderText="Enter your Unsplash API key"
-                            PasswordChanged="ApiKeyBox_PasswordChanged"/>
+                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                        CornerRadius="8" 
+                        Padding="16"
+                        Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         
-                        <TextBlock 
-                            Text="Pexels API Key" 
-                            Margin="0,8,0,4"/>
-                        <ui:PasswordBox 
-                            x:Name="PexelsApiKeyBox"
-                            Password="{Binding PexelsApiKey}"
-                            Margin="0,0,0,8"
-                            PlaceholderText="Enter your Pexels API key"
-                            PasswordChanged="ApiKeyBox_PasswordChanged"/>
-                    </StackPanel>
-                </ui:CardExpander>
-
+                        <TextBlock Grid.Row="0" 
+                                   Text="API Keys" 
+                                   FontSize="18" 
+                                   FontWeight="SemiBold" 
+                                   Margin="0,0,0,12"/>
+                        
+                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
+                            <StackPanel Margin="0,0,0,16">
+                                <TextBlock Text="Unsplash API Key" 
+                                          Margin="0,0,0,4"/>
+                                <PasswordBox x:Name="UnsplashApiKey" 
+                                            PasswordChanged="UnsplashApiKey_PasswordChanged"/>
+                            </StackPanel>
+                            
+                            <StackPanel Margin="0,0,0,0">
+                                <TextBlock Text="Pexels API Key" 
+                                          Margin="0,0,0,4"/>
+                                <PasswordBox x:Name="PexelsApiKey" 
+                                            PasswordChanged="PexelsApiKey_PasswordChanged"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                
                 <!-- System Integration -->
-                <ui:CardExpander 
-                    Icon="DesktopFlow24" 
-                    Header="System Integration"
-                    Margin="0,0,0,12">
-                    <StackPanel Margin="8">
-                        <ui:ToggleSwitch
-                            x:Name="RunAtStartupToggle"
-                            Content="Run at Windows startup"
-                            IsChecked="{Binding RunAtStartup}"
-                            Margin="0,0,0,8"
-                            Click="RunAtStartupToggle_Click"/>
+                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                        CornerRadius="8" 
+                        Padding="16"
+                        Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         
-                        <ui:ToggleSwitch
-                            x:Name="MinimizeToTrayToggle"
-                            Content="Minimize to system tray"
-                            IsChecked="{Binding MinimizeToTray}"
-                            Margin="0,0,0,8"
-                            Click="MinimizeToTrayToggle_Click"/>
-                    </StackPanel>
-                </ui:CardExpander>
-
+                        <TextBlock Grid.Row="0" 
+                                   Text="System Integration" 
+                                   FontSize="18" 
+                                   FontWeight="SemiBold" 
+                                   Margin="0,0,0,12"/>
+                        
+                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" 
+                                            Orientation="Horizontal" 
+                                            VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Flash24" 
+                                                  Margin="0,0,12,0" 
+                                                  VerticalAlignment="Center"/>
+                                    <TextBlock Text="Run at startup" 
+                                              VerticalAlignment="Center"/>
+                                </StackPanel>
+                                
+                                <CheckBox Grid.Column="1" 
+                                         x:Name="StartupToggle" 
+                                         Checked="StartupToggle_Checked" 
+                                         Unchecked="StartupToggle_Unchecked"
+                                         VerticalAlignment="Center"/>
+                            </Grid>
+                            
+                            <Grid Margin="0,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" 
+                                            Orientation="Horizontal" 
+                                            VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="ArrowMinimize24" 
+                                                  Margin="0,0,12,0" 
+                                                  VerticalAlignment="Center"/>
+                                    <TextBlock Text="Minimize to tray" 
+                                              VerticalAlignment="Center"/>
+                                </StackPanel>
+                                
+                                <CheckBox Grid.Column="1" 
+                                         x:Name="MinimizeToTrayToggle" 
+                                         Checked="MinimizeToTrayToggle_Checked" 
+                                         Unchecked="MinimizeToTrayToggle_Unchecked"
+                                         VerticalAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                
                 <!-- Storage Settings -->
-                <ui:CardExpander 
-                    Icon="Folder24" 
-                    Header="Storage"
-                    Margin="0,0,0,12">
-                    <StackPanel Margin="8">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Storage Location" VerticalAlignment="Center"/>
-                            <ui:Button 
-                                Grid.Column="1" 
-                                x:Name="ChangeStorageLocationButton" 
-                                Content="Change..." 
-                                Margin="8,0,0,0"
-                                Click="ChangeStorageLocationButton_Click"/>
-                        </Grid>
-                        <TextBlock 
-                            x:Name="StorageLocationText" 
-                            Text="{Binding StorageLocation}" 
-                            TextWrapping="Wrap"
-                            Margin="0,4,0,8"
-                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                        CornerRadius="8" 
+                        Padding="16"
+                        Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Storage Size" VerticalAlignment="Center"/>
-                            <ui:Button 
-                                Grid.Column="1" 
-                                x:Name="ClearCacheButton" 
-                                Content="Clear Cache" 
-                                Margin="8,0,0,0"
-                                Click="ClearCacheButton_Click"/>
-                        </Grid>
-                        <TextBlock 
-                            x:Name="StorageSizeText" 
-                            Text="0 MB used" 
-                            Margin="0,4,0,0"
-                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
-                    </StackPanel>
-                </ui:CardExpander>
-
-                <!-- About -->
-                <ui:CardExpander 
-                    Icon="Info24" 
-                    Header="About"
-                    Margin="0,0,0,12">
-                    <StackPanel Margin="8">
-                        <TextBlock Text="Wall-You-Need" FontWeight="SemiBold"/>
-                        <TextBlock Text="Version 1.0.0" Margin="0,4,0,8"/>
+                        <TextBlock Grid.Row="0" 
+                                   Text="Storage Settings" 
+                                   FontSize="18" 
+                                   FontWeight="SemiBold" 
+                                   Margin="0,0,0,12"/>
                         
-                        <TextBlock Text="© 2023 Wall-You-Need Team" Margin="0,8,0,0" 
-                                   Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
-                        <TextBlock Margin="0,4,0,0">
-                            <Hyperlink NavigateUri="https://github.com/WallYouNeed" RequestNavigate="Hyperlink_RequestNavigate">
-                                Visit GitHub Repository
-                            </Hyperlink>
-                        </TextBlock>
-                    </StackPanel>
-                </ui:CardExpander>
+                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
+                            <Button Content="Change Storage Location" 
+                                   Click="ChangeStorageLocation_Click" 
+                                   HorizontalAlignment="Left"
+                                   Margin="0,0,0,16"/>
+                            
+                            <Button Content="Clear Cache" 
+                                   Click="ClearCache_Click" 
+                                   HorizontalAlignment="Left"
+                                   Margin="0,0,0,0"/>
+                                   
+                            <TextBlock x:Name="StorageLocationText"
+                                      Text="Storage location will be displayed here"
+                                      Margin="0,16,0,0"
+                                      TextWrapping="Wrap"/>
+                                      
+                            <TextBlock x:Name="StorageSizeText"
+                                     Text="0 MB used"
+                                     Margin="0,8,0,0"
+                                     Opacity="0.8"
+                                     TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                
+                <!-- Logs Section -->
+                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                        CornerRadius="8" 
+                        Padding="16"
+                        Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Grid.Row="0" 
+                                   Text="Logs" 
+                                   FontSize="18" 
+                                   FontWeight="SemiBold" 
+                                   Margin="0,0,0,12"/>
+                        
+                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
+                            <TextBlock Text="Manage application logs for troubleshooting" 
+                                       Margin="0,0,0,12" 
+                                       Opacity="0.7"/>
+                            
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Text="Application logs location:" 
+                                           VerticalAlignment="Center"/>
+                                
+                                <Button Grid.Column="1" 
+                                        Content="View Logs" 
+                                        Click="ViewLogs_Click"
+                                        Padding="12,6"
+                                        Margin="0,0,8,0"/>
+                                
+                                <Button Grid.Column="2" 
+                                        Content="Export Logs" 
+                                        Click="ExportLogs_Click"
+                                        Padding="12,6"/>
+                            </Grid>
+                            
+                            <Grid Margin="0,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" 
+                                            Orientation="Horizontal" 
+                                            VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="DocumentText24" 
+                                                  Margin="0,0,12,0" 
+                                                  VerticalAlignment="Center"/>
+                                    <TextBlock Text="Enable verbose logging" 
+                                              VerticalAlignment="Center"/>
+                                </StackPanel>
+                                
+                                <CheckBox Grid.Column="1" 
+                                         x:Name="VerboseLoggingToggle" 
+                                         Checked="VerboseLoggingToggle_Checked" 
+                                         Unchecked="VerboseLoggingToggle_Unchecked"
+                                         VerticalAlignment="Center"/>
+                            </Grid>
+                            <TextBlock Text="Wall-You-Need" 
+                                      FontWeight="SemiBold"
+                                      Margin="0,0,0,8"/>
+                            <TextBlock Text="Version 1.0.0" 
+                                      Opacity="0.8"
+                                      Margin="0,0,0,8"/>
+                            <TextBlock Margin="0,0,0,0">
+                                <Hyperlink NavigateUri="https://github.com/yourusername/wall-you-need" 
+                                          RequestNavigate="Hyperlink_RequestNavigate">
+                                    GitHub Repository
+                                </Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
+                </Border>
             </StackPanel>
-        </ScrollViewer>
-    </Grid>
+        </Grid>
+    </ScrollViewer>
 </Page> 

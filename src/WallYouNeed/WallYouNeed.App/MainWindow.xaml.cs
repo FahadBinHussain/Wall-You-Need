@@ -3,6 +3,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using WallYouNeed.Core.Services.Interfaces;
@@ -36,65 +37,14 @@ namespace WallYouNeed.App
             snackbarService.SetSnackbarPresenter(SnackbarPresenter);
             _logger.LogInformation("SnackbarPresenter registered successfully");
 
-            // Initialize UI
-            HomeButton.Click += HomeButton_Click;
-            CollectionButton.Click += CollectionButton_Click;
-            SettingsButton.Click += SettingsButton_Click;
-            
-            // Initialize category buttons
-            InitializeCategoryButtons();
-            
-            // Navigate to home page by default
-            NavigateToPage("Home");
+            // Set the current active button to Home by default
             _currentActiveButton = HomeButton;
 
             // Load settings
             LoadSettingsQuietly();
-        }
-
-        private void InitializeCategoryButtons()
-        {
-            // Find all buttons in the navigation panel that are for categories and attach click handlers
-            var categoryButtons = FindVisualChildren<System.Windows.Controls.Button>(this)
-                .Where(b => b.Name != "HomeButton" && 
-                           b.Name != "CollectionButton" && 
-                           b.Name != "SettingsButton" &&
-                           b.Parent is StackPanel panel && 
-                           panel.Parent is ScrollViewer)
-                .ToList();
-
-            foreach (var button in categoryButtons)
-            {
-                // Find the TextBlock inside the button (category name)
-                var textBlock = FindVisualChildren<System.Windows.Controls.TextBlock>(button).FirstOrDefault();
-                if (textBlock != null)
-                {
-                    string categoryName = textBlock.Text;
-                    button.Click += (s, e) => CategoryButton_Click(s, e, categoryName);
-                    _logger.LogInformation("Initialized category button: {CategoryName}", categoryName);
-                }
-            }
-        }
-
-        // Helper method to find visual children of a specific type
-        private static System.Collections.Generic.IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
-        {
-            if (depObj != null)
-            {
-                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
-                {
-                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
-                    if (child != null && child is T)
-                    {
-                        yield return (T)child;
-                    }
-
-                    foreach (T childOfChild in FindVisualChildren<T>(child))
-                    {
-                        yield return childOfChild;
-                    }
-                }
-            }
+            
+            // Navigate to home page by default
+            NavigateToPage("Home");
         }
 
         private async void LoadSettingsQuietly()
@@ -128,26 +78,93 @@ namespace WallYouNeed.App
             SetActiveButton(SettingsButton);
         }
 
-        private void CategoryButton_Click(object sender, RoutedEventArgs e, string categoryName)
-        {
-            _logger.LogInformation("Navigating to category: {CategoryName}", categoryName);
-            NavigateToCategoryPage(categoryName);
-            SetActiveButton(sender as System.Windows.Controls.Button);
-        }
-
         private void SetActiveButton(System.Windows.Controls.Button button)
         {
-            // Reset previous active button
+            // Reset previous active button style
             if (_currentActiveButton != null)
             {
-                _currentActiveButton.FontWeight = FontWeights.Normal;
+                _currentActiveButton.Style = this.FindResource("NavButton") as Style;
+                
+                // Reset icon and text color
+                var stackPanel = _currentActiveButton.Content as StackPanel;
+                if (stackPanel != null)
+                {
+                    var path = stackPanel.Children.OfType<System.Windows.Shapes.Path>().FirstOrDefault();
+                    var textBlock = stackPanel.Children.OfType<System.Windows.Controls.TextBlock>().FirstOrDefault();
+                    
+                    if (path != null)
+                    {
+                        path.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#505050"));
+                    }
+                    
+                    if (textBlock != null)
+                    {
+                        textBlock.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#505050"));
+                    }
+                }
             }
 
             // Set new active button
             if (button != null)
             {
-                button.FontWeight = FontWeights.Bold;
+                button.Style = this.FindResource("SelectedNavButton") as Style;
                 _currentActiveButton = button;
+                
+                // Set icon and text color to accent color
+                var stackPanel = button.Content as StackPanel;
+                if (stackPanel != null)
+                {
+                    var path = stackPanel.Children.OfType<System.Windows.Shapes.Path>().FirstOrDefault();
+                    var textBlock = stackPanel.Children.OfType<System.Windows.Controls.TextBlock>().FirstOrDefault();
+                    
+                    if (path != null)
+                    {
+                        path.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0066ff"));
+                    }
+                    
+                    if (textBlock != null)
+                    {
+                        textBlock.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0066ff"));
+                    }
+                }
+            }
+        }
+
+        private void NavigateToPage(string pageName)
+        {
+            _logger.LogInformation("Navigating to page: {PageName}", pageName);
+            
+            try
+            {
+                // Get the right page from service provider
+                var app = System.Windows.Application.Current as App;
+                Page page = null;
+                
+                switch (pageName)
+                {
+                    case "Home":
+                        page = app.Services.GetRequiredService<HomePage>();
+                        break;
+                    case "Collections":
+                        page = app.Services.GetRequiredService<CollectionsPage>();
+                        break;
+                    case "Settings":
+                        page = app.Services.GetRequiredService<SettingsPage>();
+                        break;
+                }
+                
+                if (page != null)
+                {
+                    // Use Frame navigation
+                    ContentFrame.Navigate(page);
+                    _logger.LogInformation("Successfully navigated to {PageName}", pageName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error navigating to page: {PageName}", pageName);
+                System.Windows.MessageBox.Show($"Error navigating to page: {ex.Message}", 
+                    "Navigation Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
         }
 
@@ -192,44 +209,6 @@ namespace WallYouNeed.App
                 _logger.LogError(ex, "Error applying random wallpaper");
                 System.Windows.MessageBox.Show($"Error applying wallpaper: {ex.Message}", 
                     "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-            }
-        }
-
-        private void NavigateToPage(string pageName)
-        {
-            _logger.LogInformation("Navigating to page: {PageName}", pageName);
-            
-            try
-            {
-                // Get the right page from service provider
-                var app = System.Windows.Application.Current as App;
-                Page page = null;
-                
-                switch (pageName)
-                {
-                    case "Home":
-                        page = app.Services.GetRequiredService<HomePage>();
-                        break;
-                    case "Collections":
-                        page = app.Services.GetRequiredService<CollectionsPage>();
-                        break;
-                    case "Settings":
-                        page = app.Services.GetRequiredService<SettingsPage>();
-                        break;
-                }
-                
-                if (page != null)
-                {
-                    // Use Frame navigation instead of direct content assignment
-                    ContentFrame.Navigate(page);
-                    _logger.LogInformation("Successfully navigated to {PageName}", pageName);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error navigating to page: {PageName}", pageName);
-                System.Windows.MessageBox.Show($"Error navigating to page: {ex.Message}", 
-                    "Navigation Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
         }
 

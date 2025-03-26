@@ -7,121 +7,254 @@
       xmlns:local="clr-namespace:WallYouNeed.App.Pages"
       mc:Ignorable="d" 
       d:DesignHeight="650" d:DesignWidth="800"
-      Title="Collections">
+      Title="CollectionsPage">
 
-    <Grid Margin="24">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <Grid Background="#FAFAFA">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid Margin="24,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Grid Grid.Row="0" Margin="0,20,0,30">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            
-            <StackPanel Grid.Column="0">
-                <TextBlock 
-                    Text="Collections" 
-                    FontSize="28" 
-                    FontWeight="SemiBold"/>
-                <TextBlock 
-                    Text="Organize your wallpapers into collections" 
-                    FontSize="16" 
-                    Margin="0,8,0,0"
-                    Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
-            </StackPanel>
-            
-            <ui:Button 
-                x:Name="CreateCollectionButton"
-                Grid.Column="1"
-                Content="Create Collection" 
-                Icon="Add24" 
-                Appearance="Primary" 
-                Padding="16,8"
-                VerticalAlignment="Center"/>
-        </Grid>
+                <!-- Page Title -->
+                <TextBlock Grid.Row="0" 
+                           Text="Collections" 
+                           FontSize="32" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,12"
+                           Foreground="#202020"/>
 
-        <!-- Content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <!-- Empty state -->
-                <Border 
-                    x:Name="EmptyStatePanel"
-                    Background="{ui:ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ui:ThemeResource ControlStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="24"
-                    Margin="0,20,0,20">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,40,0,40">
-                        <ui:SymbolIcon Symbol="FolderAdd48" FontSize="48" Margin="0,0,0,16"/>
-                        <TextBlock 
-                            Text="No Collections Yet" 
-                            FontSize="20" 
-                            FontWeight="SemiBold" 
-                            HorizontalAlignment="Center"/>
-                        <TextBlock 
-                            Text="Create your first collection to organize your wallpapers" 
-                            FontSize="14" 
-                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" 
-                            HorizontalAlignment="Center" 
-                            TextWrapping="Wrap" 
-                            TextAlignment="Center"
-                            Margin="0,8,0,16"/>
-                        <ui:Button 
+                <!-- Header -->
+                <Grid Grid.Row="1" Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" 
+                               Text="Your collections" 
+                               FontSize="18" 
+                               VerticalAlignment="Center"
+                               Foreground="#505050"/>
+                    
+                    <Button Grid.Column="1" 
                             Content="Create Collection" 
-                            Icon="Add24" 
-                            Appearance="Primary" 
+                            Click="CreateCollection_Click" 
+                            HorizontalAlignment="Right"
+                            Padding="12,8"
+                            Background="#0078D7"
+                            Foreground="White"
+                            BorderThickness="0">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="4"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </Grid>
+
+                <!-- Empty State -->
+                <StackPanel Grid.Row="2" 
+                            x:Name="EmptyStatePanel" 
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center" 
+                            Visibility="Collapsed">
+                    <Ellipse Width="80" 
+                             Height="80" 
+                             Fill="#F0F0F0" 
+                             Margin="0,0,0,16"/>
+                    <TextBlock Text="No collections yet" 
+                               FontSize="18" 
+                               FontWeight="SemiBold" 
+                               HorizontalAlignment="Center" 
+                               Margin="0,0,0,8"
+                               Foreground="#202020"/>
+                    <TextBlock Text="Create your first collection to organize your wallpapers" 
+                               HorizontalAlignment="Center" 
+                               TextAlignment="Center" 
+                               Opacity="0.7" 
+                               Margin="0,0,0,16"
+                               Foreground="#505050"/>
+                    <Button Content="Create Collection" 
+                            Click="CreateCollection_Click" 
                             HorizontalAlignment="Center"
-                            Click="CreateCollectionButton_Click"/>
-                    </StackPanel>
-                </Border>
+                            Padding="20,10"
+                            Background="#0078D7"
+                            Foreground="White"
+                            BorderThickness="0">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="4"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </StackPanel>
 
                 <!-- Collections List -->
-                <ItemsControl x:Name="CollectionsPanel" Visibility="Collapsed">
+                <ItemsControl Grid.Row="2" 
+                              x:Name="CollectionsItemsControl" 
+                              ItemsSource="{Binding Collections}" 
+                              Visibility="Visible">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
-                    
-                    <!-- Sample Collection Items (will be populated programmatically) -->
-                    <Border 
-                        Margin="0,0,16,16" 
-                        Width="250" 
-                        Height="200"
-                        Background="{ui:ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ui:ThemeResource ControlStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        CornerRadius="8">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="140"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            
-                            <Image Grid.Row="0" Source="https://picsum.photos/250/140" Stretch="UniformToFill"/>
-                            
-                            <Grid Grid.Row="1" Margin="12,8">
-                                <StackPanel>
-                                    <TextBlock Text="Landscapes" FontWeight="SemiBold" FontSize="16"/>
-                                    <TextBlock Text="12 wallpapers" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" FontSize="12"/>
-                                </StackPanel>
-                                
-                                <ui:Button
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center"
-                                    Appearance="Transparent"
-                                    Icon="MoreHorizontal20"
-                                    Padding="4"/>
-                            </Grid>
-                        </Grid>
-                    </Border>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="White" 
+                                    BorderBrush="#E0E0E0"
+                                    BorderThickness="1"
+                                    CornerRadius="8" 
+                                    Width="280" 
+                                    Height="220" 
+                                    Margin="0,0,16,16">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.1"/>
+                                </Border.Effect>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="150"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <!-- Collection Thumbnail -->
+                                    <Border Grid.Row="0" 
+                                            Background="#F0F0F0" 
+                                            CornerRadius="8,8,0,0">
+                                        <TextBlock Text="{Binding Name}" 
+                                                  HorizontalAlignment="Center" 
+                                                  VerticalAlignment="Center"
+                                                  FontSize="18"
+                                                  Foreground="#505050"/>
+                                    </Border>
+                                    
+                                    <!-- Collection Info -->
+                                    <Grid Grid.Row="1" Margin="12,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Name}" 
+                                                       FontWeight="SemiBold" 
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="#202020"/>
+                                            <TextBlock Text="Empty" 
+                                                       Opacity="0.7" 
+                                                       FontSize="12"
+                                                       Foreground="#505050"/>
+                                        </StackPanel>
+                                        
+                                        <StackPanel Grid.Column="1" 
+                                                    Orientation="Horizontal">
+                                            <Button ToolTip="View Collection" 
+                                                    Tag="{Binding Id}" 
+                                                    Click="ViewCollection_Click" 
+                                                    Margin="4,0"
+                                                    Padding="8,5"
+                                                    Background="Transparent"
+                                                    BorderBrush="#0078D7"
+                                                    BorderThickness="1"
+                                                    Foreground="#0078D7">
+                                                <TextBlock Text="View" FontSize="11"/>
+                                            </Button>
+                                            <Button ToolTip="Delete Collection" 
+                                                    Tag="{Binding Id}" 
+                                                    Click="DeleteCollection_Click"
+                                                    Padding="8,5"
+                                                    Background="Transparent"
+                                                    BorderBrush="#D83B01"
+                                                    BorderThickness="1"
+                                                    Foreground="#D83B01">
+                                                <TextBlock Text="Delete" FontSize="11"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
                 </ItemsControl>
-            </StackPanel>
+
+                <!-- Sample Collection (For demonstration) -->
+                <Border Grid.Row="2"
+                        Background="White" 
+                        BorderBrush="#E0E0E0"
+                        BorderThickness="1"
+                        CornerRadius="8" 
+                        Width="280" 
+                        Height="220" 
+                        Margin="0,0,16,16"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.1"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="150"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                                    
+                        <!-- Collection Thumbnail -->
+                        <Border Grid.Row="0" 
+                                Background="#E0E0E0" 
+                                CornerRadius="8,8,0,0">
+                            <TextBlock Text="Imported" 
+                                      HorizontalAlignment="Center" 
+                                      VerticalAlignment="Center"
+                                      FontSize="18"
+                                      Foreground="#505050"/>
+                        </Border>
+                                    
+                        <!-- Collection Info -->
+                        <Grid Grid.Row="1" Margin="12,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                                        
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Imported" 
+                                           FontWeight="SemiBold" 
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="#202020"/>
+                                <TextBlock Text="Empty" 
+                                           Opacity="0.7" 
+                                           FontSize="12"
+                                           Foreground="#505050"/>
+                            </StackPanel>
+                                        
+                            <StackPanel Grid.Column="1" 
+                                        Orientation="Horizontal">
+                                <Button ToolTip="View Collection" 
+                                        Margin="4,0"
+                                        Padding="8,5"
+                                        Background="Transparent"
+                                        BorderBrush="#0078D7"
+                                        BorderThickness="1"
+                                        Foreground="#0078D7"
+                                        Click="ViewCollection_Click">
+                                    <TextBlock Text="View" FontSize="11"/>
+                                </Button>
+                                <Button ToolTip="Delete Collection" 
+                                        Padding="8,5"
+                                        Background="Transparent"
+                                        BorderBrush="#D83B01"
+                                        BorderThickness="1"
+                                        Foreground="#D83B01"
+                                        Click="DeleteCollection_Click">
+                                    <TextBlock Text="Delete" FontSize="11"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </Page> 

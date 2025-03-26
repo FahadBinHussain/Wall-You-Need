@@ -113,5 +113,10 @@ namespace WallYouNeed.Core.Models
         /// Lock screen wallpaper ID
         /// </summary>
         public string LockScreenWallpaperId { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Whether to enable detailed logging for troubleshooting
+        /// </summary>
+        public bool VerboseLogging { get; set; } = false;
     }
 } 
