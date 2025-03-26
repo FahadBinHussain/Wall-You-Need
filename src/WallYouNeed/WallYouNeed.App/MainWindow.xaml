@@ -173,10 +173,10 @@
                             
                             <TextBlock Text="CATEGORIES" Margin="4,0,0,8" Foreground="#505050" FontSize="12" FontWeight="SemiBold"/>
                             
-                            <Button Style="{StaticResource NavButton}">
+                            <Button x:Name="CategoryButton" Style="{StaticResource NavButton}">
                                 <StackPanel Orientation="Horizontal">
                                     <Path Data="M5,9.5C3.89,9.5 3,10.39 3,11.5C3,12.61 3.89,13.5 5,13.5C6.11,13.5 7,12.61 7,11.5C7,10.39 6.11,9.5 5,9.5M5,7.5C7.21,7.5 9,9.29 9,11.5C9,12.25 8.81,12.96 8.5,13.6L13,18L11.5,19.5L7.05,15.1C6.44,15.36 5.74,15.5 5,15.5C2.79,15.5 1,13.71 1,11.5C1,9.29 2.79,7.5 5,7.5M19,19V12H21V19H19M19,9H21V11H19V9Z" Fill="#505050" Width="18" Height="18" Margin="0,0,12,0"/>
-                                    <TextBlock Text="Nature" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Landscapes" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             

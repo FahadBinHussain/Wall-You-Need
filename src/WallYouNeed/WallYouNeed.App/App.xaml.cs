@@ -97,6 +97,7 @@ namespace WallYouNeed.App
             services.AddTransient<HomePage>();
             services.AddTransient<SettingsPage>();
             services.AddTransient<CollectionsPage>();
+            services.AddTransient<CategoryPage>();
 
             return services.BuildServiceProvider();
         }

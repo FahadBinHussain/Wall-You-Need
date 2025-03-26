@@ -18,6 +18,7 @@ namespace WallYouNeed.App
         private readonly ILogger<MainWindow> _logger;
         private readonly IWallpaperService _wallpaperService;
         private readonly ISettingsService _settingsService;
+        private System.Windows.Controls.Button _currentActiveButton;
 
         public MainWindow(
             ILogger<MainWindow> logger,
@@ -34,13 +35,61 @@ namespace WallYouNeed.App
             HomeButton.Click += HomeButton_Click;
             CollectionButton.Click += CollectionButton_Click;
             SettingsButton.Click += SettingsButton_Click;
-            // ApplyRandomWallpaperButton was moved to the Home page and will be initialized there
-
+            
+            // Initialize category buttons
+            InitializeCategoryButtons();
+            
             // Navigate to home page by default
             NavigateToPage("Home");
+            _currentActiveButton = HomeButton;
 
             // Load settings
             LoadSettingsQuietly();
+        }
+
+        private void InitializeCategoryButtons()
+        {
+            // Find all buttons in the navigation panel that are for categories and attach click handlers
+            var categoryButtons = FindVisualChildren<System.Windows.Controls.Button>(this)
+                .Where(b => b.Name != "HomeButton" && 
+                           b.Name != "CollectionButton" && 
+                           b.Name != "SettingsButton" &&
+                           b.Parent is StackPanel panel && 
+                           panel.Parent is ScrollViewer)
+                .ToList();
+
+            foreach (var button in categoryButtons)
+            {
+                // Find the TextBlock inside the button (category name)
+                var textBlock = FindVisualChildren<System.Windows.Controls.TextBlock>(button).FirstOrDefault();
+                if (textBlock != null)
+                {
+                    string categoryName = textBlock.Text;
+                    button.Click += (s, e) => CategoryButton_Click(s, e, categoryName);
+                    _logger.LogInformation("Initialized category button: {CategoryName}", categoryName);
+                }
+            }
+        }
+
+        // Helper method to find visual children of a specific type
+        private static System.Collections.Generic.IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+                    if (child != null && child is T)
+                    {
+                        yield return (T)child;
+                    }
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
+                    }
+                }
+            }
         }
 
         private async void LoadSettingsQuietly()
@@ -59,16 +108,42 @@ namespace WallYouNeed.App
         private void HomeButton_Click(object sender, RoutedEventArgs e)
         {
             NavigateToPage("Home");
+            SetActiveButton(HomeButton);
         }
 
         private void CollectionButton_Click(object sender, RoutedEventArgs e)
         {
             NavigateToPage("Collections");
+            SetActiveButton(CollectionButton);
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
             NavigateToPage("Settings");
+            SetActiveButton(SettingsButton);
+        }
+
+        private void CategoryButton_Click(object sender, RoutedEventArgs e, string categoryName)
+        {
+            _logger.LogInformation("Navigating to category: {CategoryName}", categoryName);
+            NavigateToCategoryPage(categoryName);
+            SetActiveButton(sender as System.Windows.Controls.Button);
+        }
+
+        private void SetActiveButton(System.Windows.Controls.Button button)
+        {
+            // Reset previous active button
+            if (_currentActiveButton != null)
+            {
+                _currentActiveButton.FontWeight = FontWeights.Normal;
+            }
+
+            // Set new active button
+            if (button != null)
+            {
+                button.FontWeight = FontWeights.Bold;
+                _currentActiveButton = button;
+            }
         }
 
         private async void ApplyRandomWallpaper_Click(object sender, RoutedEventArgs e)
@@ -119,26 +194,6 @@ namespace WallYouNeed.App
         {
             _logger.LogInformation("Navigating to page: {PageName}", pageName);
             
-            // Reset button appearances
-            ResetButtonStyles();
-            
-            // Set active button
-            switch (pageName)
-            {
-                case "Home":
-                    HomeButton.FontWeight = FontWeights.Bold;
-                    break;
-                case "Collections":
-                    CollectionButton.FontWeight = FontWeights.Bold;
-                    break;
-                case "Settings":
-                    SettingsButton.FontWeight = FontWeights.Bold;
-                    break;
-                default:
-                    _logger.LogWarning("Unknown page: {PageName}", pageName);
-                    return;
-            }
-
             try
             {
                 // Get the right page from service provider
@@ -173,11 +228,27 @@ namespace WallYouNeed.App
             }
         }
 
-        private void ResetButtonStyles()
+        private void NavigateToCategoryPage(string categoryName)
         {
-            HomeButton.FontWeight = FontWeights.Normal;
-            CollectionButton.FontWeight = FontWeights.Normal;
-            SettingsButton.FontWeight = FontWeights.Normal;
+            try
+            {
+                // Get the CategoryPage from service provider
+                var app = System.Windows.Application.Current as App;
+                var categoryPage = app.Services.GetRequiredService<CategoryPage>();
+                
+                // Set the category for the page
+                categoryPage.SetCategory(categoryName);
+                
+                // Navigate to the page
+                ContentFrame.Navigate(categoryPage);
+                _logger.LogInformation("Successfully navigated to category: {CategoryName}", categoryName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error navigating to category: {CategoryName}", categoryName);
+                System.Windows.MessageBox.Show($"Error navigating to category: {ex.Message}", 
+                    "Navigation Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
         }
     }
 } 
