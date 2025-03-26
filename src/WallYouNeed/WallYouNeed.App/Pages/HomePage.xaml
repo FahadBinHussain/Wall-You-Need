@@ -1,0 +1,156 @@
+<Page x:Class="WallYouNeed.App.Pages.HomePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:local="clr-namespace:WallYouNeed.App.Pages"
+      mc:Ignorable="d" 
+      d:DesignHeight="650" d:DesignWidth="800"
+      Title="Home">
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock 
+                Text="Welcome to Wall-You-Need" 
+                FontSize="28" 
+                FontWeight="SemiBold"
+                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
+            <TextBlock 
+                Text="Your personal wallpaper management solution" 
+                FontSize="16" 
+                Margin="0,8,0,0"
+                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+        </StackPanel>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Quick Actions -->
+                <ui:CardExpander 
+                    Grid.Column="0" 
+                    Grid.Row="0"
+                    Margin="0,0,6,12" 
+                    Icon="Wallpaper24" 
+                    Header="Quick Actions">
+                    <StackPanel Margin="8">
+                        <ui:Button
+                            x:Name="RandomWallpaperButton"
+                            Content="Apply Random Wallpaper"
+                            Icon="Play24"
+                            Appearance="Primary"
+                            Margin="0,0,0,8"
+                            HorizontalAlignment="Stretch" 
+                            Click="RandomWallpaperButton_Click"/>
+                        <ui:Button
+                            x:Name="ImportButton"
+                            Content="Import Local Wallpaper"
+                            Icon="FolderAdd24"
+                            Margin="0,0,0,8"
+                            HorizontalAlignment="Stretch" 
+                            Click="ImportButton_Click"/>
+                        <ui:Button
+                            x:Name="DownloadButton"
+                            Content="Download From Web"
+                            Icon="Globe24"
+                            Margin="0,0,0,8" 
+                            HorizontalAlignment="Stretch"
+                            Click="DownloadButton_Click"/>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- Statistics -->
+                <ui:CardExpander 
+                    Grid.Column="1" 
+                    Grid.Row="0"
+                    Margin="6,0,0,12" 
+                    Icon="DataHistogram24" 
+                    Header="Statistics">
+                    <StackPanel Margin="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Total Wallpapers" Grid.Column="0"/>
+                            <TextBlock x:Name="TotalWallpapersText" Text="0" Grid.Column="1" FontWeight="SemiBold"/>
+                        </Grid>
+                        <Separator Margin="0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Collections" Grid.Column="0"/>
+                            <TextBlock x:Name="CollectionsText" Text="0" Grid.Column="1" FontWeight="SemiBold"/>
+                        </Grid>
+                        <Separator Margin="0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Favorites" Grid.Column="0"/>
+                            <TextBlock x:Name="FavoritesText" Text="0" Grid.Column="1" FontWeight="SemiBold"/>
+                        </Grid>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- Recent Wallpapers -->
+                <ui:CardExpander 
+                    Grid.Column="0" 
+                    Grid.ColumnSpan="2"
+                    Grid.Row="1"
+                    Margin="0,0,0,12" 
+                    Icon="History24" 
+                    Header="Recent Wallpapers">
+                    <Grid x:Name="RecentWallpapersGrid" Margin="8">
+                        <TextBlock Text="No recent wallpapers" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}" />
+                    </Grid>
+                </ui:CardExpander>
+
+                <!-- Current Wallpaper -->
+                <ui:CardExpander 
+                    Grid.Column="0" 
+                    Grid.ColumnSpan="2"
+                    Grid.Row="2"
+                    Margin="0,0,0,12" 
+                    Icon="Image24" 
+                    Header="Current Wallpaper">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Grid.Row="0" x:Name="CurrentWallpaperNameText" Text="No wallpaper set" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="1" x:Name="CurrentWallpaperSourceText" Text="" FontSize="12" Margin="0,4,0,8" 
+                                   Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+                        
+                        <Border Grid.Row="2" BorderThickness="1" BorderBrush="{ui:ThemeResource ControlStrokeColorDefaultBrush}" 
+                                CornerRadius="8" Height="200">
+                            <Image x:Name="CurrentWallpaperImage" Stretch="Uniform"/>
+                        </Border>
+                    </Grid>
+                </ui:CardExpander>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Page> 

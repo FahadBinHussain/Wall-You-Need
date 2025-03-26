@@ -1,0 +1,227 @@
+<Page x:Class="WallYouNeed.App.Pages.SettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:local="clr-namespace:WallYouNeed.App.Pages"
+      mc:Ignorable="d" 
+      d:DesignHeight="650" d:DesignWidth="800"
+      Title="Settings">
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock 
+                Text="Settings" 
+                FontSize="28" 
+                FontWeight="SemiBold"
+                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
+            <TextBlock 
+                Text="Customize your wallpaper experience" 
+                FontSize="16" 
+                Margin="0,8,0,0"
+                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+        </StackPanel>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Appearance -->
+                <ui:CardExpander 
+                    Icon="ColorBackground24" 
+                    Header="Appearance"
+                    Margin="0,0,0,12">
+                    <StackPanel Margin="8">
+                        <ui:ToggleSwitch
+                            x:Name="DarkModeToggle"
+                            Content="Dark Mode"
+                            IsChecked="{Binding IsDarkTheme}"
+                            Margin="0,0,0,8"
+                            Click="DarkModeToggle_Click"/>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- Wallpaper Rotation -->
+                <ui:CardExpander 
+                    Icon="ArrowRepeatAll24" 
+                    Header="Wallpaper Rotation"
+                    Margin="0,0,0,12">
+                    <StackPanel Margin="8">
+                        <ui:ToggleSwitch
+                            x:Name="AutoChangeWallpaperToggle"
+                            Content="Automatically change wallpaper"
+                            IsChecked="{Binding AutoChangeWallpaper}"
+                            Margin="0,0,0,8"
+                            Click="AutoChangeWallpaperToggle_Click"/>
+                        
+                        <TextBlock 
+                            Text="Rotation Interval" 
+                            Margin="0,8,0,4"/>
+                        <ComboBox 
+                            x:Name="RotationIntervalComboBox"
+                            SelectedIndex="{Binding RotationIntervalIndex}"
+                            IsEnabled="{Binding AutoChangeWallpaper}"
+                            Margin="0,0,0,8"
+                            Width="200"
+                            HorizontalAlignment="Left"
+                            SelectionChanged="RotationIntervalComboBox_SelectionChanged">
+                            <ComboBoxItem Content="15 minutes"/>
+                            <ComboBoxItem Content="30 minutes"/>
+                            <ComboBoxItem Content="1 hour"/>
+                            <ComboBoxItem Content="3 hours"/>
+                            <ComboBoxItem Content="6 hours"/>
+                            <ComboBoxItem Content="12 hours"/>
+                            <ComboBoxItem Content="1 day"/>
+                        </ComboBox>
+                        
+                        <TextBlock 
+                            Text="Wallpaper Sources" 
+                            Margin="0,8,0,4"/>
+                        <StackPanel>
+                            <CheckBox 
+                                x:Name="LocalSourceCheckBox"
+                                Content="Local Wallpapers" 
+                                IsChecked="{Binding UseLocalWallpapers}"
+                                Margin="0,4,0,4"
+                                Click="SourceCheckBox_Click"/>
+                            <CheckBox 
+                                x:Name="UnsplashSourceCheckBox"
+                                Content="Unsplash" 
+                                IsChecked="{Binding UseUnsplash}"
+                                Margin="0,4,0,4"
+                                Click="SourceCheckBox_Click"/>
+                            <CheckBox 
+                                x:Name="PexelsSourceCheckBox"
+                                Content="Pexels" 
+                                IsChecked="{Binding UsePexels}"
+                                Margin="0,4,0,4"
+                                Click="SourceCheckBox_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- API Keys -->
+                <ui:CardExpander 
+                    Icon="Key24" 
+                    Header="API Keys"
+                    Margin="0,0,0,12">
+                    <StackPanel Margin="8">
+                        <TextBlock 
+                            Text="Unsplash API Key" 
+                            Margin="0,0,0,4"/>
+                        <ui:PasswordBox 
+                            x:Name="UnsplashApiKeyBox"
+                            Password="{Binding UnsplashApiKey}"
+                            Margin="0,0,0,8"
+                            PlaceholderText="Enter your Unsplash API key"
+                            PasswordChanged="ApiKeyBox_PasswordChanged"/>
+                        
+                        <TextBlock 
+                            Text="Pexels API Key" 
+                            Margin="0,8,0,4"/>
+                        <ui:PasswordBox 
+                            x:Name="PexelsApiKeyBox"
+                            Password="{Binding PexelsApiKey}"
+                            Margin="0,0,0,8"
+                            PlaceholderText="Enter your Pexels API key"
+                            PasswordChanged="ApiKeyBox_PasswordChanged"/>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- System Integration -->
+                <ui:CardExpander 
+                    Icon="DesktopFlow24" 
+                    Header="System Integration"
+                    Margin="0,0,0,12">
+                    <StackPanel Margin="8">
+                        <ui:ToggleSwitch
+                            x:Name="RunAtStartupToggle"
+                            Content="Run at Windows startup"
+                            IsChecked="{Binding RunAtStartup}"
+                            Margin="0,0,0,8"
+                            Click="RunAtStartupToggle_Click"/>
+                        
+                        <ui:ToggleSwitch
+                            x:Name="MinimizeToTrayToggle"
+                            Content="Minimize to system tray"
+                            IsChecked="{Binding MinimizeToTray}"
+                            Margin="0,0,0,8"
+                            Click="MinimizeToTrayToggle_Click"/>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- Storage Settings -->
+                <ui:CardExpander 
+                    Icon="Folder24" 
+                    Header="Storage"
+                    Margin="0,0,0,12">
+                    <StackPanel Margin="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Storage Location" VerticalAlignment="Center"/>
+                            <ui:Button 
+                                Grid.Column="1" 
+                                x:Name="ChangeStorageLocationButton" 
+                                Content="Change..." 
+                                Margin="8,0,0,0"
+                                Click="ChangeStorageLocationButton_Click"/>
+                        </Grid>
+                        <TextBlock 
+                            x:Name="StorageLocationText" 
+                            Text="{Binding StorageLocation}" 
+                            TextWrapping="Wrap"
+                            Margin="0,4,0,8"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Storage Size" VerticalAlignment="Center"/>
+                            <ui:Button 
+                                Grid.Column="1" 
+                                x:Name="ClearCacheButton" 
+                                Content="Clear Cache" 
+                                Margin="8,0,0,0"
+                                Click="ClearCacheButton_Click"/>
+                        </Grid>
+                        <TextBlock 
+                            x:Name="StorageSizeText" 
+                            Text="0 MB used" 
+                            Margin="0,4,0,0"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- About -->
+                <ui:CardExpander 
+                    Icon="Info24" 
+                    Header="About"
+                    Margin="0,0,0,12">
+                    <StackPanel Margin="8">
+                        <TextBlock Text="Wall-You-Need" FontWeight="SemiBold"/>
+                        <TextBlock Text="Version 1.0.0" Margin="0,4,0,8"/>
+                        
+                        <TextBlock Text="© 2023 Wall-You-Need Team" Margin="0,8,0,0" 
+                                   Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Margin="0,4,0,0">
+                            <Hyperlink NavigateUri="https://github.com/WallYouNeed" RequestNavigate="Hyperlink_RequestNavigate">
+                                Visit GitHub Repository
+                            </Hyperlink>
+                        </TextBlock>
+                    </StackPanel>
+                </ui:CardExpander>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page> 

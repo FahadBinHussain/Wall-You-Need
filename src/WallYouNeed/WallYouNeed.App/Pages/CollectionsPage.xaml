@@ -1,0 +1,127 @@
+<Page x:Class="WallYouNeed.App.Pages.CollectionsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:local="clr-namespace:WallYouNeed.App.Pages"
+      mc:Ignorable="d" 
+      d:DesignHeight="650" d:DesignWidth="800"
+      Title="Collections">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,20,0,30">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <StackPanel Grid.Column="0">
+                <TextBlock 
+                    Text="Collections" 
+                    FontSize="28" 
+                    FontWeight="SemiBold"/>
+                <TextBlock 
+                    Text="Organize your wallpapers into collections" 
+                    FontSize="16" 
+                    Margin="0,8,0,0"
+                    Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+            </StackPanel>
+            
+            <ui:Button 
+                x:Name="CreateCollectionButton"
+                Grid.Column="1"
+                Content="Create Collection" 
+                Icon="Add24" 
+                Appearance="Primary" 
+                Padding="16,8"
+                VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Empty state -->
+                <Border 
+                    x:Name="EmptyStatePanel"
+                    Background="{ui:ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ui:ThemeResource ControlStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="24"
+                    Margin="0,20,0,20">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,40,0,40">
+                        <ui:SymbolIcon Symbol="FolderAdd48" FontSize="48" Margin="0,0,0,16"/>
+                        <TextBlock 
+                            Text="No Collections Yet" 
+                            FontSize="20" 
+                            FontWeight="SemiBold" 
+                            HorizontalAlignment="Center"/>
+                        <TextBlock 
+                            Text="Create your first collection to organize your wallpapers" 
+                            FontSize="14" 
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" 
+                            HorizontalAlignment="Center" 
+                            TextWrapping="Wrap" 
+                            TextAlignment="Center"
+                            Margin="0,8,0,16"/>
+                        <ui:Button 
+                            Content="Create Collection" 
+                            Icon="Add24" 
+                            Appearance="Primary" 
+                            HorizontalAlignment="Center"
+                            Click="CreateCollectionButton_Click"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Collections List -->
+                <ItemsControl x:Name="CollectionsPanel" Visibility="Collapsed">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    
+                    <!-- Sample Collection Items (will be populated programmatically) -->
+                    <Border 
+                        Margin="0,0,16,16" 
+                        Width="250" 
+                        Height="200"
+                        Background="{ui:ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ui:ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="140"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            
+                            <Image Grid.Row="0" Source="https://picsum.photos/250/140" Stretch="UniformToFill"/>
+                            
+                            <Grid Grid.Row="1" Margin="12,8">
+                                <StackPanel>
+                                    <TextBlock Text="Landscapes" FontWeight="SemiBold" FontSize="16"/>
+                                    <TextBlock Text="12 wallpapers" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                                </StackPanel>
+                                
+                                <ui:Button
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Appearance="Transparent"
+                                    Icon="MoreHorizontal20"
+                                    Padding="4"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page> 
