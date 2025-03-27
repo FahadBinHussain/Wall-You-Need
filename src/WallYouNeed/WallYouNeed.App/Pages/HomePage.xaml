@@ -41,7 +41,7 @@
                 </Grid.ColumnDefinitions>
                 
                 <!-- Large Featured Card -->
-                <Border Grid.Column="0" Style="{StaticResource ContentCard}" Height="320" Margin="0,0,8,16">
+                <Border Grid.Column="0" Style="{StaticResource ContentCard}" Height="320" Margin="0,0,8,16" MouseLeftButtonUp="FeaturedWallpaper_Click">
                     <Grid>
                         <Image x:Name="FeaturedWallpaperImage" Source="https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d" Stretch="UniformToFill"/>
                         

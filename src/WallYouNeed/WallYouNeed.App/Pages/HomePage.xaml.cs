@@ -99,6 +99,21 @@ namespace WallYouNeed.App.Pages
             }
         }
         
+        private void FeaturedWallpaper_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            try
+            {
+                _logger.LogInformation("Featured wallpaper image clicked, navigating to Latest category");
+                NavigateToCategory("Latest");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling featured wallpaper click");
+                _snackbarService.Show("Error", "Failed to navigate to latest wallpapers", 
+                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+            }
+        }
+        
         private void NavigateToCategory(string categoryName)
         {
             try

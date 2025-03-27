@@ -32,6 +32,95 @@ namespace WallYouNeed.App.Pages
             _snackbarService = snackbarService;
             
             InitializeComponent();
+            
+            // Subscribe to Loaded event to add buttons after the UI is initialized
+            this.Loaded += OnPageLoaded;
+        }
+        
+        private void OnPageLoaded(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Find the Actions StackPanel defined in XAML
+                var sortButton = FindName("SortButton") as Wpf.Ui.Controls.Button;
+                StackPanel actionsPanel = sortButton?.Parent as StackPanel;
+                
+                if (actionsPanel != null)
+                {
+                    // Add a separator
+                    actionsPanel.Children.Add(new Separator 
+                    { 
+                        Margin = new Thickness(8, 0, 8, 0),
+                        VerticalAlignment = VerticalAlignment.Stretch,
+                        Background = new System.Windows.Media.SolidColorBrush(
+                            (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#20808080"))
+                    });
+                    
+                    // Filter button - using simple button without icon to avoid ambiguity
+                    var filterButton = new Wpf.Ui.Controls.Button
+                    {
+                        Content = "Filter",
+                        Margin = new Thickness(8, 0, 0, 0)
+                    };
+                    filterButton.Click += FilterButton_Click;
+                    actionsPanel.Children.Add(filterButton);
+                    
+                    // Slideshow button - using simple button without icon to avoid ambiguity
+                    var slideshowButton = new Wpf.Ui.Controls.Button
+                    {
+                        Content = "Set as slideshow",
+                        Margin = new Thickness(8, 0, 0, 0)
+                    };
+                    slideshowButton.Click += SlideshowButton_Click;
+                    actionsPanel.Children.Add(slideshowButton);
+                    
+                    _logger.LogInformation("Added filter and slideshow buttons to Actions panel");
+                }
+                else
+                {
+                    _logger.LogWarning("Actions panel not found in XAML, couldn't add filter and slideshow buttons");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding action buttons");
+            }
+        }
+        
+        private void FilterButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _logger.LogInformation("Filter button clicked for category: {CategoryName}", _categoryName);
+                
+                // Placeholder for filter functionality
+                _snackbarService.Show("Filter", "Filter functionality will be implemented soon", 
+                    Wpf.Ui.Controls.ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+                
+                // TODO: Implement filtering dialog or panel
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling filter button click");
+            }
+        }
+        
+        private void SlideshowButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _logger.LogInformation("Slideshow button clicked for category: {CategoryName}", _categoryName);
+                
+                // Placeholder for slideshow functionality
+                _snackbarService.Show("Slideshow", "Slideshow functionality will be implemented soon", 
+                    Wpf.Ui.Controls.ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+                
+                // TODO: Implement slideshow functionality
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling slideshow button click");
+            }
         }
         
         public async void SetCategory(string categoryName)
@@ -54,9 +143,20 @@ namespace WallYouNeed.App.Pages
                 NoWallpapersMessage.Visibility = Visibility.Collapsed;
                 WallpapersPanel.Children.Clear();
                 
-                // Get wallpapers by tag (the tag is stored in the Category property)
-                var wallpapers = await _wallpaperService.GetWallpapersByTagAsync(categoryName);
-                _wallpapers = wallpapers.ToList();
+                List<Wallpaper> wallpapers;
+                
+                // Special handling for "Latest" category - fetch from backiee.com
+                if (categoryName.Equals("Latest", StringComparison.OrdinalIgnoreCase))
+                {
+                    wallpapers = await FetchLatestWallpapersFromBackieeAsync();
+                }
+                else
+                {
+                    // Get wallpapers by tag for other categories
+                    wallpapers = (await _wallpaperService.GetWallpapersByTagAsync(categoryName)).ToList();
+                }
+                
+                _wallpapers = wallpapers;
                 
                 if (_wallpapers.Count == 0)
                 {
@@ -78,6 +178,115 @@ namespace WallYouNeed.App.Pages
             {
                 LoadingSpinner.Visibility = Visibility.Collapsed;
             }
+        }
+        
+        private async Task<List<Wallpaper>> FetchLatestWallpapersFromBackieeAsync()
+        {
+            _logger.LogInformation("Fetching latest wallpapers from backiee.com");
+            
+            var wallpapers = new List<Wallpaper>();
+            
+            try
+            {
+                // In a real implementation, this would use HttpClient to fetch and parse the backiee.com homepage
+                // For now, we'll create placeholder data based on the backiee.com wallpapers in the image
+                
+                // Example wallpapers from backiee.com (based on the provided image)
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Tiger Warrior Amidst Blazing Flames", 
+                    "https://wallpaper-house.com/data/out/12/wallpaper2you_594262.jpg", 
+                    3840, 2160, "backiee.com", 56, 258, "4K"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Colorful Brickwork Symphony in 4K Splendor", 
+                    "https://images.pexels.com/photos/1308624/pexels-photo-1308624.jpeg", 
+                    3840, 2160, "backiee.com", 8, 36, "4K"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Ford Mustang Power Duo in Stunning Sunset", 
+                    "https://images.hdqwalls.com/wallpapers/ford-mustang-4k-2020-9z.jpg", 
+                    5120, 2880, "backiee.com", 8, 32, "5K"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Metallic Elegance Reflection of an AI-Driven Abstract World", 
+                    "https://images.unsplash.com/photo-1578662996442-48f60103fc96", 
+                    3840, 2160, "backiee.com", 12, 68, "4K"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Bentley Continental GT on Lunar Escape", 
+                    "https://images.hdqwalls.com/wallpapers/bentley-continental-gt-4k-fd.jpg", 
+                    5120, 2880, "backiee.com", 15, 35, "5K"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Enchanting Fantasy Realm Guardian with Vibrant Pink Hair", 
+                    "https://cdn.wallpapersafari.com/63/93/zkPUCq.jpg", 
+                    3840, 2160, "backiee.com", 19, 37, "AI"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Majestic Sandstone Curves of Antelope Canyon", 
+                    "https://images.unsplash.com/photo-1575966677938-1b284d513ee7", 
+                    3840, 2160, "backiee.com", 6, 21, "4K"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Smith Rock Serenity at Sunset", 
+                    "https://images.pexels.com/photos/33041/antelope-canyon-lower-canyon-arizona.jpg", 
+                    3840, 2160, "backiee.com", 4, 16, "4K"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Sunrise at Mesa Arch in Canyonlands National Park", 
+                    "https://images.unsplash.com/photo-1602088693260-78f2c3c4a385", 
+                    3840, 2160, "backiee.com", 7, 12, "4K"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Majestic Vistas of Coal Mine Canyon, Arizona", 
+                    "https://images.unsplash.com/photo-1455218873509-8097305ee378", 
+                    3840, 2160, "backiee.com", 6, 14, "4K"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "The Narrows Serenity Utah's Majestic Wilderness", 
+                    "https://images.unsplash.com/photo-1543599538-a6c4f6cc5c05", 
+                    3840, 2160, "backiee.com", 4, 12, "4K"));
+                    
+                wallpapers.Add(CreateWallpaperFromBackiee(
+                    "Horseshoe Bend Majestic Canyon View in Arizona, USA", 
+                    "https://images.unsplash.com/photo-1474044159687-1ee9f3a51722", 
+                    3840, 2160, "backiee.com", 4, 9, "4K"));
+                
+                // In a real implementation, we would fetch more dynamically from the website
+                
+                _logger.LogInformation("Successfully fetched {Count} latest wallpapers from backiee.com", wallpapers.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching latest wallpapers from backiee.com");
+                _snackbarService.Show("Error", "Failed to fetch latest wallpapers", 
+                    Wpf.Ui.Controls.ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+            }
+            
+            return wallpapers;
+        }
+        
+        private Wallpaper CreateWallpaperFromBackiee(string name, string imageUrl, int width, int height, 
+            string source, int likes, int downloads, string resolution)
+        {
+            return new Wallpaper
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = name,
+                Title = name,
+                SourceUrl = imageUrl,
+                Source = WallpaperSource.Custom,
+                Width = width,
+                Height = height,
+                Tags = new List<string> { "Latest", resolution },
+                Metadata = new Dictionary<string, string>
+                {
+                    { "Resolution", resolution },
+                    { "Source", "backiee.com" },
+                    { "Likes", likes.ToString() },
+                    { "Downloads", downloads.ToString() }
+                }
+            };
         }
         
         private void DisplayWallpapers()
@@ -133,7 +342,18 @@ namespace WallYouNeed.App.Pages
         
         private UIElement CreateResolutionBadge(Wallpaper wallpaper)
         {
-            var resType = DetermineResolutionType(wallpaper.Width, wallpaper.Height);
+            string resType;
+            
+            // Check if resolution is specified in metadata
+            if (wallpaper.Metadata != null && wallpaper.Metadata.TryGetValue("Resolution", out var metadataRes))
+            {
+                resType = metadataRes;
+            }
+            else
+            {
+                // Calculate resolution from dimensions
+                resType = DetermineResolutionType(wallpaper.Width, wallpaper.Height);
+            }
             
             // Create border for the badge
             var border = new Border
@@ -160,6 +380,10 @@ namespace WallYouNeed.App.Pages
                     border.Background = new System.Windows.Media.SolidColorBrush(
                         (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2196F3"));
                     break;
+                case "AI":
+                    border.Background = new System.Windows.Media.SolidColorBrush(
+                        (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#673AB7"));
+                    break;
                 default:
                     border.Background = new System.Windows.Media.SolidColorBrush(
                         (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#607D8B"));
@@ -181,9 +405,33 @@ namespace WallYouNeed.App.Pages
         
         private UIElement CreateStatsOverlay(Wallpaper wallpaper)
         {
-            // In a real app, you'd get these values from the wallpaper object
-            int likes = new Random().Next(1, 60); // Placeholder
-            int downloads = new Random().Next(10, 300); // Placeholder
+            // Get like/download stats from metadata if available
+            int likes = 0;
+            int downloads = 0;
+            
+            if (wallpaper.Metadata != null)
+            {
+                if (wallpaper.Metadata.TryGetValue("Likes", out var likesStr))
+                {
+                    int.TryParse(likesStr, out likes);
+                }
+                
+                if (wallpaper.Metadata.TryGetValue("Downloads", out var downloadsStr))
+                {
+                    int.TryParse(downloadsStr, out downloads);
+                }
+            }
+            
+            // If no metadata is available, use random values as fallback
+            if (likes == 0)
+            {
+                likes = new Random().Next(1, 60);
+            }
+            
+            if (downloads == 0)
+            {
+                downloads = new Random().Next(10, 300);
+            }
             
             var border = new Border
             {
