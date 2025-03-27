@@ -13,10 +13,17 @@ namespace WallYouNeed.Core.Models
         
         public string CoverImagePath { get; set; }
         
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedDate { get; set; }
         
-        public DateTime UpdatedAt { get; set; }
+        public DateTime ModifiedDate { get; set; }
         
         public List<string> WallpaperIds { get; set; } = new List<string>();
+        
+        public Collection()
+        {
+            Id = Guid.NewGuid().ToString();
+            CreatedDate = DateTime.Now;
+            ModifiedDate = DateTime.Now;
+        }
     }
 } 

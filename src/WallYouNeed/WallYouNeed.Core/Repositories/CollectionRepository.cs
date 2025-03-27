@@ -1,185 +1,174 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using LiteDB;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using WallYouNeed.Core.Models;
 
 namespace WallYouNeed.Core.Repositories
 {
-    public class CollectionRepository
+    public class CollectionRepository : ICollectionRepository
     {
+        private readonly string _dataPath;
         private readonly ILogger<CollectionRepository> _logger;
-        private readonly LiteDatabase _database;
-        private readonly ILiteCollection<Collection> _collections;
-        private readonly string _collectionName = "collections";
+        private List<Collection> _collections;
+        private readonly object _lock = new object();
 
-        public CollectionRepository(
-            ILogger<CollectionRepository> logger,
-            LiteDatabase database)
+        public CollectionRepository(string dataPath, ILogger<CollectionRepository> logger)
         {
+            _dataPath = dataPath;
             _logger = logger;
-            _database = database;
-            _collections = _database.GetCollection<Collection>(_collectionName);
+            _collections = new List<Collection>();
             
-            // Create indices for faster lookups
-            _collections.EnsureIndex(x => x.Id);
-            _collections.EnsureIndex(x => x.Name);
-            _collections.EnsureIndex(x => x.CreatedAt);
+            // Ensure directory exists
+            Directory.CreateDirectory(Path.GetDirectoryName(dataPath));
+            
+            // Load collections
+            LoadCollections();
         }
 
-        public IEnumerable<Collection> GetAll()
+        private void LoadCollections()
         {
             try
             {
-                return _collections.FindAll().ToList();
+                if (File.Exists(_dataPath))
+                {
+                    string json = File.ReadAllText(_dataPath);
+                    _collections = JsonSerializer.Deserialize<List<Collection>>(json) ?? new List<Collection>();
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting all collections");
-                return new List<Collection>();
+                _logger.LogError(ex, "Error loading collections");
+                _collections = new List<Collection>();
             }
         }
 
-        public Collection GetById(string id)
+        private void SaveCollections()
         {
             try
             {
-                return _collections.FindById(id);
+                string json = JsonSerializer.Serialize(_collections, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(_dataPath, json);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting collection by ID: {Id}", id);
-                return null;
+                _logger.LogError(ex, "Error saving collections");
             }
         }
 
-        public Collection GetByName(string name)
+        public Task<List<Collection>> GetAllCollectionsAsync()
         {
-            try
-            {
-                return _collections.FindOne(x => x.Name == name);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting collection by name: {Name}", name);
-                return null;
-            }
+            return Task.FromResult(_collections.ToList());
         }
 
-        public void Insert(Collection collection)
+        public Task<Collection> GetCollectionByIdAsync(string id)
         {
-            try
-            {
-                if (string.IsNullOrEmpty(collection.Id))
-                {
-                    collection.Id = Guid.NewGuid().ToString();
-                }
-
-                // Ensure dates are set
-                if (collection.CreatedAt == default)
-                {
-                    collection.CreatedAt = DateTime.Now;
-                }
-                
-                if (collection.UpdatedAt == default)
-                {
-                    collection.UpdatedAt = DateTime.Now;
-                }
-
-                // Initialize collections if null
-                if (collection.WallpaperIds == null)
-                {
-                    collection.WallpaperIds = new List<string>();
-                }
-
-                _collections.Insert(collection);
-                _logger.LogInformation("Collection inserted: {Id}", collection.Id);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error inserting collection: {Id}", collection.Id);
-                throw;
-            }
+            return Task.FromResult(_collections.FirstOrDefault(c => c.Id == id));
         }
 
-        public bool Update(Collection collection)
+        public Task<Collection> GetCollectionByNameAsync(string name)
         {
-            try
-            {
-                // Ensure UpdatedAt is set
-                collection.UpdatedAt = DateTime.Now;
-                
-                var result = _collections.Update(collection);
-                
-                if (result)
-                {
-                    _logger.LogInformation("Collection updated: {Id}", collection.Id);
-                }
-                else
-                {
-                    _logger.LogWarning("Collection update failed (not found?): {Id}", collection.Id);
-                }
-                
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating collection: {Id}", collection.Id);
-                throw;
-            }
+            return Task.FromResult(_collections.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
         }
 
-        public bool Delete(string id)
+        public Task<List<WallpaperModel>> GetWallpapersInCollectionAsync(string collectionId)
         {
-            try
-            {
-                var result = _collections.Delete(id);
-                
-                if (result)
-                {
-                    _logger.LogInformation("Collection deleted: {Id}", id);
-                }
-                else
-                {
-                    _logger.LogWarning("Collection delete failed (not found?): {Id}", id);
-                }
-                
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting collection: {Id}", id);
-                throw;
-            }
+            // This method requires a WallpaperRepository to get the actual wallpaper models
+            // For now, we return an empty list
+            return Task.FromResult(new List<WallpaperModel>());
         }
 
-        public IEnumerable<Collection> Search(string searchTerm)
+        public Task AddCollectionAsync(Collection collection)
         {
-            try
+            lock (_lock)
             {
-                return _collections.Find(x => 
-                    x.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) || 
-                    x.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (_collections.Any(c => c.Id == collection.Id))
+                {
+                    throw new InvalidOperationException($"Collection with ID {collection.Id} already exists");
+                }
+
+                _collections.Add(collection);
+                SaveCollections();
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching collections: {SearchTerm}", searchTerm);
-                return new List<Collection>();
-            }
+
+            return Task.CompletedTask;
         }
 
-        public IEnumerable<Collection> GetRecentCollections(int count = 10)
+        public Task UpdateCollectionAsync(Collection collection)
         {
-            try
+            lock (_lock)
             {
-                return _collections.Find(Query.All("UpdatedAt", Query.Descending)).Take(count).ToList();
+                int index = _collections.FindIndex(c => c.Id == collection.Id);
+                if (index == -1)
+                {
+                    throw new InvalidOperationException($"Collection with ID {collection.Id} not found");
+                }
+
+                _collections[index] = collection;
+                SaveCollections();
             }
-            catch (Exception ex)
+
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteCollectionAsync(string id)
+        {
+            lock (_lock)
             {
-                _logger.LogError(ex, "Error getting recent collections");
-                return new List<Collection>();
+                int index = _collections.FindIndex(c => c.Id == id);
+                if (index == -1)
+                {
+                    throw new InvalidOperationException($"Collection with ID {id} not found");
+                }
+
+                _collections.RemoveAt(index);
+                SaveCollections();
             }
+
+            return Task.CompletedTask;
+        }
+
+        public Task AddWallpaperToCollectionAsync(string collectionId, string wallpaperId)
+        {
+            lock (_lock)
+            {
+                var collection = _collections.FirstOrDefault(c => c.Id == collectionId);
+                if (collection == null)
+                {
+                    throw new InvalidOperationException($"Collection with ID {collectionId} not found");
+                }
+
+                if (!collection.WallpaperIds.Contains(wallpaperId))
+                {
+                    collection.WallpaperIds.Add(wallpaperId);
+                    SaveCollections();
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveWallpaperFromCollectionAsync(string collectionId, string wallpaperId)
+        {
+            lock (_lock)
+            {
+                var collection = _collections.FirstOrDefault(c => c.Id == collectionId);
+                if (collection == null)
+                {
+                    throw new InvalidOperationException($"Collection with ID {collectionId} not found");
+                }
+
+                if (collection.WallpaperIds.Contains(wallpaperId))
+                {
+                    collection.WallpaperIds.Remove(wallpaperId);
+                    SaveCollections();
+                }
+            }
+
+            return Task.CompletedTask;
         }
     }
 } 

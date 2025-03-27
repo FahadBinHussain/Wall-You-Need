@@ -1,265 +1,137 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using LiteDB;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using WallYouNeed.Core.Models;
 
 namespace WallYouNeed.Core.Repositories
 {
-    public class WallpaperRepository
+    public class WallpaperRepository : IWallpaperRepository
     {
+        private readonly string _dataPath;
         private readonly ILogger<WallpaperRepository> _logger;
-        private readonly LiteDatabase _database;
-        private readonly ILiteCollection<Wallpaper> _wallpapers;
-        private readonly string _collectionName = "wallpapers";
+        private List<WallpaperModel> _wallpapers;
+        private readonly object _lock = new object();
 
-        public WallpaperRepository(
-            ILogger<WallpaperRepository> logger,
-            LiteDatabase database)
+        public WallpaperRepository(string dataPath, ILogger<WallpaperRepository> logger)
         {
+            _dataPath = dataPath;
             _logger = logger;
-            _database = database;
-            _wallpapers = _database.GetCollection<Wallpaper>(_collectionName);
+            _wallpapers = new List<WallpaperModel>();
             
-            // Create indices for faster lookups
-            _wallpapers.EnsureIndex(x => x.Id);
-            _wallpapers.EnsureIndex(x => x.Name);
-            _wallpapers.EnsureIndex(x => x.Source);
-            _wallpapers.EnsureIndex(x => x.Tags);
-            _wallpapers.EnsureIndex(x => x.CreatedAt);
-            _wallpapers.EnsureIndex(x => x.IsFavorite);
+            // Ensure directory exists
+            Directory.CreateDirectory(Path.GetDirectoryName(dataPath));
+            
+            // Load wallpapers
+            LoadWallpapers();
         }
 
-        public IEnumerable<Wallpaper> GetAllWallpapers()
+        private void LoadWallpapers()
         {
             try
             {
-                return _wallpapers.FindAll().ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all wallpapers");
-                return new List<Wallpaper>();
-            }
-        }
-
-        public Wallpaper GetWallpaperById(string id)
-        {
-            try
-            {
-                return _wallpapers.FindById(id);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting wallpaper by ID: {Id}", id);
-                return null;
-            }
-        }
-
-        public IEnumerable<Wallpaper> GetWallpapersBySource(WallpaperSource source)
-        {
-            try
-            {
-                return _wallpapers.Find(x => x.Source == source).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting wallpapers by source: {Source}", source);
-                return new List<Wallpaper>();
-            }
-        }
-
-        public IEnumerable<Wallpaper> GetWallpapersByTag(string tag)
-        {
-            try
-            {
-                return _wallpapers.Find(x => x.Tags.Contains(tag)).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting wallpapers by tag: {Tag}", tag);
-                return new List<Wallpaper>();
-            }
-        }
-
-        public void SaveWallpaper(Wallpaper wallpaper)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(wallpaper.Id))
+                if (File.Exists(_dataPath))
                 {
-                    wallpaper.Id = Guid.NewGuid().ToString();
+                    string json = File.ReadAllText(_dataPath);
+                    _wallpapers = JsonSerializer.Deserialize<List<WallpaperModel>>(json) ?? new List<WallpaperModel>();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading wallpapers");
+                _wallpapers = new List<WallpaperModel>();
+            }
+        }
+
+        private void SaveWallpapers()
+        {
+            try
+            {
+                string json = JsonSerializer.Serialize(_wallpapers, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(_dataPath, json);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving wallpapers");
+            }
+        }
+
+        public Task<List<WallpaperModel>> GetAllWallpapersAsync()
+        {
+            return Task.FromResult(_wallpapers.ToList());
+        }
+
+        public Task<WallpaperModel> GetWallpaperByIdAsync(string id)
+        {
+            return Task.FromResult(_wallpapers.FirstOrDefault(w => w.Id == id));
+        }
+
+        public Task<List<WallpaperModel>> GetWallpapersByCategoryAsync(string category)
+        {
+            return Task.FromResult(_wallpapers.Where(w => w.Category == category).ToList());
+        }
+
+        public Task<List<WallpaperModel>> GetWallpapersByResolutionCategoryAsync(string resolutionCategory)
+        {
+            return Task.FromResult(_wallpapers.Where(w => w.ResolutionCategory == resolutionCategory).ToList());
+        }
+
+        public Task<WallpaperModel> GetWallpapersBySourceUrlAsync(string sourceUrl)
+        {
+            return Task.FromResult(_wallpapers.FirstOrDefault(w => w.SourceUrl == sourceUrl));
+        }
+
+        public Task AddWallpaperAsync(WallpaperModel wallpaper)
+        {
+            lock (_lock)
+            {
+                if (_wallpapers.Any(w => w.Id == wallpaper.Id))
+                {
+                    throw new InvalidOperationException($"Wallpaper with ID {wallpaper.Id} already exists");
                 }
 
-                // Ensure dates are set
-                if (wallpaper.CreatedAt == default)
-                {
-                    wallpaper.CreatedAt = DateTime.Now;
-                }
-                
-                if (wallpaper.LastUsedAt == default)
-                {
-                    wallpaper.LastUsedAt = DateTime.Now;
-                }
-
-                // Initialize collections if null
-                if (wallpaper.Tags == null)
-                {
-                    wallpaper.Tags = new List<string>();
-                }
-                
-                if (wallpaper.Metadata == null)
-                {
-                    wallpaper.Metadata = new Dictionary<string, string>();
-                }
-
-                _wallpapers.Insert(wallpaper);
-                _logger.LogInformation("Wallpaper inserted: {Id}", wallpaper.Id);
+                _wallpapers.Add(wallpaper);
+                SaveWallpapers();
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error inserting wallpaper: {Id}", wallpaper.Id);
-                throw;
-            }
+
+            return Task.CompletedTask;
         }
 
-        public bool Update(Wallpaper wallpaper)
+        public Task UpdateWallpaperAsync(WallpaperModel wallpaper)
         {
-            return UpdateWallpaper(wallpaper);
-        }
-        
-        public bool UpdateWallpaper(Wallpaper wallpaper)
-        {
-            try
+            lock (_lock)
             {
-                var result = _wallpapers.Update(wallpaper);
-                
-                if (result)
+                int index = _wallpapers.FindIndex(w => w.Id == wallpaper.Id);
+                if (index == -1)
                 {
-                    _logger.LogInformation("Wallpaper updated: {Id}", wallpaper.Id);
+                    throw new InvalidOperationException($"Wallpaper with ID {wallpaper.Id} not found");
                 }
-                else
-                {
-                    _logger.LogWarning("Wallpaper update failed (not found?): {Id}", wallpaper.Id);
-                }
-                
-                return result;
+
+                _wallpapers[index] = wallpaper;
+                SaveWallpapers();
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating wallpaper: {Id}", wallpaper.Id);
-                throw;
-            }
+
+            return Task.CompletedTask;
         }
 
-        public bool DeleteWallpaper(string id)
+        public Task DeleteWallpaperAsync(string id)
         {
-            try
+            lock (_lock)
             {
-                var result = _wallpapers.Delete(id);
-                
-                if (result)
+                int index = _wallpapers.FindIndex(w => w.Id == id);
+                if (index == -1)
                 {
-                    _logger.LogInformation("Wallpaper deleted: {Id}", id);
+                    throw new InvalidOperationException($"Wallpaper with ID {id} not found");
                 }
-                else
-                {
-                    _logger.LogWarning("Wallpaper delete failed (not found?): {Id}", id);
-                }
-                
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting wallpaper: {Id}", id);
-                throw;
-            }
-        }
 
-        public IEnumerable<Wallpaper> Search(string searchTerm)
-        {
-            try
-            {
-                // Search in name, description, and tags
-                return _wallpapers.Find(x => 
-                    x.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) || 
-                    x.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                    x.Tags.Any(t => t.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))).ToList();
+                _wallpapers.RemoveAt(index);
+                SaveWallpapers();
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching wallpapers: {SearchTerm}", searchTerm);
-                return new List<Wallpaper>();
-            }
-        }
 
-        public IEnumerable<Wallpaper> GetFavoriteWallpapers()
-        {
-            try
-            {
-                return _wallpapers.Find(x => x.IsFavorite).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting favorite wallpapers");
-                return new List<Wallpaper>();
-            }
-        }
-
-        public IEnumerable<Wallpaper> GetRecentWallpapers(int count = 10)
-        {
-            try
-            {
-                return _wallpapers.Find(Query.All("LastUsedAt", Query.Descending)).Take(count).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting recent wallpapers");
-                return new List<Wallpaper>();
-            }
-        }
-
-        public bool ToggleFavorite(string id)
-        {
-            try
-            {
-                var wallpaper = GetWallpaperById(id);
-                if (wallpaper == null)
-                {
-                    _logger.LogWarning("Wallpaper not found for toggling favorite: {Id}", id);
-                    return false;
-                }
-                
-                wallpaper.IsFavorite = !wallpaper.IsFavorite;
-                return Update(wallpaper);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error toggling favorite for wallpaper: {Id}", id);
-                throw;
-            }
-        }
-
-        public void UpdateLastUsed(string id)
-        {
-            try
-            {
-                var wallpaper = GetWallpaperById(id);
-                if (wallpaper == null)
-                {
-                    _logger.LogWarning("Wallpaper not found for updating last used: {Id}", id);
-                    return;
-                }
-                
-                wallpaper.LastUsedAt = DateTime.Now;
-                Update(wallpaper);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating last used for wallpaper: {Id}", id);
-                // Don't throw for this non-critical operation
-            }
+            return Task.CompletedTask;
         }
     }
 } 

@@ -15,14 +15,14 @@ namespace WallYouNeed.Core.Services;
 public class CollectionService : ICollectionService
 {
     private readonly ILogger<CollectionService> _logger;
-    private readonly CollectionRepository _repository;
-    private readonly WallpaperRepository _wallpaperRepository;
+    private readonly ICollectionRepository _repository;
+    private readonly IWallpaperRepository _wallpaperRepository;
     private readonly IWallpaperService _wallpaperService;
 
     public CollectionService(
         ILogger<CollectionService> logger,
-        CollectionRepository repository,
-        WallpaperRepository wallpaperRepository,
+        ICollectionRepository repository,
+        IWallpaperRepository wallpaperRepository,
         IWallpaperService wallpaperService)
     {
         _logger = logger;
@@ -37,7 +37,7 @@ public class CollectionService : ICollectionService
         try
         {
             _logger.LogInformation("Getting all collections");
-            return await Task.FromResult(_repository.GetAll().ToList());
+            return await _repository.GetAllCollectionsAsync();
         }
         catch (Exception ex)
         {
@@ -52,7 +52,7 @@ public class CollectionService : ICollectionService
         try
         {
             _logger.LogInformation("Getting collection by ID: {Id}", id);
-            var collection = await Task.FromResult(_repository.GetById(id));
+            var collection = await _repository.GetCollectionByIdAsync(id);
             
             if (collection == null)
             {
@@ -80,15 +80,15 @@ public class CollectionService : ICollectionService
                 Id = Guid.NewGuid().ToString("N"),
                 Name = name,
                 Description = description,
-                CreatedAt = DateTime.Now,
+                CreatedDate = DateTime.Now,
                 WallpaperIds = new List<string>()
             };
             
-            _repository.Insert(collection);
+            await _repository.AddCollectionAsync(collection);
             
             _logger.LogInformation("Collection created with ID: {Id}", collection.Id);
             
-            return await Task.FromResult(collection);
+            return collection;
         }
         catch (Exception ex)
         {
@@ -104,18 +104,16 @@ public class CollectionService : ICollectionService
         {
             _logger.LogInformation("Updating collection: {Id}", collection.Id);
             
-            var existing = _repository.GetById(collection.Id);
+            var existing = await _repository.GetCollectionByIdAsync(collection.Id);
             if (existing == null)
             {
                 throw new KeyNotFoundException($"Collection not found with ID: {collection.Id}");
             }
             
-            collection.UpdatedAt = DateTime.Now;
-            _repository.Update(collection);
+            collection.ModifiedDate = DateTime.Now;
+            await _repository.UpdateCollectionAsync(collection);
             
             _logger.LogInformation("Collection updated: {Id}", collection.Id);
-            
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -131,17 +129,15 @@ public class CollectionService : ICollectionService
         {
             _logger.LogInformation("Deleting collection: {Id}", id);
             
-            var collection = _repository.GetById(id);
+            var collection = await _repository.GetCollectionByIdAsync(id);
             if (collection == null)
             {
                 throw new KeyNotFoundException($"Collection not found with ID: {id}");
             }
             
-            _repository.Delete(id);
+            await _repository.DeleteCollectionAsync(id);
             
             _logger.LogInformation("Collection deleted: {Id}", id);
-            
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -157,7 +153,7 @@ public class CollectionService : ICollectionService
         {
             _logger.LogInformation("Adding wallpaper {WallpaperId} to collection {CollectionId}", wallpaperId, collectionId);
             
-            var collection = _repository.GetById(collectionId);
+            var collection = await _repository.GetCollectionByIdAsync(collectionId);
             if (collection == null)
             {
                 throw new KeyNotFoundException($"Collection not found with ID: {collectionId}");
@@ -175,14 +171,9 @@ public class CollectionService : ICollectionService
                 return;
             }
             
-            collection.WallpaperIds.Add(wallpaperId);
-            collection.UpdatedAt = DateTime.Now;
-            
-            _repository.Update(collection);
+            await _repository.AddWallpaperToCollectionAsync(collectionId, wallpaperId);
             
             _logger.LogInformation("Wallpaper added to collection");
-            
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -198,7 +189,7 @@ public class CollectionService : ICollectionService
         {
             _logger.LogInformation("Removing wallpaper {WallpaperId} from collection {CollectionId}", wallpaperId, collectionId);
             
-            var collection = _repository.GetById(collectionId);
+            var collection = await _repository.GetCollectionByIdAsync(collectionId);
             if (collection == null)
             {
                 throw new KeyNotFoundException($"Collection not found with ID: {collectionId}");
@@ -210,14 +201,9 @@ public class CollectionService : ICollectionService
                 return;
             }
             
-            collection.WallpaperIds.Remove(wallpaperId);
-            collection.UpdatedAt = DateTime.Now;
-            
-            _repository.Update(collection);
+            await _repository.RemoveWallpaperFromCollectionAsync(collectionId, wallpaperId);
             
             _logger.LogInformation("Wallpaper removed from collection");
-            
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -233,24 +219,24 @@ public class CollectionService : ICollectionService
         {
             _logger.LogInformation("Getting wallpapers in collection: {Id}", collectionId);
             
-            var collection = _repository.GetById(collectionId);
+            var collection = await _repository.GetCollectionByIdAsync(collectionId);
             if (collection == null)
             {
                 throw new KeyNotFoundException($"Collection not found with ID: {collectionId}");
             }
             
             var wallpapers = new List<Wallpaper>();
+            var wallpaperModels = await _repository.GetWallpapersInCollectionAsync(collectionId);
             
-            foreach (var wallpaperId in collection.WallpaperIds)
+            // Convert WallpaperModel to Wallpaper
+            foreach (var model in wallpaperModels)
             {
-                var wallpaper = await _wallpaperService.GetWallpaperByIdAsync(wallpaperId);
+                var wallpaper = await _wallpaperService.GetWallpaperByIdAsync(model.Id);
                 if (wallpaper != null)
                 {
                     wallpapers.Add(wallpaper);
                 }
             }
-            
-            _logger.LogInformation("Found {Count} wallpapers in collection", wallpapers.Count);
             
             return wallpapers;
         }
@@ -268,7 +254,7 @@ public class CollectionService : ICollectionService
         {
             _logger.LogInformation("Getting wallpaper {WallpaperId} from collection {CollectionId}", wallpaperId, collectionId);
             
-            var collection = _repository.GetById(collectionId);
+            var collection = await _repository.GetCollectionByIdAsync(collectionId);
             if (collection == null)
             {
                 throw new KeyNotFoundException($"Collection not found with ID: {collectionId}");
@@ -276,7 +262,7 @@ public class CollectionService : ICollectionService
             
             if (!collection.WallpaperIds.Contains(wallpaperId))
             {
-                _logger.LogWarning("Wallpaper {WallpaperId} not found in collection {CollectionId}", wallpaperId, collectionId);
+                _logger.LogInformation("Wallpaper not in collection");
                 return null;
             }
             
@@ -285,7 +271,7 @@ public class CollectionService : ICollectionService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting wallpaper {WallpaperId} from collection {CollectionId}", wallpaperId, collectionId);
-            return null;
+            throw;
         }
     }
 
@@ -294,9 +280,9 @@ public class CollectionService : ICollectionService
     {
         try
         {
-            _logger.LogInformation("Setting cover wallpaper {WallpaperId} for collection {CollectionId}", wallpaperId, collectionId);
+            _logger.LogInformation("Setting collection cover: {CollectionId}, {WallpaperId}", collectionId, wallpaperId);
             
-            var collection = _repository.GetById(collectionId);
+            var collection = await _repository.GetCollectionByIdAsync(collectionId);
             if (collection == null)
             {
                 throw new KeyNotFoundException($"Collection not found with ID: {collectionId}");
@@ -310,22 +296,29 @@ public class CollectionService : ICollectionService
             
             if (!collection.WallpaperIds.Contains(wallpaperId))
             {
-                throw new InvalidOperationException("Cannot set cover to a wallpaper that is not in the collection");
+                throw new InvalidOperationException("Wallpaper not in collection");
+            }
+            
+            // Get the wallpaper's local path to set as cover
+            if (string.IsNullOrEmpty(wallpaper.FilePath))
+            {
+                _logger.LogWarning("Wallpaper has no local path");
+                return false;
             }
             
             collection.CoverImagePath = wallpaper.FilePath;
-            collection.UpdatedAt = DateTime.Now;
+            collection.ModifiedDate = DateTime.Now;
             
-            _repository.Update(collection);
+            await _repository.UpdateCollectionAsync(collection);
             
-            _logger.LogInformation("Cover set for collection");
+            _logger.LogInformation("Collection cover set: {CollectionId}", collectionId);
             
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error setting cover for collection {CollectionId}", collectionId);
-            return false;
+            _logger.LogError(ex, "Error setting collection cover: {CollectionId}, {WallpaperId}", collectionId, wallpaperId);
+            throw;
         }
     }
 } 

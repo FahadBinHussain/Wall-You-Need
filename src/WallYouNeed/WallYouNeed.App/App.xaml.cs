@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
@@ -76,6 +77,9 @@ namespace WallYouNeed.App
             string appDataPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "WallYouNeed");
+                
+            string wallpapersPath = Path.Combine(appDataPath, "wallpapers.json");
+            string collectionsPath = Path.Combine(appDataPath, "collections.json");
             
             // Register your services here
             services.AddSingleton<WallYouNeed.App.Services.ILogService, WallYouNeed.App.Services.LogService>();
@@ -87,8 +91,21 @@ namespace WallYouNeed.App
             });
             
             // Register repositories
-            services.AddSingleton<WallYouNeed.Core.Repositories.WallpaperRepository>();
-            services.AddSingleton<WallYouNeed.Core.Repositories.CollectionRepository>();
+            services.AddSingleton<WallYouNeed.Core.Repositories.IWallpaperRepository>(sp => 
+                new WallYouNeed.Core.Repositories.WallpaperRepository(
+                    wallpapersPath, 
+                    sp.GetRequiredService<ILogger<WallYouNeed.Core.Repositories.WallpaperRepository>>()));
+                    
+            services.AddSingleton<WallYouNeed.Core.Repositories.ICollectionRepository>(sp => 
+                new WallYouNeed.Core.Repositories.CollectionRepository(
+                    collectionsPath, 
+                    sp.GetRequiredService<ILogger<WallYouNeed.Core.Repositories.CollectionRepository>>()));
+                    
+            // Register the configuration service with proper path
+            services.AddSingleton<WallYouNeed.Core.Services.IWallpaperConfigurationService>(sp => 
+                new WallYouNeed.Core.Services.WallpaperConfigurationService(
+                    appDataPath,
+                    sp.GetRequiredService<ILogger<WallYouNeed.Core.Services.WallpaperConfigurationService>>()));
             
             // Register utilities
             services.AddSingleton<WallYouNeed.Core.Utils.WindowsWallpaperUtil>();
@@ -102,6 +119,24 @@ namespace WallYouNeed.App
             services.AddHttpClient("PexelsApi", client => {
                 client.BaseAddress = new Uri("https://api.pexels.com/v1/");
             });
+            
+            // Add Backiee HTTP client
+            services.AddHttpClient("Backiee", client => {
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+            });
+            
+            // Add default HttpClient
+            services.AddHttpClient();
+            
+            // Add HtmlDownloader
+            services.AddTransient<WallYouNeed.Core.Utils.HtmlDownloader>(sp => {
+                var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+                var logger = sp.GetRequiredService<ILogger<WallYouNeed.Core.Utils.HtmlDownloader>>();
+                return new WallYouNeed.Core.Utils.HtmlDownloader(httpClient, logger);
+            });
+            
+            // Register Backiee service
+            services.AddSingleton<WallYouNeed.Core.Services.Interfaces.IBackieeScraperService, WallYouNeed.Core.Services.BackieeScraperService>();
             
             // Register core services
             services.AddSingleton<IWallpaperService, WallpaperService>();

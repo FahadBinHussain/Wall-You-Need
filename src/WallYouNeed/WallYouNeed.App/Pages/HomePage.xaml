@@ -16,6 +16,13 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Page Title -->
@@ -40,9 +47,6 @@
                         
                         <!-- Overlay -->
                         <Border VerticalAlignment="Bottom" Background="#90000000" Height="100">
-                            <Border.Effect>
-                                <BlurEffect Radius="5"/>
-                            </Border.Effect>
                             <Grid Margin="24,16">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -151,111 +155,9 @@
             </Grid>
             
             <!-- AI Wallpapers Promo Section -->
-            <Border Grid.Row="2" Style="{StaticResource ContentCard}" Margin="0,8,0,24" CornerRadius="16">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#230D3A" Offset="0.0"/>
-                        <GradientStop Color="#371D5C" Offset="1.0"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <!-- Left Text Content -->
-                    <StackPanel Grid.Column="0" Margin="24,24,0,24" VerticalAlignment="Center">
-                        <TextBlock Text="AI WALLPAPERS" FontSize="24" Foreground="#D896FF" FontWeight="SemiBold"/>
-                        <TextBlock Text="Imagine your AI generated background" FontSize="16" Foreground="White" Margin="0,8,0,16"/>
-                        
-                        <Button Style="{StaticResource ActionButton}" Width="160" HorizontalAlignment="Left">
-                            <Button.Content>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Path Grid.Column="0" Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" 
-                                          Fill="White" Width="16" Height="16" Margin="0,0,8,0"/>
-                                    <TextBlock Grid.Column="1" Text="Download now" VerticalAlignment="Center"/>
-                                </Grid>
-                            </Button.Content>
-                            <Button.Triggers>
-                                <EventTrigger RoutedEvent="Button.MouseEnter">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation
-                                                Storyboard.TargetProperty="Width"
-                                                To="170" Duration="0:0:0.1"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                                <EventTrigger RoutedEvent="Button.MouseLeave">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation
-                                                Storyboard.TargetProperty="Width"
-                                                To="160" Duration="0:0:0.1"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Button.Triggers>
-                        </Button>
-                    </StackPanel>
-                    
-                    <!-- Right Images Grid -->
-                    <Grid Grid.Column="1" Margin="8,16,24,16">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        
-                        <Border Grid.Row="0" Grid.Column="0" CornerRadius="10" Margin="8" Width="100" Height="70">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.3" Color="#000000"/>
-                            </Border.Effect>
-                            <Border.Background>
-                                <ImageBrush ImageSource="https://images.unsplash.com/photo-1468276311594-df7cb65d8df6" Stretch="UniformToFill"/>
-                            </Border.Background>
-                        </Border>
-                        
-                        <Border Grid.Row="0" Grid.Column="1" CornerRadius="10" Margin="8" Width="100" Height="70">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.3" Color="#000000"/>
-                            </Border.Effect>
-                            <Border.Background>
-                                <ImageBrush ImageSource="https://images.unsplash.com/photo-1493673272479-a20888bcee10" Stretch="UniformToFill"/>
-                            </Border.Background>
-                        </Border>
-                        
-                        <Border Grid.Row="1" Grid.Column="0" CornerRadius="10" Margin="8" Width="100" Height="70">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.3" Color="#000000"/>
-                            </Border.Effect>
-                            <Border.Background>
-                                <ImageBrush ImageSource="https://images.unsplash.com/photo-1542332213-9b5a5a3fad35" Stretch="UniformToFill"/>
-                            </Border.Background>
-                        </Border>
-                        
-                        <Border Grid.Row="1" Grid.Column="1" CornerRadius="10" Margin="8" Width="100" Height="70">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.3" Color="#000000"/>
-                            </Border.Effect>
-                            <Border.Background>
-                                <ImageBrush ImageSource="https://images.unsplash.com/photo-1418489098061-ce87b5dc3aee" Stretch="UniformToFill"/>
-                            </Border.Background>
-                        </Border>
-                    </Grid>
-                </Grid>
-            </Border>
             
             <!-- Daily Popular Wallpapers Section -->
-            <Grid Grid.Row="3">
+            <Grid Grid.Row="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -264,38 +166,46 @@
                 <!-- Section Title with View All -->
                 <Grid Grid.Row="0" Margin="0,0,0,16">
                     <TextBlock Text="Daily popular wallpapers" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <Button Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
-                            Background="Transparent" Foreground="#0066ff" HorizontalAlignment="Right">
-                        <Button.Effect>
-                            <DropShadowEffect BlurRadius="0" ShadowDepth="0" Opacity="0" Color="#A0C3FF"/>
-                        </Button.Effect>
-                        <Button.Triggers>
-                            <EventTrigger RoutedEvent="Button.MouseEnter">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetProperty="Effect.Opacity"
-                                                        To="0.3" Duration="0:0:0.2"/>
-                                        <DoubleAnimation Storyboard.TargetProperty="Effect.BlurRadius"
-                                                        To="5" Duration="0:0:0.2"/>
-                                        <DoubleAnimation Storyboard.TargetProperty="Effect.ShadowDepth"
-                                                        To="2" Duration="0:0:0.2"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                            <EventTrigger RoutedEvent="Button.MouseLeave">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetProperty="Effect.Opacity"
-                                                        To="0" Duration="0:0:0.2"/>
-                                        <DoubleAnimation Storyboard.TargetProperty="Effect.BlurRadius"
-                                                        To="0" Duration="0:0:0.2"/>
-                                        <DoubleAnimation Storyboard.TargetProperty="Effect.ShadowDepth"
-                                                        To="0" Duration="0:0:0.2"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </Button.Triggers>
-                    </Button>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource ModernButton}" Background="#F0F0F0" Width="40" Height="40" Margin="0,0,8,0" ToolTip="View more">
+                            <Path Data="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" Fill="#404040" Width="20" Height="20"/>
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.2" Color="#A0A0A0"/>
+                            </Button.Effect>
+                        </Button>
+                        <Button Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
+                                Background="Transparent" Foreground="#0066ff" HorizontalAlignment="Right">
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="0" ShadowDepth="0" Opacity="0" Color="#A0C3FF"/>
+                            </Button.Effect>
+                            <Button.Triggers>
+                                <EventTrigger RoutedEvent="Button.MouseEnter">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Effect.Opacity"
+                                                            To="0.3" Duration="0:0:0.2"/>
+                                            <DoubleAnimation Storyboard.TargetProperty="Effect.BlurRadius"
+                                                            To="5" Duration="0:0:0.2"/>
+                                            <DoubleAnimation Storyboard.TargetProperty="Effect.ShadowDepth"
+                                                            To="2" Duration="0:0:0.2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                                <EventTrigger RoutedEvent="Button.MouseLeave">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Effect.Opacity"
+                                                            To="0" Duration="0:0:0.2"/>
+                                            <DoubleAnimation Storyboard.TargetProperty="Effect.BlurRadius"
+                                                            To="0" Duration="0:0:0.2"/>
+                                            <DoubleAnimation Storyboard.TargetProperty="Effect.ShadowDepth"
+                                                            To="0" Duration="0:0:0.2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Button.Triggers>
+                        </Button>
+                    </StackPanel>
                 </Grid>
                 
                 <!-- Wallpaper Grid -->
@@ -537,6 +447,759 @@
                                             <Storyboard>
                                                 <DoubleAnimation Storyboard.TargetName="Card3Hover" 
                                                                 Storyboard.TargetProperty="Opacity"
+                                                                To="0" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- Weekly Popular Wallpapers Section -->
+            <Grid Grid.Row="3" Margin="0,30,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Section Title with Navigation -->
+                <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <TextBlock Text="Weekly popular wallpapers" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource ModernButton}" Background="#F0F0F0" Width="40" Height="40" Margin="0,0,8,0" ToolTip="View more">
+                            <Path Data="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" Fill="#404040" Width="20" Height="20"/>
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.2" Color="#A0A0A0"/>
+                            </Button.Effect>
+                        </Button>
+                        <Button Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
+                                Background="Transparent" Foreground="#0066ff" HorizontalAlignment="Right">
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="0" ShadowDepth="0" Opacity="0" Color="#A0C3FF"/>
+                            </Button.Effect>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+                
+                <!-- Wallpaper Grid -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Wallpaper Card 1 -->
+                    <Border Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="200" CornerRadius="14">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1511300636408-a63a89df3482" Stretch="UniformToFill"/>
+                            <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#E91E63" Offset="0.0"/>
+                                        <GradientStop Color="#C2185B" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.3" Color="#000000"/>
+                                </Border.Effect>
+                                <TextBlock Text="4K" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            </Border>
+                            
+                            <!-- Like/Download Overlay -->
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36" Margin="0,0,4,0">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Hover Overlay -->
+                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Border.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="1" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Border.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="0" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Wallpaper Card 2 -->
+                    <Border Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="200" CornerRadius="14">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1506744038136-46273834b3fb" Stretch="UniformToFill"/>
+                            <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#4CAF50" Offset="0.0"/>
+                                        <GradientStop Color="#388E3C" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.3" Color="#000000"/>
+                                </Border.Effect>
+                                <TextBlock Text="5K" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            </Border>
+                            
+                            <!-- Like/Download Overlay -->
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36" Margin="0,0,4,0">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Hover Overlay -->
+                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Border.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="1" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Border.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="0" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Wallpaper Card 3 -->
+                    <Border Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="200" CornerRadius="14">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1470770841072-f978cf4d019e" Stretch="UniformToFill"/>
+                            <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#FF9800" Offset="0.0"/>
+                                        <GradientStop Color="#F57C00" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.3" Color="#000000"/>
+                                </Border.Effect>
+                                <TextBlock Text="4K" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            </Border>
+                            
+                            <!-- Like/Download Overlay -->
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36" Margin="0,0,4,0">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Hover Overlay -->
+                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Border.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="1" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Border.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="0" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- Monthly Popular Wallpapers Section -->
+            <Grid Grid.Row="4" Margin="0,30,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Section Title with Navigation -->
+                <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <TextBlock Text="Monthly popular wallpapers" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource ModernButton}" Background="#F0F0F0" Width="40" Height="40" Margin="0,0,8,0" ToolTip="View more">
+                            <Path Data="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" Fill="#404040" Width="20" Height="20"/>
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.2" Color="#A0A0A0"/>
+                            </Button.Effect>
+                        </Button>
+                        <Button Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
+                                Background="Transparent" Foreground="#0066ff" HorizontalAlignment="Right">
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="0" ShadowDepth="0" Opacity="0" Color="#A0C3FF"/>
+                            </Button.Effect>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+                
+                <!-- Wallpaper Grid -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Wallpaper Card 1 -->
+                    <Border Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="200" CornerRadius="14">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1441974231531-c6227db76b6e" Stretch="UniformToFill"/>
+                            <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#3F51B5" Offset="0.0"/>
+                                        <GradientStop Color="#303F9F" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.3" Color="#000000"/>
+                                </Border.Effect>
+                                <TextBlock Text="8K" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            </Border>
+                            
+                            <!-- Like/Download Overlay -->
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36" Margin="0,0,4,0">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Hover Overlay -->
+                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Border.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="1" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Border.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="0" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Wallpaper Card 2 -->
+                    <Border Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="200" CornerRadius="14">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1507525428034-b723cf961d3e" Stretch="UniformToFill"/>
+                            <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#00BCD4" Offset="0.0"/>
+                                        <GradientStop Color="#0097A7" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.3" Color="#000000"/>
+                                </Border.Effect>
+                                <TextBlock Text="4K" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            </Border>
+                            
+                            <!-- Like/Download Overlay -->
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36" Margin="0,0,4,0">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Hover Overlay -->
+                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Border.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="1" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Border.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="0" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Wallpaper Card 3 -->
+                    <Border Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="200" CornerRadius="14">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1473773508845-188df298d2d1" Stretch="UniformToFill"/>
+                            <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#673AB7" Offset="0.0"/>
+                                        <GradientStop Color="#512DA8" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.3" Color="#000000"/>
+                                </Border.Effect>
+                                <TextBlock Text="5K" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            </Border>
+                            
+                            <!-- Like/Download Overlay -->
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36" Margin="0,0,4,0">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                    <Button Style="{StaticResource ModernButton}" Background="#80000000" Width="36" Height="36">
+                                        <Button.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                        </Button.Effect>
+                                        <Path Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" 
+                                              Fill="White" Width="18" Height="18"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Hover Overlay -->
+                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Border.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="1" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Border.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="0" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- Top Publishers Section -->
+            <Grid Grid.Row="5" Margin="0,30,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Section Title with Navigation -->
+                <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <TextBlock Text="Top publishers" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource ModernButton}" Background="#F0F0F0" Width="40" Height="40" Margin="0,0,8,0" ToolTip="View more">
+                            <Path Data="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" Fill="#404040" Width="20" Height="20"/>
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.2" Color="#A0A0A0"/>
+                            </Button.Effect>
+                        </Button>
+                        <Button Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
+                                Background="Transparent" Foreground="#0066ff" HorizontalAlignment="Right">
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="0" ShadowDepth="0" Opacity="0" Color="#A0C3FF"/>
+                            </Button.Effect>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+                
+                <!-- Publishers Grid -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Publisher Card 1 -->
+                    <Border Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="200" CornerRadius="14">
+                        <Grid>
+                            <!-- Background Image -->
+                            <Image Source="https://images.unsplash.com/photo-1530540636408-a63a89df3482" Stretch="UniformToFill" Opacity="0.85"/>
+                            
+                            <!-- Dark Overlay -->
+                            <Border Background="#60000000"/>
+                            
+                            <!-- Profile Content -->
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <!-- Profile Image -->
+                                <Border Width="80" Height="80" CornerRadius="40" Margin="0,0,0,12" BorderBrush="White" BorderThickness="3">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="15" ShadowDepth="2" Opacity="0.5" Color="#000000"/>
+                                    </Border.Effect>
+                                    <Border.Background>
+                                        <ImageBrush ImageSource="https://randomuser.me/api/portraits/men/32.jpg" Stretch="UniformToFill"/>
+                                    </Border.Background>
+                                </Border>
+                                
+                                <!-- Name and Info -->
+                                <TextBlock Text="John Anderson" FontSize="18" FontWeight="SemiBold" Foreground="White" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Landscape Photographer" FontSize="12" Foreground="#E0E0E0" HorizontalAlignment="Center" Margin="0,4,0,8"/>
+                                
+                                <!-- Follow Button -->
+                                <Button Content="Follow" Style="{StaticResource ActionButton}" Width="100" Height="30" 
+                                        Background="#80FFFFFF" Foreground="#000000" HorizontalAlignment="Center">
+                                    <Button.Effect>
+                                        <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                    </Button.Effect>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Publisher Card 2 -->
+                    <Border Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="200" CornerRadius="14">
+                        <Grid>
+                            <!-- Background Image -->
+                            <Image Source="https://images.unsplash.com/photo-1463171379579-3fdfb86d6285" Stretch="UniformToFill" Opacity="0.85"/>
+                            
+                            <!-- Dark Overlay -->
+                            <Border Background="#60000000"/>
+                            
+                            <!-- Profile Content -->
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <!-- Profile Image -->
+                                <Border Width="80" Height="80" CornerRadius="40" Margin="0,0,0,12" BorderBrush="White" BorderThickness="3">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="15" ShadowDepth="2" Opacity="0.5" Color="#000000"/>
+                                    </Border.Effect>
+                                    <Border.Background>
+                                        <ImageBrush ImageSource="https://randomuser.me/api/portraits/women/44.jpg" Stretch="UniformToFill"/>
+                                    </Border.Background>
+                                </Border>
+                                
+                                <!-- Name and Info -->
+                                <TextBlock Text="Emma Phillips" FontSize="18" FontWeight="SemiBold" Foreground="White" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Wildlife Photographer" FontSize="12" Foreground="#E0E0E0" HorizontalAlignment="Center" Margin="0,4,0,8"/>
+                                
+                                <!-- Follow Button -->
+                                <Button Content="Follow" Style="{StaticResource ActionButton}" Width="100" Height="30" 
+                                        Background="#80FFFFFF" Foreground="#000000" HorizontalAlignment="Center">
+                                    <Button.Effect>
+                                        <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                    </Button.Effect>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Publisher Card 3 -->
+                    <Border Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="200" CornerRadius="14">
+                        <Grid>
+                            <!-- Background Image -->
+                            <Image Source="https://images.unsplash.com/photo-1500964757637-c85e8a162699" Stretch="UniformToFill" Opacity="0.85"/>
+                            
+                            <!-- Dark Overlay -->
+                            <Border Background="#60000000"/>
+                            
+                            <!-- Profile Content -->
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <!-- Profile Image -->
+                                <Border Width="80" Height="80" CornerRadius="40" Margin="0,0,0,12" BorderBrush="White" BorderThickness="3">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="15" ShadowDepth="2" Opacity="0.5" Color="#000000"/>
+                                    </Border.Effect>
+                                    <Border.Background>
+                                        <ImageBrush ImageSource="https://randomuser.me/api/portraits/men/67.jpg" Stretch="UniformToFill"/>
+                                    </Border.Background>
+                                </Border>
+                                
+                                <!-- Name and Info -->
+                                <TextBlock Text="Michael Chen" FontSize="18" FontWeight="SemiBold" Foreground="White" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Urban Photography" FontSize="12" Foreground="#E0E0E0" HorizontalAlignment="Center" Margin="0,4,0,8"/>
+                                
+                                <!-- Follow Button -->
+                                <Button Content="Follow" Style="{StaticResource ActionButton}" Width="100" Height="30" 
+                                        Background="#80FFFFFF" Foreground="#000000" HorizontalAlignment="Center">
+                                    <Button.Effect>
+                                        <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.3" Color="#000000"/>
+                                    </Button.Effect>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- Categories Section -->
+            <Grid Grid.Row="6" Margin="0,30,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Section Title with Navigation -->
+                <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <TextBlock Text="Categories" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource ModernButton}" Background="#F0F0F0" Width="40" Height="40" Margin="0,0,8,0" ToolTip="View more">
+                            <Path Data="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" Fill="#404040" Width="20" Height="20"/>
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.2" Color="#A0A0A0"/>
+                            </Button.Effect>
+                        </Button>
+                        <Button Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
+                                Background="Transparent" Foreground="#0066ff" HorizontalAlignment="Right">
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="0" ShadowDepth="0" Opacity="0" Color="#A0C3FF"/>
+                            </Button.Effect>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+                
+                <!-- Categories Grid -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Category Card 1 - Nature -->
+                    <Border Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="160" CornerRadius="14">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1472214103451-9374bd1c798e" Stretch="UniformToFill"/>
+                            
+                            <!-- Gradient Overlay -->
+                            <Border>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#0000" Offset="0.0"/>
+                                        <GradientStop Color="#BB000000" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                            
+                            <!-- Category Name -->
+                            <StackPanel VerticalAlignment="Bottom" Margin="16,16">
+                                <TextBlock Text="Nature" FontSize="20" FontWeight="SemiBold" Foreground="White"/>
+                                <TextBlock Text="2,451 wallpapers" FontSize="12" Foreground="#E0E0E0" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            
+                            <!-- Hover Overlay -->
+                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Border.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="1" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Border.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="0" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Category Card 2 - Architecture -->
+                    <Border Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="160" CornerRadius="14">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1487958449943-2429e8be8625" Stretch="UniformToFill"/>
+                            
+                            <!-- Gradient Overlay -->
+                            <Border>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#0000" Offset="0.0"/>
+                                        <GradientStop Color="#BB000000" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                            
+                            <!-- Category Name -->
+                            <StackPanel VerticalAlignment="Bottom" Margin="16,16">
+                                <TextBlock Text="Architecture" FontSize="20" FontWeight="SemiBold" Foreground="White"/>
+                                <TextBlock Text="1,827 wallpapers" FontSize="12" Foreground="#E0E0E0" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            
+                            <!-- Hover Overlay -->
+                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Border.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="1" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Border.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="0" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Category Card 3 - Abstract -->
+                    <Border Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="160" CornerRadius="14">
+                        <Grid>
+                            <Image Source="https://images.unsplash.com/photo-1553356084-58ef4a67b2a7" Stretch="UniformToFill"/>
+                            
+                            <!-- Gradient Overlay -->
+                            <Border>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#0000" Offset="0.0"/>
+                                        <GradientStop Color="#BB000000" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                            
+                            <!-- Category Name -->
+                            <StackPanel VerticalAlignment="Bottom" Margin="16,16">
+                                <TextBlock Text="Abstract" FontSize="20" FontWeight="SemiBold" Foreground="White"/>
+                                <TextBlock Text="1,245 wallpapers" FontSize="12" Foreground="#E0E0E0" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            
+                            <!-- Hover Overlay -->
+                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Border.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                To="1" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Border.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
                                                                 To="0" Duration="0:0:0.2"/>
                                             </Storyboard>
                                         </BeginStoryboard>
