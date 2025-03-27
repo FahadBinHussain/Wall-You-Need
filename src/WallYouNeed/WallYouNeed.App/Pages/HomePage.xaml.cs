@@ -14,8 +14,10 @@ using Wpf.Ui.Controls;
 using WallYouNeed.Core.Models;
 using WallYouNeed.Core.Services;
 using WallYouNeed.Core.Services.Interfaces;
+using WallYouNeed.App.Pages;
 using System.Collections.Generic;
 using System.Windows.Media.Imaging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WallYouNeed.App.Pages
 {
@@ -50,8 +52,93 @@ namespace WallYouNeed.App.Pages
             DataContext = this;
 
             Loaded += HomePage_Loaded;
+            
+            // Set up event handlers for "View all" buttons after the page is loaded
+            Loaded += SetupViewAllButtons;
         }
-
+        
+        private void SetupViewAllButtons(object sender, RoutedEventArgs e)
+        {
+            try 
+            {
+                // Connect button click handlers if the elements exist
+                if (FindName("LatestViewAllButton") is System.Windows.Controls.Button latestButton)
+                {
+                    latestButton.Click += (s, e) => NavigateToCategory("Latest");
+                }
+                
+                if (FindName("WeeklyViewAllButton") is System.Windows.Controls.Button weeklyButton)
+                {
+                    weeklyButton.Click += (s, e) => NavigateToCategory("Weekly");
+                }
+                
+                if (FindName("MonthlyViewAllButton") is System.Windows.Controls.Button monthlyButton)
+                {
+                    monthlyButton.Click += (s, e) => NavigateToCategory("Monthly");
+                }
+                
+                // Connect category card click handlers
+                if (FindName("NatureCategoryCard") is Border natureCard)
+                {
+                    natureCard.MouseLeftButtonUp += (s, e) => NavigateToCategory("Nature");
+                }
+                
+                if (FindName("ArchitectureCategoryCard") is Border architectureCard)
+                {
+                    architectureCard.MouseLeftButtonUp += (s, e) => NavigateToCategory("Architecture");
+                }
+                
+                if (FindName("AbstractCategoryCard") is Border abstractCard)
+                {
+                    abstractCard.MouseLeftButtonUp += (s, e) => NavigateToCategory("Abstract");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting up view all buttons");
+            }
+        }
+        
+        private void NavigateToCategory(string categoryName)
+        {
+            try
+            {
+                _logger.LogInformation("Navigating to category: {CategoryName}", categoryName);
+                
+                // Get the app instance
+                var app = System.Windows.Application.Current as App;
+                if (app == null)
+                {
+                    _logger.LogError("Failed to get App instance");
+                    return;
+                }
+                
+                // Get the CategoryPage from service provider and navigate to it
+                var categoryPage = app.Services.GetRequiredService<CategoryPage>();
+                categoryPage.SetCategory(categoryName);
+                
+                // Get the main window's ContentFrame and navigate to the category page
+                if (Window.GetWindow(this) is MainWindow mainWindow)
+                {
+                    if (mainWindow.FindName("ContentFrame") is Frame contentFrame)
+                    {
+                        contentFrame.Navigate(categoryPage);
+                        _logger.LogInformation("Successfully navigated to category: {CategoryName}", categoryName);
+                    }
+                }
+                else
+                {
+                    _logger.LogError("Failed to get MainWindow instance");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error navigating to category: {CategoryName}", categoryName);
+                _snackbarService.Show("Error", $"Failed to navigate to {categoryName} category", 
+                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+            }
+        }
+        
         private async void HomePage_Loaded(object sender, RoutedEventArgs e)
         {
             try

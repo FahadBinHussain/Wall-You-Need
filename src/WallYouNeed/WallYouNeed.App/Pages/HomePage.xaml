@@ -55,6 +55,7 @@
                                 <TextBlock Grid.Row="0" Text="Latest wallpapers" FontSize="24" Foreground="White" FontWeight="SemiBold"/>
                                 <TextBlock Grid.Row="1" Text="The latest wallpapers in one collection. You can find the freshest wallpapers here." 
                                         FontSize="14" Foreground="#FFFFFF" TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.85"/>
+                                
                             </Grid>
                         </Border>
                     </Grid>
@@ -173,37 +174,11 @@
                                 <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.2" Color="#A0A0A0"/>
                             </Button.Effect>
                         </Button>
-                        <Button Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
+                        <Button x:Name="LatestViewAllButton" Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
                                 Background="Transparent" Foreground="#0066ff" HorizontalAlignment="Right">
                             <Button.Effect>
                                 <DropShadowEffect BlurRadius="0" ShadowDepth="0" Opacity="0" Color="#A0C3FF"/>
                             </Button.Effect>
-                            <Button.Triggers>
-                                <EventTrigger RoutedEvent="Button.MouseEnter">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetProperty="Effect.Opacity"
-                                                            To="0.3" Duration="0:0:0.2"/>
-                                            <DoubleAnimation Storyboard.TargetProperty="Effect.BlurRadius"
-                                                            To="5" Duration="0:0:0.2"/>
-                                            <DoubleAnimation Storyboard.TargetProperty="Effect.ShadowDepth"
-                                                            To="2" Duration="0:0:0.2"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                                <EventTrigger RoutedEvent="Button.MouseLeave">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetProperty="Effect.Opacity"
-                                                            To="0" Duration="0:0:0.2"/>
-                                            <DoubleAnimation Storyboard.TargetProperty="Effect.BlurRadius"
-                                                            To="0" Duration="0:0:0.2"/>
-                                            <DoubleAnimation Storyboard.TargetProperty="Effect.ShadowDepth"
-                                                            To="0" Duration="0:0:0.2"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Button.Triggers>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -475,7 +450,7 @@
                                 <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.2" Color="#A0A0A0"/>
                             </Button.Effect>
                         </Button>
-                        <Button Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
+                        <Button x:Name="WeeklyViewAllButton" Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
                                 Background="Transparent" Foreground="#0066ff" HorizontalAlignment="Right">
                             <Button.Effect>
                                 <DropShadowEffect BlurRadius="0" ShadowDepth="0" Opacity="0" Color="#A0C3FF"/>
@@ -694,7 +669,7 @@
                                 <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.2" Color="#A0A0A0"/>
                             </Button.Effect>
                         </Button>
-                        <Button Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
+                        <Button x:Name="MonthlyViewAllButton" Content="View all" Style="{StaticResource ActionButton}" Padding="16,8" 
                                 Background="Transparent" Foreground="#0066ff" HorizontalAlignment="Right">
                             <Button.Effect>
                                 <DropShadowEffect BlurRadius="0" ShadowDepth="0" Opacity="0" Color="#A0C3FF"/>
@@ -1075,7 +1050,7 @@
                     </Grid.ColumnDefinitions>
                     
                     <!-- Category Card 1 - Nature -->
-                    <Border Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="160" CornerRadius="14">
+                    <Border x:Name="NatureCategoryCard" Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="160" CornerRadius="14">
                         <Grid>
                             <Image Source="https://images.unsplash.com/photo-1472214103451-9374bd1c798e" Stretch="UniformToFill"/>
                             
@@ -1094,33 +1069,11 @@
                                 <TextBlock Text="Nature" FontSize="20" FontWeight="SemiBold" Foreground="White"/>
                                 <TextBlock Text="2,451 wallpapers" FontSize="12" Foreground="#E0E0E0" Margin="0,4,0,0"/>
                             </StackPanel>
-                            
-                            <!-- Hover Overlay -->
-                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
-                                <Border.Triggers>
-                                    <EventTrigger RoutedEvent="Border.MouseEnter">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                To="1" Duration="0:0:0.2"/>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                    <EventTrigger RoutedEvent="Border.MouseLeave">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                To="0" Duration="0:0:0.2"/>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </Border.Triggers>
-                            </Border>
                         </Grid>
                     </Border>
                     
                     <!-- Category Card 2 - Architecture -->
-                    <Border Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="160" CornerRadius="14">
+                    <Border x:Name="ArchitectureCategoryCard" Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="160" CornerRadius="14">
                         <Grid>
                             <Image Source="https://images.unsplash.com/photo-1487958449943-2429e8be8625" Stretch="UniformToFill"/>
                             
@@ -1139,35 +1092,13 @@
                                 <TextBlock Text="Architecture" FontSize="20" FontWeight="SemiBold" Foreground="White"/>
                                 <TextBlock Text="1,827 wallpapers" FontSize="12" Foreground="#E0E0E0" Margin="0,4,0,0"/>
                             </StackPanel>
-                            
-                            <!-- Hover Overlay -->
-                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
-                                <Border.Triggers>
-                                    <EventTrigger RoutedEvent="Border.MouseEnter">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                To="1" Duration="0:0:0.2"/>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                    <EventTrigger RoutedEvent="Border.MouseLeave">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                To="0" Duration="0:0:0.2"/>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </Border.Triggers>
-                            </Border>
                         </Grid>
                     </Border>
                     
                     <!-- Category Card 3 - Abstract -->
-                    <Border Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="160" CornerRadius="14">
+                    <Border x:Name="AbstractCategoryCard" Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="160" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1553356084-58ef4a67b2a7" Stretch="UniformToFill"/>
+                            <Image Source="https://images.unsplash.com/photo-1604871000636-074fa5117945" Stretch="UniformToFill"/>
                             
                             <!-- Gradient Overlay -->
                             <Border>
@@ -1182,30 +1113,8 @@
                             <!-- Category Name -->
                             <StackPanel VerticalAlignment="Bottom" Margin="16,16">
                                 <TextBlock Text="Abstract" FontSize="20" FontWeight="SemiBold" Foreground="White"/>
-                                <TextBlock Text="1,245 wallpapers" FontSize="12" Foreground="#E0E0E0" Margin="0,4,0,0"/>
+                                <TextBlock Text="1,203 wallpapers" FontSize="12" Foreground="#E0E0E0" Margin="0,4,0,0"/>
                             </StackPanel>
-                            
-                            <!-- Hover Overlay -->
-                            <Border Background="#40000000" Opacity="0" CornerRadius="14">
-                                <Border.Triggers>
-                                    <EventTrigger RoutedEvent="Border.MouseEnter">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                To="1" Duration="0:0:0.2"/>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                    <EventTrigger RoutedEvent="Border.MouseLeave">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                To="0" Duration="0:0:0.2"/>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </Border.Triggers>
-                            </Border>
                         </Grid>
                     </Border>
                 </Grid>
