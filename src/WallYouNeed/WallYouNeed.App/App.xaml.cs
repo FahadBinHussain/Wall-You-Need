@@ -13,6 +13,10 @@ using WallYouNeed.Core.Services;
 using WallYouNeed.Core.Services.Interfaces;
 using Serilog;
 using Serilog.Events;
+using Wpf.Ui;
+using Wpf.Ui.Appearance;
+using WallYouNeed.Core;
+using WallYouNeed.Core.Utils;
 
 namespace WallYouNeed.App
 {

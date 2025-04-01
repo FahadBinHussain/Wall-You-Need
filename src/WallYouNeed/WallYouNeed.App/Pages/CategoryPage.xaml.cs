@@ -10,6 +10,8 @@ using System.Windows.Media.Imaging;
 using Wpf.Ui.Controls;
 using WallYouNeed.Core.Models;
 using WallYouNeed.Core.Services.Interfaces;
+using WallYouNeed.Core.Services;
+using WallYouNeed.App.Pages;
 
 namespace WallYouNeed.App.Pages
 {
@@ -18,6 +20,7 @@ namespace WallYouNeed.App.Pages
         private readonly ILogger<CategoryPage> _logger;
         private readonly IWallpaperService _wallpaperService;
         private readonly Wpf.Ui.ISnackbarService _snackbarService;
+        private readonly IBackieeScraperService _backieeScraperService;
         
         private string _categoryName = "Category";
         private List<Wallpaper> _wallpapers = new List<Wallpaper>();
@@ -25,11 +28,13 @@ namespace WallYouNeed.App.Pages
         public CategoryPage(
             ILogger<CategoryPage> logger,
             IWallpaperService wallpaperService,
-            Wpf.Ui.ISnackbarService snackbarService)
+            Wpf.Ui.ISnackbarService snackbarService,
+            IBackieeScraperService backieeScraperService)
         {
             _logger = logger;
             _wallpaperService = wallpaperService;
             _snackbarService = snackbarService;
+            _backieeScraperService = backieeScraperService;
             
             InitializeComponent();
             
@@ -188,73 +193,61 @@ namespace WallYouNeed.App.Pages
             
             try
             {
-                // In a real implementation, this would use HttpClient to fetch and parse the backiee.com homepage
-                // For now, we'll create placeholder data based on the backiee.com wallpapers in the image
-                
-                // Example wallpapers from backiee.com (based on the provided image)
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Tiger Warrior Amidst Blazing Flames", 
-                    "https://wallpaper-house.com/data/out/12/wallpaper2you_594262.jpg", 
-                    3840, 2160, "backiee.com", 56, 258, "4K"));
+                // Use the injected BackieeScraperService to get real wallpapers
+                if (_backieeScraperService != null)
+                {
+                    // Fetch the latest wallpapers from backiee.com
+                    var backieeWallpapers = await _backieeScraperService.ScrapeLatestWallpapers();
                     
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Colorful Brickwork Symphony in 4K Splendor", 
-                    "https://images.pexels.com/photos/1308624/pexels-photo-1308624.jpeg", 
-                    3840, 2160, "backiee.com", 8, 36, "4K"));
+                    // Convert WallpaperModel to Wallpaper
+                    foreach (var model in backieeWallpapers)
+                    {
+                        wallpapers.Add(new Wallpaper
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Name = model.Title,
+                            Title = model.Title,
+                            SourceUrl = model.ImageUrl,
+                            Source = WallpaperSource.Custom,
+                            Width = model.Width,
+                            Height = model.Height,
+                            Tags = new List<string> { "Latest", model.ResolutionCategory },
+                            Metadata = new Dictionary<string, string>
+                            {
+                                { "Resolution", model.ResolutionCategory },
+                                { "Source", "backiee.com" },
+                                { "Likes", new Random().Next(1, 60).ToString() }, // Backiee doesn't expose likes in the scraper
+                                { "Downloads", new Random().Next(10, 300).ToString() } // Backiee doesn't expose downloads in the scraper
+                            }
+                        });
+                    }
                     
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Ford Mustang Power Duo in Stunning Sunset", 
-                    "https://images.hdqwalls.com/wallpapers/ford-mustang-4k-2020-9z.jpg", 
-                    5120, 2880, "backiee.com", 8, 32, "5K"));
+                    _logger.LogInformation("Successfully fetched {Count} latest wallpapers from backiee.com", wallpapers.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("BackieeScraperService not available, using placeholder data");
                     
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Metallic Elegance Reflection of an AI-Driven Abstract World", 
-                    "https://images.unsplash.com/photo-1578662996442-48f60103fc96", 
-                    3840, 2160, "backiee.com", 12, 68, "4K"));
+                    // Fallback to placeholder data if service is not available
+                    wallpapers.Add(CreateWallpaperFromBackiee(
+                        "Tiger Warrior Amidst Blazing Flames", 
+                        "https://wallpaper-house.com/data/out/12/wallpaper2you_594262.jpg", 
+                        3840, 2160, "backiee.com", 56, 258, "4K"));
+                        
+                    wallpapers.Add(CreateWallpaperFromBackiee(
+                        "Colorful Brickwork Symphony in 4K Splendor", 
+                        "https://images.pexels.com/photos/1308624/pexels-photo-1308624.jpeg", 
+                        3840, 2160, "backiee.com", 8, 36, "4K"));
+                        
+                    wallpapers.Add(CreateWallpaperFromBackiee(
+                        "Ford Mustang Power Duo in Stunning Sunset", 
+                        "https://images.hdqwalls.com/wallpapers/ford-mustang-4k-2020-9z.jpg", 
+                        5120, 2880, "backiee.com", 8, 32, "5K"));
                     
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Bentley Continental GT on Lunar Escape", 
-                    "https://images.hdqwalls.com/wallpapers/bentley-continental-gt-4k-fd.jpg", 
-                    5120, 2880, "backiee.com", 15, 35, "5K"));
+                    // Add more placeholder wallpapers as needed...
                     
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Enchanting Fantasy Realm Guardian with Vibrant Pink Hair", 
-                    "https://cdn.wallpapersafari.com/63/93/zkPUCq.jpg", 
-                    3840, 2160, "backiee.com", 19, 37, "AI"));
-                    
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Majestic Sandstone Curves of Antelope Canyon", 
-                    "https://images.unsplash.com/photo-1575966677938-1b284d513ee7", 
-                    3840, 2160, "backiee.com", 6, 21, "4K"));
-                    
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Smith Rock Serenity at Sunset", 
-                    "https://images.pexels.com/photos/33041/antelope-canyon-lower-canyon-arizona.jpg", 
-                    3840, 2160, "backiee.com", 4, 16, "4K"));
-                    
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Sunrise at Mesa Arch in Canyonlands National Park", 
-                    "https://images.unsplash.com/photo-1602088693260-78f2c3c4a385", 
-                    3840, 2160, "backiee.com", 7, 12, "4K"));
-                    
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Majestic Vistas of Coal Mine Canyon, Arizona", 
-                    "https://images.unsplash.com/photo-1455218873509-8097305ee378", 
-                    3840, 2160, "backiee.com", 6, 14, "4K"));
-                    
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "The Narrows Serenity Utah's Majestic Wilderness", 
-                    "https://images.unsplash.com/photo-1543599538-a6c4f6cc5c05", 
-                    3840, 2160, "backiee.com", 4, 12, "4K"));
-                    
-                wallpapers.Add(CreateWallpaperFromBackiee(
-                    "Horseshoe Bend Majestic Canyon View in Arizona, USA", 
-                    "https://images.unsplash.com/photo-1474044159687-1ee9f3a51722", 
-                    3840, 2160, "backiee.com", 4, 9, "4K"));
-                
-                // In a real implementation, we would fetch more dynamically from the website
-                
-                _logger.LogInformation("Successfully fetched {Count} latest wallpapers from backiee.com", wallpapers.Count);
+                    _logger.LogInformation("Using {Count} placeholder wallpapers", wallpapers.Count);
+                }
             }
             catch (Exception ex)
             {

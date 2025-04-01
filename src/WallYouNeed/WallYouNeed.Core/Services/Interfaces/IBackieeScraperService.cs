@@ -7,6 +7,9 @@ namespace WallYouNeed.Core.Services.Interfaces
 {
     public interface IBackieeScraperService
     {
+        /// <summary>
+        /// Event that fires when new wallpapers are added
+        /// </summary>
         event EventHandler<List<WallpaperModel>> NewWallpapersAdded;
         
         /// <summary>

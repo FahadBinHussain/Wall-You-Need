@@ -77,6 +77,11 @@ namespace WallYouNeed.Core.Utils
                             var id = attribute.Split('=')[1].Trim('\'', '"');
                             pattern = $"<{tagName}[^>]*id\\s*=\\s*['\"][^'\"]*{id}[^'\"]*['\"][^>]*>";
                         }
+                        else if (attribute.StartsWith("@property"))
+                        {
+                            var propValue = attribute.Split('=')[1].Trim('\'', '"');
+                            pattern = $"<{tagName}[^>]*property\\s*=\\s*['\"][^'\"]*{propValue}[^'\"]*['\"][^>]*>";
+                        }
                     }
                     else
                     {
