@@ -70,20 +70,50 @@ namespace WallYouNeed.Core.Services
             {
                 string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - {message}";
                 
+                // Use a fixed location for logging that we know exists and is writable
+                string downloadsFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "Downloads");
+                
+                string fixedLogPath = Path.Combine(downloadsFolder, "backiee_scraper_debug.log");
+                
                 // Ensure log file doesn't get too large
-                if (File.Exists(_logFilePath) && new FileInfo(_logFilePath).Length > 5 * 1024 * 1024) // 5MB
+                if (File.Exists(fixedLogPath) && new FileInfo(fixedLogPath).Length > 5 * 1024 * 1024) // 5MB
                 {
                     // Append to beginning of file and truncate if it gets too large
-                    string existingContent = File.ReadAllText(_logFilePath);
+                    string existingContent = File.ReadAllText(fixedLogPath);
                     string truncatedContent = existingContent.Substring(0, Math.Min(existingContent.Length, 1024 * 1024)); // Keep last 1MB
-                    File.WriteAllText(_logFilePath, truncatedContent);
+                    File.WriteAllText(fixedLogPath, truncatedContent);
                 }
                 
-                File.AppendAllText(_logFilePath, logEntry + Environment.NewLine);
+                // Write to both the original log path and the fixed path
+                File.AppendAllText(fixedLogPath, logEntry + Environment.NewLine);
+                
+                if (!string.IsNullOrEmpty(_logFilePath))
+                {
+                    try
+                    {
+                        File.AppendAllText(_logFilePath, logEntry + Environment.NewLine);
+                    }
+                    catch
+                    {
+                        // Ignore errors for the original path
+                    }
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore errors when writing to log file
+                // Try one more approach - write to a file next to the executable
+                try
+                {
+                    string executableDir = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
+                    string emergencyLog = Path.Combine(executableDir, "backiee_emergency.log");
+                    File.AppendAllText(emergencyLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - EMERGENCY LOG: {message} - LogToFile Exception: {ex.Message}" + Environment.NewLine);
+                }
+                catch
+                {
+                    // Ultimate fallback - nothing we can do if this fails
+                }
             }
         }
 
@@ -2302,64 +2332,87 @@ namespace WallYouNeed.Core.Services
         /// Gets hardcoded wallpapers directly from specified URLs
         /// </summary>
         /// <returns>List of wallpaper models from hardcoded URLs</returns>
-        public Task<List<WallpaperModel>> GetHardcodedWallpapers()
+        public async Task<List<WallpaperModel>> GetHardcodedWallpapers()
         {
             _logger.LogInformation("Using hardcoded wallpaper URLs");
             LogToFile("Using hardcoded wallpaper URLs");
             
             var wallpapers = new List<WallpaperModel>();
             
-            // Hardcoded thumbnail URLs
-            var thumbnailUrls = new List<string>
+            // Create direct wallpaper entries with guaranteed working URLs
+            var directWallpapers = new List<(string id, string title, string thumbnailUrl, string fullSizeUrl)>
             {
-                "https://backiee.com/static/wallpapers/560x315/418137.jpg",
-                "https://backiee.com/static/wallpapers/560x315/418124.jpg",
-                "https://backiee.com/static/wallpapers/560x315/418123.jpg",
-                "https://backiee.com/static/wallpapers/560x315/418122.jpg"
+                (
+                    "418137", 
+                    "Neon Nightfall An Anime Girl's Journey",
+                    "https://backiee.com/static/wallpapers/560x315/418137.jpg", 
+                    "https://backiee.com/static/wallpapers/wide/418137.jpg"
+                ),
+                (
+                    "418124", 
+                    "Samurai Serenity in Winter Wonderland", 
+                    "https://backiee.com/static/wallpapers/560x315/418124.jpg", 
+                    "https://backiee.com/static/wallpapers/wide/418124.jpg"
+                ),
+                (
+                    "418123", 
+                    "Polar Companions in a Winter Realm", 
+                    "https://backiee.com/static/wallpapers/560x315/418123.jpg", 
+                    "https://backiee.com/static/wallpapers/wide/418123.jpg"
+                ),
+                (
+                    "418122", 
+                    "Retrowave Dreamscape with Ethereal Pink Sky", 
+                    "https://backiee.com/static/wallpapers/560x315/418122.jpg", 
+                    "https://backiee.com/static/wallpapers/wide/418122.jpg"
+                )
             };
             
-            // Titles for the wallpapers
-            var titles = new List<string>
+            LogToFile($"Processing {directWallpapers.Count} direct wallpapers");
+            
+            // Create 1-2 extra verification wallpapers directly from Unsplash with reliable URLs
+            var unsplashWallpapers = new List<(string id, string title, string thumbnailUrl, string fullSizeUrl)>
             {
-                "Neon Nightfall An Anime Girl's Journey",
-                "Samurai Serenity in Winter Wonderland",
-                "Polar Companions in a Winter Realm",
-                "Retrowave Dreamscape with Ethereal Pink Sky"
+                (
+                    "unsplash1",
+                    "Mountain Lake Reflection",
+                    "https://images.unsplash.com/photo-1501785888041-af3ef285b470?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTd8fHdhbGxwYXBlcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60",
+                    "https://images.unsplash.com/photo-1501785888041-af3ef285b470?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80"
+                ),
+                (
+                    "unsplash2",
+                    "Tranquil Ocean Sunset",
+                    "https://images.unsplash.com/photo-1616036740257-9449ea1f6605?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzJ8fHdhbGxwYXBlcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60",
+                    "https://images.unsplash.com/photo-1616036740257-9449ea1f6605?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80"
+                )
             };
             
-            for (int i = 0; i < thumbnailUrls.Count; i++)
+            // Process both backiee and Unsplash wallpapers
+            var allWallpapers = directWallpapers.Concat(unsplashWallpapers);
+            
+            foreach (var (id, title, thumbnailUrl, fullSizeUrl) in allWallpapers)
             {
                 try
                 {
-                    string thumbnailUrl = thumbnailUrls[i];
-                    LogToFile($"Processing hardcoded URL: {thumbnailUrl}");
+                    LogToFile($"Processing direct wallpaper: ID={id}, Title={title}");
+                    LogToFile($"Thumbnail: {thumbnailUrl}");
+                    LogToFile($"Full size: {fullSizeUrl}");
                     
-                    // Extract the ID from the URL (the number before .jpg)
-                    var idMatch = Regex.Match(thumbnailUrl, @"/(\d+)\.jpg$");
-                    if (!idMatch.Success)
-                    {
-                        _logger.LogWarning("Could not extract ID from URL: {Url}", thumbnailUrl);
-                        LogToFile($"Could not extract ID from URL: {thumbnailUrl}");
-                        continue;
-                    }
+                    // Determine source based on URL
+                    string source = thumbnailUrl.Contains("unsplash") ? "Unsplash" : "Backiee";
+                    string sourceUrl = thumbnailUrl.Contains("unsplash") 
+                        ? "https://unsplash.com" 
+                        : $"https://backiee.com/wallpaper/{id}";
                     
-                    string id = idMatch.Groups[1].Value;
-                    _logger.LogDebug("Extracted ID {Id} from URL {Url}", id, thumbnailUrl);
-                    LogToFile($"Extracted ID {id} from URL {thumbnailUrl}");
-                    
-                    // Create the high-resolution URL
-                    string fullSizeUrl = $"https://backiee.com/static/wallpapers/wide/{id}.jpg";
-                    LogToFile($"Created high-res URL: {fullSizeUrl}");
-                    
-                    // Create the wallpaper model
+                    // Create wallpaper model
                     var wallpaper = new WallpaperModel
                     {
                         Id = id,
-                        Title = titles[i],
+                        Title = title,
                         ImageUrl = fullSizeUrl,
                         ThumbnailUrl = thumbnailUrl,
-                        SourceUrl = $"https://backiee.com/wallpaper/{id}",
-                        Source = "Backiee",
+                        SourceUrl = sourceUrl,
+                        Source = source,
                         Width = 1920,
                         Height = 1080,
                         ResolutionCategory = "HD",
@@ -2367,18 +2420,18 @@ namespace WallYouNeed.Core.Services
                     };
                     
                     wallpapers.Add(wallpaper);
-                    _logger.LogInformation("Added hardcoded wallpaper: {Title} with URL {Url}", titles[i], fullSizeUrl);
-                    LogToFile($"Added hardcoded wallpaper: {titles[i]} with URL {fullSizeUrl}");
+                    _logger.LogInformation("Added direct wallpaper: {Title} with URL {Url}", title, fullSizeUrl);
+                    LogToFile($"Added direct wallpaper: {title} with URL {fullSizeUrl}");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing hardcoded wallpaper URL: {Url}", thumbnailUrls[i]);
-                    LogToFile($"ERROR processing hardcoded wallpaper URL: {thumbnailUrls[i]}, Exception: {ex.Message}");
+                    _logger.LogError(ex, "Error processing direct wallpaper: {Title}", title);
+                    LogToFile($"ERROR processing direct wallpaper {title}: {ex.Message}");
                 }
             }
             
-            LogToFile($"Finished processing hardcoded wallpapers. Count: {wallpapers.Count}");
-            return Task.FromResult(wallpapers);
+            LogToFile($"Finished processing direct wallpapers. Count: {wallpapers.Count}");
+            return wallpapers;
         }
     }
 } 

@@ -635,21 +635,43 @@ public class WallpaperService : IWallpaperService
     /// </summary>
     public async Task RefreshBackieeWallpapers()
     {
+        string debugLogPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "Downloads", 
+            "wallyouneed_debug.log");
+            
         try
         {
+            await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Starting RefreshBackieeWallpapers()\n");
+            
             _logger.LogInformation("Refreshing Backiee wallpapers");
             
             // First, try the hardcoded approach which is most reliable
             _logger.LogInformation("Using hardcoded wallpaper approach");
+            await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Calling GetHardcodedWallpapers()\n");
+            
             var hardcodedWallpapers = await _backieeScraperService.GetHardcodedWallpapers();
+            
+            await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - GetHardcodedWallpapers() returned {hardcodedWallpapers.Count} wallpapers\n");
             
             if (hardcodedWallpapers.Any())
             {
                 _logger.LogInformation("Successfully got {Count} hardcoded wallpapers", hardcodedWallpapers.Count);
+                await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Adding {hardcodedWallpapers.Count} hardcoded wallpapers to repository\n");
+                
+                foreach (var wallpaper in hardcodedWallpapers)
+                {
+                    await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Wallpaper: ID={wallpaper.Id}, Title={wallpaper.Title}, URL={wallpaper.ImageUrl}\n");
+                }
+                
                 await AddOrUpdateWallpapers(hardcodedWallpapers);
+                await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - AddOrUpdateWallpapers completed\n");
                 
                 // Create a collection for these wallpapers
                 var collection = await _collectionRepository.GetCollectionByNameAsync("Backiee Wallpapers");
+                
+                await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Got collection: {(collection == null ? "null, will create new" : "existing")}\n");
+                
                 if (collection == null)
                 {
                     collection = new Collection
@@ -660,14 +682,17 @@ public class WallpaperService : IWallpaperService
                     };
                     
                     await _collectionRepository.AddCollectionAsync(collection);
+                    await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Created new collection: {collection.Name}\n");
                 }
                 
                 // Add wallpapers to the collection
                 foreach (var wallpaper in hardcodedWallpapers)
                 {
                     await _collectionRepository.AddWallpaperToCollectionAsync(collection.Id, wallpaper.Id);
+                    await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Added wallpaper {wallpaper.Id} to collection {collection.Id}\n");
                 }
                 
+                await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Returning early with hardcoded wallpapers\n");
                 // Return early since we got wallpapers from the hardcoded list
                 return;
             }
@@ -802,10 +827,19 @@ public class WallpaperService : IWallpaperService
     /// </summary>
     private async Task AddOrUpdateWallpapers(List<WallpaperModel> wallpapers)
     {
+        string debugLogPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "Downloads", 
+            "wallyouneed_debug.log");
+            
+        await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Starting AddOrUpdateWallpapers with {wallpapers.Count} wallpapers\n");
+        
         foreach (var wallpaper in wallpapers)
         {
             try
             {
+                await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Processing wallpaper: ID={wallpaper.Id}, Title={wallpaper.Title}\n");
+                
                 // Check if wallpaper already exists by source URL
                 var existingWallpaper = await _wallpaperRepository.GetWallpapersBySourceUrlAsync(wallpaper.SourceUrl);
                 
@@ -817,24 +851,31 @@ public class WallpaperService : IWallpaperService
                     wallpaper.LocalPath = existingWallpaper.LocalPath;
                     wallpaper.Rating = existingWallpaper.Rating;
                     
+                    await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Updating existing wallpaper with ID {existingWallpaper.Id}\n");
                     await _wallpaperRepository.UpdateWallpaperAsync(wallpaper);
                     _logger.LogDebug("Updated existing wallpaper: {Title}", wallpaper.Title);
                 }
                 else
                 {
                     // Add new wallpaper
+                    await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Adding new wallpaper: {wallpaper.Title}\n");
                     await _wallpaperRepository.AddWallpaperAsync(wallpaper);
                     _logger.LogDebug("Added new wallpaper: {Title}", wallpaper.Title);
                 }
+                
+                await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Successfully processed wallpaper: {wallpaper.Title}\n");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding/updating wallpaper: {Title}", wallpaper.Title);
+                await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - ERROR processing wallpaper {wallpaper.Title}: {ex.Message}\n{ex.StackTrace}\n");
             }
         }
         
         // Create resolution-based collections
+        await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Creating resolution collections\n");
         await CreateResolutionCollections(wallpapers);
+        await File.AppendAllTextAsync(debugLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Completed AddOrUpdateWallpapers\n");
     }
 
     /// <summary>
