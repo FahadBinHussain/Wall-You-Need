@@ -223,7 +223,7 @@ namespace WallYouNeed.BackieeScraper
                 {
                     if (!string.IsNullOrEmpty(wallpapers[i].ImageUrl))
                     {
-                        markdown.AppendLine($"@{wallpapers[i].ImageUrl}");
+                        markdown.AppendLine($"{wallpapers[i].ImageUrl}");
                     }
                 }
             }
