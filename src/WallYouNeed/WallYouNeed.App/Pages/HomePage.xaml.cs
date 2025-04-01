@@ -223,8 +223,7 @@ namespace WallYouNeed.App.Pages
         {
             _logger.LogInformation("Featured wallpaper clicked");
             
-            // Navigate to the featured wallpaper detail page
-            // For now, just navigate to latest category
+            // Navigate to the Latest category page to show latest wallpapers
             NavigateToCategory("Latest");
         }
         

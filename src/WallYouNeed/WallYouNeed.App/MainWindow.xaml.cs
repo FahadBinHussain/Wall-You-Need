@@ -98,6 +98,12 @@ namespace WallYouNeed.App
             SetActiveButton(sender as System.Windows.Controls.Button);
         }
 
+        private void BackieeImagesButton_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateToPage("Backiee Images");
+            SetActiveButton(sender as System.Windows.Controls.Button);
+        }
+
         private void SetActiveButton(System.Windows.Controls.Button button)
         {
             if (_currentActiveButton != null)
@@ -142,6 +148,9 @@ namespace WallYouNeed.App
                     case "Backiee Content":
                         page = app.Services.GetRequiredService<CategoryPage>();
                         (page as CategoryPage)?.SetCategory("Backiee Content");
+                        break;
+                    case "Backiee Images":
+                        page = app.Services.GetRequiredService<BackieeImagesPage>();
                         break;
                 }
                 

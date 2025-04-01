@@ -157,6 +157,7 @@ namespace WallYouNeed.App
             services.AddTransient<CollectionsPage>();
             services.AddTransient<SettingsPage>();
             services.AddTransient<CategoryPage>();
+            services.AddTransient<BackieeImagesPage>();
         }
 
         protected override async void OnStartup(StartupEventArgs e)
