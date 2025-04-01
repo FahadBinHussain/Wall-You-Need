@@ -8,7 +8,7 @@ import random
 import logging
 import psutil
 import os
-from utils import load_env_vars, load_config  # Import utility functions
+from python.utils import load_env_vars, load_config  # Import utility functions
 import sys
 
 # Setup logging

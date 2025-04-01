@@ -7,7 +7,7 @@ import platform
 import subprocess
 import ctypes
 import random
-from utils import load_env_vars, load_config
+from python.utils import load_env_vars, load_config
 
 # Load environment variables
 load_env_vars()

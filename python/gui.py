@@ -7,15 +7,15 @@ import logging
 import os
 import time
 import sys
-from utils import load_env_vars, load_config, save_config
+from python.utils import load_env_vars, load_config, save_config
 from pathlib import Path
-from startup_gui import set_startup, is_startup_enabled
-from registry_utils import set_wallpaper_style, set_lock_screen_wallpaper, set_lock_screen_wallpaper_style
+from python.startup_gui import set_startup, is_startup_enabled
+from python.registry_utils import set_wallpaper_style, set_lock_screen_wallpaper, set_lock_screen_wallpaper_style
 import queue
-from unsplash import fetch_unsplash_wallpapers, save_unsplash_wallpapers, set_unsplash_wallpaper
-from pexels import fetch_pexels_wallpapers, save_pexels_wallpapers, set_pexels_wallpaper
-from wallpaper_engine import automate_wallpaper_update, close_wallpaper_engine
-from wallpaper_utils import get_latest_wallpaper, terminate_depotdownloader, cleanup_old_wallpapers
+from python.unsplash import fetch_unsplash_wallpapers, save_unsplash_wallpapers, set_unsplash_wallpaper
+from python.pexels import fetch_pexels_wallpapers, save_pexels_wallpapers, set_pexels_wallpaper
+from python.wallpaper_engine import automate_wallpaper_update, close_wallpaper_engine
+from python.wallpaper_utils import get_latest_wallpaper, terminate_depotdownloader, cleanup_old_wallpapers
 
 # Add this at the very start of the file (before config loading)
 if getattr(sys, 'frozen', False):
