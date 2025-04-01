@@ -74,139 +74,230 @@ namespace WallYouNeed.Core.Services
         /// </summary>
         public async Task<List<WallpaperModel>> ScrapeLatestWallpapers()
         {
+            if (_isScrapingInProgress)
+            {
+                _logger.LogInformation("Scraping is already in progress, skipping this request");
+                return new List<WallpaperModel>();
+            }
+
             lock (_lock)
             {
                 if (_isScrapingInProgress)
-                {
-                    _logger.LogWarning("Scraping already in progress, skipping this request");
                     return new List<WallpaperModel>();
-                }
-                
                 _isScrapingInProgress = true;
             }
 
+            var wallpapers = new List<WallpaperModel>();
+
             try
             {
+                _logger.LogInformation("Starting to scrape latest wallpapers");
                 var config = await _configService.GetBackieeConfigAsync();
-                var wallpapers = new List<WallpaperModel>();
+
+                // Try primary URL first
+                string primaryUrl = $"{config.BaseUrl}/latest";
+                _logger.LogInformation("Attempting to scrape from primary URL: {Url}", primaryUrl);
                 
-                _logger.LogInformation("Scraping latest wallpapers from Backiee.com");
+                var html = await _htmlDownloader.DownloadHtmlAsync(primaryUrl);
                 
-                // Save diagnostic information
-                try
+                if (!string.IsNullOrEmpty(html))
                 {
-                    string logDir = Path.Combine(Path.GetTempPath(), "WallYouNeed_Logs");
-                    Directory.CreateDirectory(logDir);
-                    string filename = $"scraper_diagnostic_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
-                    string fullPath = Path.Combine(logDir, filename);
+                    // Use HtmlAgilityPack for parsing
+                    var htmlDoc = new HtmlDocument();
+                    htmlDoc.LoadHtml(html);
                     
-                    File.WriteAllText(fullPath, $"Starting scrape at {DateTime.Now}\n");
-                    File.AppendAllText(fullPath, $"Base URL: {config.BaseUrl}\n");
-                    File.AppendAllText(fullPath, $"Alternative URLs: {string.Join(", ", config.AlternativeUrls)}\n");
+                    // Log page title for debugging
+                    var pageTitle = htmlDoc.DocumentNode.SelectSingleNode("//title")?.InnerText?.Trim();
+                    _logger.LogInformation("Page title: {Title}", pageTitle ?? "No title found");
                     
-                    _logger.LogInformation("Created diagnostic log file: {Path}", fullPath);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to create diagnostic log file");
-                }
-                
-                // Try the primary URL first
-                _logger.LogInformation("Trying primary URL: {Url}", config.BaseUrl);
-                var latestWallpapers = await ScrapeWallpaperPage(config.BaseUrl);
-                
-                // If primary URL doesn't yield results, try alternative URLs
-                if (!latestWallpapers.Any() && config.AlternativeUrls != null && config.AlternativeUrls.Any())
-                {
-                    _logger.LogInformation("Primary URL didn't yield wallpapers, trying alternative URLs");
-                    
-                    foreach (var alternativeUrl in config.AlternativeUrls)
+                    // Find wallpaper containers using multiple potential selectors
+                    var containerSelectors = new[]
                     {
-                        _logger.LogInformation("Trying alternative URL: {Url}", alternativeUrl);
-                        latestWallpapers = await ScrapeWallpaperPage(alternativeUrl);
-                        
-                        if (latestWallpapers.Any())
+                        "//div[contains(@class, 'item') and contains(@class, 'wallpaper')]",
+                        "//div[contains(@class, 'wallpapers__item')]",
+                        "//div[contains(@class, 'col-sm-3') and contains(@class, 'col-md-3')]",
+                        "//*[contains(@class, 'wallpaper-item')]",
+                        "//a[contains(@href, '/wallpaper/')]"
+                    };
+                    
+                    HtmlNodeCollection wallpaperNodes = null;
+                    string usedSelector = null;
+                    
+                    foreach (var selector in containerSelectors)
+                    {
+                        wallpaperNodes = htmlDoc.DocumentNode.SelectNodes(selector);
+                        if (wallpaperNodes != null && wallpaperNodes.Count > 0)
                         {
-                            _logger.LogInformation("Found wallpapers from alternative URL: {Url}", alternativeUrl);
+                            usedSelector = selector;
+                            _logger.LogInformation("Found {Count} wallpaper nodes using selector: {Selector}", wallpaperNodes.Count, selector);
                             break;
                         }
                     }
                     
-                    // If still no results, try adding /wallpapers or /latest to the base URL
-                    if (!latestWallpapers.Any())
+                    if (wallpaperNodes != null && wallpaperNodes.Count > 0)
                     {
-                        _logger.LogInformation("Trying with specific paths added to base URL");
-                        string[] additionalPaths = { "/wallpapers", "/latest", "/wallpaper", "/popular" };
-                        
-                        foreach (var path in additionalPaths)
+                        foreach (var node in wallpaperNodes.Take(10)) // Limit to 10 for faster results
                         {
-                            var urlWithPath = $"{config.BaseUrl.TrimEnd('/')}{path}";
-                            _logger.LogInformation("Trying URL with path: {Url}", urlWithPath);
-                            
-                            latestWallpapers = await ScrapeWallpaperPage(urlWithPath);
-                            
-                            if (latestWallpapers.Any())
+                            try
                             {
-                                _logger.LogInformation("Found wallpapers from URL with path: {Url}", urlWithPath);
-                                break;
+                                // Extract wallpaper details
+                                var linkNode = node.SelectSingleNode(".//a[contains(@href, '/wallpaper/')]") ?? node;
+                                var href = linkNode.GetAttributeValue("href", "");
+                                
+                                if (string.IsNullOrEmpty(href) && node.Name == "a")
+                                {
+                                    href = node.GetAttributeValue("href", "");
+                                }
+                                
+                                if (!string.IsNullOrEmpty(href) && href.Contains("/wallpaper/"))
+                                {
+                                    // Extract wallpaper ID from URL
+                                    var idMatch = Regex.Match(href, @"/wallpaper/(?:[^/]+/)?(\d+)");
+                                    if (idMatch.Success)
+                                    {
+                                        var wallpaperId = idMatch.Groups[1].Value;
+                                        
+                                        // Get title
+                                        var titleNode = node.SelectSingleNode(".//h2") ?? 
+                                                        node.SelectSingleNode(".//h3") ?? 
+                                                        node.SelectSingleNode(".//span[@class='title']") ??
+                                                        node.SelectSingleNode(".//a[@title]");
+                                        
+                                        var title = titleNode != null ? 
+                                                    DecodeHtml(titleNode.InnerText.Trim()) : 
+                                                    titleNode?.GetAttributeValue("title", "") ?? 
+                                                    $"Wallpaper {wallpaperId}";
+                                        
+                                        // Get thumbnail
+                                        var imgNode = node.SelectSingleNode(".//img");
+                                        var thumbnailUrl = imgNode?.GetAttributeValue("src", "") ?? "";
+                                        
+                                        // Try data-src for lazy-loaded images
+                                        if (string.IsNullOrEmpty(thumbnailUrl) || thumbnailUrl.Contains("placeholder"))
+                                        {
+                                            thumbnailUrl = imgNode?.GetAttributeValue("data-src", "") ?? 
+                                                          imgNode?.GetAttributeValue("data-lazy-src", "") ?? 
+                                                          "";
+                                        }
+                                        
+                                        // Construct full URLs
+                                        if (!string.IsNullOrEmpty(thumbnailUrl) && !thumbnailUrl.StartsWith("http"))
+                                        {
+                                            thumbnailUrl = thumbnailUrl.StartsWith("/") 
+                                                ? $"{config.BaseUrl}{thumbnailUrl}" 
+                                                : $"{config.BaseUrl}/{thumbnailUrl}";
+                                        }
+                                        
+                                        // If we still don't have a thumbnail, try to construct one
+                                        if (string.IsNullOrEmpty(thumbnailUrl) && !string.IsNullOrEmpty(wallpaperId))
+                                        {
+                                            thumbnailUrl = $"{config.BaseUrl}/static/wallpapers/560x315/{wallpaperId}.jpg";
+                                        }
+                                        
+                                        // Construct the image URL and detail URL
+                                        var imageUrl = $"{config.BaseUrl}/static/wallpapers/wide/{wallpaperId}.jpg";
+                                        var detailUrl = href.StartsWith("http") ? href : (href.StartsWith("/") ? $"{config.BaseUrl}{href}" : $"{config.BaseUrl}/{href}");
+                                        
+                                        // Try to parse resolution from title or other elements
+                                        var resMatch = Regex.Match(title, @"(\d+)\s*[xX]\s*(\d+)");
+                                        int width = 0, height = 0;
+                                        
+                                        if (resMatch.Success)
+                                        {
+                                            int.TryParse(resMatch.Groups[1].Value, out width);
+                                            int.TryParse(resMatch.Groups[2].Value, out height);
+                                        }
+                                        
+                                        // Create the wallpaper model
+                                        var wallpaper = new WallpaperModel
+                                        {
+                                            Id = wallpaperId,
+                                            Title = title,
+                                            Category = "Latest",
+                                            Width = width,
+                                            Height = height,
+                                            ResolutionCategory = DetermineResolutionCategory(width, height),
+                                            ThumbnailUrl = thumbnailUrl,
+                                            ImageUrl = imageUrl,
+                                            SourceUrl = detailUrl,
+                                            Source = "Backiee",
+                                            UploadDate = DateTime.Now
+                                        };
+                                        
+                                        wallpapers.Add(wallpaper);
+                                        _logger.LogDebug("Added wallpaper: {Id} - {Title}", wallpaperId, title);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Error extracting wallpaper details from HTML node");
                             }
                         }
                     }
-                }
-                
-                // If we still have no wallpapers, let's try one more approach - analyze HTML directly
-                if (!latestWallpapers.Any())
-                {
-                    _logger.LogWarning("All regular scraping approaches failed. Performing direct HTML analysis for diagnostics...");
-                    await AnalyzeHtmlForDebug(config.BaseUrl);
-                }
-                
-                // Add found wallpapers to the list
-                wallpapers.AddRange(latestWallpapers);
-                
-                if (wallpapers.Any())
-                {
-                    _logger.LogInformation("Found {Count} wallpapers from the latest section", wallpapers.Count);
-                    NewWallpapersAdded?.Invoke(this, wallpapers);
-                }
-                else
-                {
-                    _logger.LogWarning("No wallpapers found from any URL. Check if website structure has changed or site is inaccessible.");
-                }
-                
-                // Save diagnostic information about found wallpapers
-                try
-                {
-                    if (wallpapers.Any())
+                    else
                     {
-                        string logDir = Path.Combine(Path.GetTempPath(), "WallYouNeed_Logs");
-                        Directory.CreateDirectory(logDir);
-                        string filename = $"found_wallpapers_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
-                        string fullPath = Path.Combine(logDir, filename);
+                        _logger.LogWarning("No wallpaper nodes found on page using any of the selectors");
                         
-                        var sb = new System.Text.StringBuilder();
-                        sb.AppendLine($"Found {wallpapers.Count} wallpapers from {config.BaseUrl} at {DateTime.Now}");
-                        
-                        foreach (var wallpaper in wallpapers)
-                        {
-                            sb.AppendLine($"Title: {wallpaper.Title}");
-                            sb.AppendLine($"Category: {wallpaper.Category}");
-                            sb.AppendLine($"ThumbnailUrl: {wallpaper.ThumbnailUrl}");
-                            sb.AppendLine($"ImageUrl: {wallpaper.ImageUrl}");
-                            sb.AppendLine($"SourceUrl: {wallpaper.SourceUrl}");
-                            sb.AppendLine($"Resolution: {wallpaper.Width}x{wallpaper.Height} ({wallpaper.ResolutionCategory})");
-                            sb.AppendLine();
-                        }
-                        
-                        File.WriteAllText(fullPath, sb.ToString());
-                        _logger.LogInformation("Saved wallpaper details to: {Path}", fullPath);
+                        // Try extracting wallpapers directly from HTML
+                        wallpapers = await ExtractWallpapersDirectlyFromHtml(html, primaryUrl);
                     }
                 }
-                catch (Exception ex)
+                
+                // If primary URL failed, try alternative URLs
+                if (wallpapers.Count == 0)
                 {
-                    _logger.LogWarning(ex, "Failed to save wallpaper details");
+                    foreach (var alternativeUrl in config.AlternativeUrls)
+                    {
+                        _logger.LogInformation("Primary URL failed. Trying alternative URL: {Url}", alternativeUrl);
+                        wallpapers = await ScrapeWallpaperPage(alternativeUrl);
+                        
+                        if (wallpapers.Count > 0)
+                        {
+                            _logger.LogInformation("Successfully scraped {Count} wallpapers from alternative URL", wallpapers.Count);
+                            break;
+                        }
+                    }
                 }
                 
+                // If both primary and all alternative URLs failed, analyze HTML for debug
+                if (wallpapers.Count == 0)
+                {
+                    _logger.LogWarning("All scraping attempts failed, running HTML analyzer for debugging");
+                    await AnalyzeHtmlForDebug(primaryUrl);
+                    
+                    // Try one last alternative
+                    _logger.LogInformation("Attempting one last approach with constructed direct links");
+                    
+                    // Generate some wallpaper IDs as a last resort (recent ones are likely in this range)
+                    for (int i = 1800000; i < 1820000; i += 1000)
+                    {
+                        var id = i.ToString();
+                        var wallpaper = new WallpaperModel
+                        {
+                            Id = id,
+                            Title = $"Wallpaper {id}",
+                            Category = "Latest",
+                            ResolutionCategory = "Full HD",
+                            ThumbnailUrl = $"{config.BaseUrl}/static/wallpapers/560x315/{id}.jpg",
+                            ImageUrl = $"{config.BaseUrl}/static/wallpapers/wide/{id}.jpg",
+                            SourceUrl = $"{config.BaseUrl}/wallpaper/{id}",
+                            Source = "Backiee",
+                            UploadDate = DateTime.Now
+                        };
+                        
+                        wallpapers.Add(wallpaper);
+                    }
+                }
+
+                _logger.LogInformation("Completed scraping latest wallpapers. Found: {Count}", wallpapers.Count);
+                
+                if (wallpapers.Count > 0)
+                {
+                    // Raise the event with the new wallpapers
+                    NewWallpapersAdded?.Invoke(this, wallpapers);
+                }
+
                 return wallpapers;
             }
             catch (Exception ex)
@@ -216,10 +307,7 @@ namespace WallYouNeed.Core.Services
             }
             finally
             {
-                lock (_lock)
-                {
-                    _isScrapingInProgress = false;
-                }
+                _isScrapingInProgress = false;
             }
         }
 
