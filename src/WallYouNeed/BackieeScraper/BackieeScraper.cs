@@ -197,12 +197,10 @@ namespace WallYouNeed.BackieeScraper
         static void SaveToMarkdown(List<Wallpaper> wallpapers, string filePath)
         {
             StringBuilder markdown = new StringBuilder();
-            markdown.AppendLine("# Backiee Wallpaper Links");
-            markdown.AppendLine();
             
             if (wallpapers.Count == 0)
             {
-                markdown.AppendLine("No wallpaper links found.");
+                // Just output an empty file if no wallpapers found
             }
             else
             {
@@ -211,13 +209,7 @@ namespace WallYouNeed.BackieeScraper
                 
                 for (int i = 0; i < count; i++)
                 {
-                    markdown.AppendLine($"{i+1}. [{wallpapers[i].Title}]({wallpapers[i].Url})");
-                }
-                
-                if (count < 20)
-                {
-                    markdown.AppendLine();
-                    markdown.AppendLine($"Note: Only {count} wallpapers were found. The API might need updating.");
+                    markdown.AppendLine($"{wallpapers[i].Url}");
                 }
             }
             
