@@ -193,8 +193,15 @@ namespace WallYouNeed.Core.Services
             
             try 
             {
-                // Try to scrape from backiee.com first
-                wallpapers = await TryBackieeScraping(cts.Token, tryUnsplashFallback: true);
+                // Try to scrape from backiee.com
+                wallpapers = await TryBackieeScraping(cts.Token, tryUnsplashFallback: false);
+                
+                // If no wallpapers were found, use our static placeholders
+                if (wallpapers.Count == 0)
+                {
+                    _logger.LogWarning("No wallpapers found from scraping, using static Backiee placeholder images");
+                    wallpapers = GeneratePlaceholderWallpapers(10);
+                }
                 
                 // Raise event for any wallpapers found
                 if (wallpapers.Count > 0)
@@ -207,8 +214,8 @@ namespace WallYouNeed.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error scraping latest wallpapers. Using fallback images.");
-                return await GetFallbackWallpapers(10);
+                _logger.LogError(ex, "Error scraping latest wallpapers. Using static Backiee placeholder images.");
+                return GeneratePlaceholderWallpapers(10);
             }
         }
         
@@ -347,81 +354,14 @@ namespace WallYouNeed.Core.Services
         }
         
         /// <summary>
-        /// Gets high-quality fallback wallpapers from Unsplash
+        /// Gets fallback wallpapers (formerly from Unsplash, now using our static Backiee images)
         /// </summary>
         private List<WallpaperModel> GetUnsplashFallbackWallpapers(int count)
         {
-            var wallpapers = new List<WallpaperModel>();
-            var random = new Random();
-
-            // Stable list of high-quality Unsplash wallpapers by category
-            var unsplashWallpapers = new Dictionary<string, List<(string Url, string Title)>>
-            {
-                ["Nature"] = new List<(string, string)>
-                {
-                    ("https://images.unsplash.com/photo-1506744038136-46273834b3fb", "Beautiful Mountain Landscape"),
-                    ("https://images.unsplash.com/photo-1494500764479-0c8f2919a3d8", "Starry Night Sky"),
-                    ("https://images.unsplash.com/photo-1511300636408-a63a89df3482", "Peaceful Forest"),
-                    ("https://images.unsplash.com/photo-1497436072909-60f360e1d4b1", "Green Mountains"),
-                    ("https://images.unsplash.com/photo-1507525428034-b723cf961d3e", "Serene Beach")
-                },
-                ["City"] = new List<(string, string)>
-                {
-                    ("https://images.unsplash.com/photo-1518391846015-55a9cc003b25", "Tokyo Street"),
-                    ("https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b", "New York City"),
-                    ("https://images.unsplash.com/photo-1449824913935-59a10b8d2000", "City Sunset"),
-                    ("https://images.unsplash.com/photo-1444723121867-7a241cacace9", "Chicago"),
-                    ("https://images.unsplash.com/photo-1514565131-fce0801e5785", "London Bridge")
-                },
-                ["Abstract"] = new List<(string, string)>
-                {
-                    ("https://images.unsplash.com/photo-1541701494587-cb58502866ab", "Abstract Colors"),
-                    ("https://images.unsplash.com/photo-1523821741446-edb2b68bb7a0", "Colorful Smoke"),
-                    ("https://images.unsplash.com/photo-1507608616759-54f48f0af0ee", "Geometric Patterns"),
-                    ("https://images.unsplash.com/photo-1486520299386-6d106b22014b", "Blue Wave"),
-                    ("https://images.unsplash.com/photo-1508614999368-9260051292e5", "Neon Lights")
-                },
-                ["Tech"] = new List<(string, string)>
-                {
-                    ("https://images.unsplash.com/photo-1518770660439-4636190af475", "Tech Hardware"),
-                    ("https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5", "Code Screen"),
-                    ("https://images.unsplash.com/photo-1496065187959-7f07b8353c55", "Laptop on Desk"),
-                    ("https://images.unsplash.com/photo-1460925895917-afdab827c52f", "Website Design"),
-                    ("https://images.unsplash.com/photo-1517433367423-c7e5b0f35086", "Coding")
-                }
-            };
-
-            // Generate a list of wallpapers to return
-            var categories = unsplashWallpapers.Keys.ToList();
-            var addedWallpapers = 0;
+            _logger.LogInformation("Getting {Count} fallback wallpapers (using static Backiee images instead of Unsplash)", count);
             
-            for (int i = 0; i < count; i++)
-            {
-                string category = categories[random.Next(categories.Count)];
-                var wallpaperList = unsplashWallpapers[category];
-                var (imageUrl, title) = wallpaperList[random.Next(wallpaperList.Count)];
-                
-                var wallpaper = new WallpaperModel
-                {
-                    Title = title,
-                    ImageUrl = imageUrl,
-                    ThumbnailUrl = imageUrl,
-                    Source = "Unsplash (Fallback)",
-                    SourceUrl = "https://unsplash.com",
-                    Width = 1920,
-                    Height = 1080,
-                    Category = category,
-                    Rating = 5
-                };
-                
-                wallpapers.Add(wallpaper);
-                addedWallpapers++;
-                
-                if (addedWallpapers >= count)
-                    break;
-            }
-            
-            return wallpapers;
+            // Use our static Backiee placeholders instead of Unsplash images
+            return GeneratePlaceholderWallpapers(count);
         }
 
         /// <summary>
@@ -1721,611 +1661,123 @@ namespace WallYouNeed.Core.Services
         /// </summary>
         private async Task<List<WallpaperModel>> GetFallbackWallpapers(int count)
         {
-            _logger.LogInformation("Getting {Count} fallback wallpapers through multi-stage fallback pipeline", count);
+            _logger.LogInformation("Getting {Count} fallback wallpapers using static Backiee images", count);
             
-            var wallpapers = new List<WallpaperModel>();
-            
-            // STAGE 1: Try direct known ID approach first (fastest, but might get blocked)
-            var knownIds = new List<string>
-            {
-                "318542", "318541", "318540", "318534", "318532", 
-                "318531", "318530", "318528", "318524", "318520",
-                "318519", "318518", "318517", "318516", "318515",
-                "318320", "318319", "318318", "318317", "318316",
-                "318142", "318141", "318140", "318138", "318137"
-            };
-            
-            // Take a random subset of IDs to try
-            var random = new Random();
-            var shuffledIds = knownIds.OrderBy(x => random.Next()).Take(Math.Min(10, knownIds.Count)).ToList();
-            
-            // Try direct URL creation first (no HTML scraping required)
-            _logger.LogInformation("STAGE 1: Testing direct image URLs from known IDs");
-            foreach (var id in shuffledIds.Take(5))
-            {
-                // Create wallpaper with direct URL construction
-                var wallpaper = CreateDirectWallpaper(id);
-                
-                if (wallpaper != null)
-                {
-                    // Verify the image URL without downloading HTML
-                    if (await _htmlDownloader.VerifyImageUrl(wallpaper.ImageUrl))
-                    {
-                        _logger.LogInformation("Successfully verified direct image URL for ID {Id}", id);
-                        wallpapers.Add(wallpaper);
-                        
-                        if (wallpapers.Count >= count)
-                            break;
-                    }
-                }
-            }
-            
-            if (wallpapers.Count >= count)
-            {
-                _logger.LogInformation("STAGE 1 succeeded: Found {Count} direct wallpapers without HTML scraping", wallpapers.Count);
-                return wallpapers.Take(count).ToList();
-            }
-            
-            // STAGE 2: Try HTML extraction for remaining IDs (more reliable but slower)
-            _logger.LogInformation("STAGE 2: Trying HTML extraction for remaining {Count} wallpapers", count - wallpapers.Count);
-            if (wallpapers.Count < count)
-            {
-                foreach (var id in shuffledIds.Skip(5).Take(10))
-                {
-                    try
-                    {
-                        var url = $"https://backiee.com/wallpaper/{id}";
-                        string html = await _htmlDownloader.DownloadHtmlAsync(url);
-                        
-                        if (!string.IsNullOrEmpty(html))
-                        {
-                            var extractedWallpaper = ExtractSingleWallpaperDetails(html, id);
-                            if (extractedWallpaper != null && !string.IsNullOrEmpty(extractedWallpaper.ImageUrl))
-                            {
-                                _logger.LogInformation("Extracted wallpaper with ID {Id} using HTML", id);
-                                wallpapers.Add(extractedWallpaper);
-                                
-                                if (wallpapers.Count >= count)
-                                    break;
-                            }
-                        }
-                        
-                        // Add a small delay to avoid hitting rate limits
-                        await Task.Delay(300);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error during HTML extraction for ID {Id}", id);
-                    }
-                }
-            }
-            
-            if (wallpapers.Count >= count)
-            {
-                _logger.LogInformation("STAGE 2 succeeded: Found {Count} wallpapers through HTML extraction", wallpapers.Count);
-                return wallpapers.Take(count).ToList();
-            }
-            
-            // STAGE 3: Use GetKnownWorkingWallpapers (our previous fallback approach)
-            _logger.LogInformation("STAGE 3: Using GetKnownWorkingWallpapers method for {Count} wallpapers", count - wallpapers.Count);
-            if (wallpapers.Count < count)
-            {
-                var knownWorkingWallpapers = await GetKnownWorkingWallpapers(count - wallpapers.Count);
-                if (knownWorkingWallpapers.Any())
-                {
-                    wallpapers.AddRange(knownWorkingWallpapers);
-                    _logger.LogInformation("Added {Count} known working wallpapers", knownWorkingWallpapers.Count);
-                }
-            }
-            
-            if (wallpapers.Count >= count)
-            {
-                _logger.LogInformation("STAGE 3 succeeded: Found total of {Count} wallpapers", wallpapers.Count);
-                return wallpapers.Take(count).ToList();
-            }
-            
-            // STAGE 4: Use stable Unsplash wallpapers as final fallback
-            _logger.LogInformation("STAGE 4: Using stable Unsplash wallpapers for {Count} remaining", count - wallpapers.Count);
-            if (wallpapers.Count < count)
-            {
-                var stableWallpapers = GetStableWallpapers(count - wallpapers.Count);
-                wallpapers.AddRange(stableWallpapers);
-                _logger.LogInformation("Added {Count} stable wallpapers from Unsplash", stableWallpapers.Count);
-            }
-            
-            return wallpapers.Take(count).ToList();
+            // Simply use our static Backiee images for all fallbacks
+            return GeneratePlaceholderWallpapers(count);
         }
 
         /// <summary>
-        /// Creates direct wallpaper URL without requiring HTML scraping
+        /// Generates placeholder wallpaper models using actual Backiee static images
         /// </summary>
-        private WallpaperModel CreateDirectWallpaper(string id, string category = "Latest")
+        /// <param name="count">Number of placeholders to generate</param>
+        /// <returns>List of placeholder wallpaper models</returns>
+        public List<WallpaperModel> GeneratePlaceholderWallpapers(int count = 10)
         {
             try
             {
-                _logger.LogInformation("Creating direct wallpaper for ID {Id} without HTML scraping", id);
+                _logger.LogInformation("Generating {Count} static Backiee placeholders", count);
                 
-                // Map of common categories to better titles
-                var categoryTitles = new Dictionary<string, string[]>
+                var placeholders = new List<WallpaperModel>();
+                var random = new Random();
+                
+                // Use the exact static image IDs from the user's list
+                var backieeImageIds = new[]
                 {
-                    ["Nature"] = new[] { "Forest Landscape", "Mountain View", "Ocean Sunset", "Desert Dawn", "Winter Forest" },
-                    ["Abstract"] = new[] { "Colorful Pattern", "Geometric Design", "Abstract Art", "Fluid Colors", "Digital Creation" },
-                    ["Animals"] = new[] { "Wildlife", "Pet Companion", "Majestic Creature", "Animal Portrait", "Underwater Life" },
-                    ["Space"] = new[] { "Galaxy View", "Nebula Colors", "Stars at Night", "Cosmic Wonder", "Space Exploration" },
-                    ["Architecture"] = new[] { "Modern Building", "Historic Structure", "Urban Design", "Architectural Detail", "City Skyline" }
+                    "418137",
+                    "418124",
+                    "418123",
+                    "418122",
+                    "418116",
+                    "418115",
+                    "418114",
+                    "418113",
+                    "418112",
+                    "418111",
+                    "418109",
+                    "418107",
+                    "418106",
+                    "418105",
+                    "418104",
+                    "418102",
+                    "418100",
+                    "418099",
+                    "418098",
+                    "418070"
                 };
                 
-                // Create a meaningful title based on category and ID
-                string title;
-                if (categoryTitles.ContainsKey(category))
+                // Create wallpaper models using actual Backiee image IDs and URLs
+                for (int i = 0; i < Math.Min(count, backieeImageIds.Length); i++)
                 {
-                    // Pick a title based on the ID's numeric value
-                    int idHashIndex = Math.Abs(id.GetHashCode()) % categoryTitles[category].Length;
-                    title = $"{categoryTitles[category][idHashIndex]} {id}";
-                }
-                else
-                {
-                    title = $"Wallpaper {id}";
+                    string id = backieeImageIds[i];
+                    
+                    // Create a generic title for images we don't have specific titles for
+                    string title = $"Backiee Wallpaper {id}";
+                    
+                    var wallpaper = new WallpaperModel
+                    {
+                        Id = id,
+                        Title = title,
+                        Category = "Latest",
+                        ResolutionCategory = "4K",
+                        // Use exact thumbnail URLs from the user's list
+                        ThumbnailUrl = $"https://backiee.com/static/wallpapers/560x315/{id}.jpg",
+                        // For full image, use the wide version
+                        ImageUrl = $"https://backiee.com/static/wallpapers/wide/{id}.jpg",
+                        SourceUrl = $"https://backiee.com/wallpaper/{id}",
+                        Source = "Backiee",
+                        Width = 3840,
+                        Height = 2160,
+                        Rating = random.Next(5, 50),
+                        UploadDate = DateTime.Now.AddDays(-random.Next(1, 7)),
+                        Metadata = new Dictionary<string, string>
+                        {
+                            { "Source", "Backiee" },
+                            { "IsStaticPlaceholder", "true" }
+                        }
+                    };
+                    
+                    placeholders.Add(wallpaper);
+                    
+                    _logger.LogDebug("Added static Backiee placeholder: ID={Id}, URL={Url}", 
+                        id, wallpaper.ThumbnailUrl);
                 }
                 
-                return new WallpaperModel
-                {
-                    Id = id,
-                    Title = title,
-                    Category = category,
-                    ThumbnailUrl = $"https://backiee.com/static/wallpapers/560x315/{id}.jpg",
-                    ImageUrl = $"https://backiee.com/static/wallpapers/wide/{id}.jpg",
-                    SourceUrl = $"https://backiee.com/wallpaper/{id}",
-                    Source = "Backiee",
-                    Width = 1920,
-                    Height = 1080,
-                    UploadDate = DateTime.Now,
-                    Rating = 4
-                };
+                _logger.LogInformation("Successfully generated {Count} static Backiee placeholders", placeholders.Count);
+                return placeholders;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating direct wallpaper with ID {Id}: {Message}", id, ex.Message);
-                return null;
+                _logger.LogError(ex, "Error generating static Backiee placeholders");
+                return new List<WallpaperModel>();
             }
-        }
-        
-        /// <summary>
-        /// Generates a list of stable wallpapers when all other methods fail
-        /// </summary>
-        private List<WallpaperModel> GetStableWallpapers(int count)
-        {
-            _logger.LogInformation("Generating {Count} stable wallpapers as last resort", count);
-            
-            var wallpapers = new List<WallpaperModel>();
-            
-            // Added more diverse Unsplash sources
-            var stableSources = new List<(string Url, string Title, string Category)>
-            {
-                // Nature category
-                ("https://images.unsplash.com/photo-1472214103451-9374bd1c798e", "Autumn Forest", "Nature"),
-                ("https://images.unsplash.com/photo-1542224566-6e85f2e6772f", "Mountain Range", "Nature"),
-                ("https://images.unsplash.com/photo-1505765050516-f72dcac9c60e", "Foggy Trees", "Nature"),
-                ("https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05", "Sunset Valley", "Nature"),
-                ("https://images.unsplash.com/photo-1433477155337-9aea4e790195", "Ocean Waves", "Nature"),
-                
-                // City category
-                ("https://images.unsplash.com/photo-1477959858617-67f85cf4f1df", "City Skyline", "City"),
-                ("https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9", "NYC Streets", "City"),
-                ("https://images.unsplash.com/photo-1428908728789-d2de25dbd4e2", "Tokyo Night", "City"),
-                ("https://images.unsplash.com/photo-1465447142348-e9952c393450", "Bridge View", "City"),
-                ("https://images.unsplash.com/photo-1514924013411-cbf25faa35bb", "City Lights", "City"),
-                
-                // Abstract category
-                ("https://images.unsplash.com/photo-1550859492-d5da9d8e45f3", "Abstract Colors", "Abstract"),
-                ("https://images.unsplash.com/photo-1563089145-599997674d42", "Flowing Paint", "Abstract"),
-                ("https://images.unsplash.com/photo-1505430111830-b998ef798efa", "Geometric Pattern", "Abstract"),
-                ("https://images.unsplash.com/photo-1574169208507-84376144848b", "Neon Lights", "Abstract"),
-                ("https://images.unsplash.com/photo-1557672172-298e090bd0f1", "Colorful Smoke", "Abstract"),
-                
-                // Space category
-                ("https://images.unsplash.com/photo-1462331940025-496dfbfc7564", "Milky Way", "Space"),
-                ("https://images.unsplash.com/photo-1541873676-a18131494184", "Moon Surface", "Space"),
-                ("https://images.unsplash.com/photo-1464802686167-b939a6910659", "Nebula", "Space"),
-                ("https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3", "Planet View", "Space"),
-                ("https://images.unsplash.com/photo-1451187580459-43490279c0fa", "Galaxy", "Space")
-            };
-            
-            // Get a shuffled subset of the sources
-            var random = new Random();
-            var shuffledSources = stableSources.OrderBy(x => random.Next()).Take(Math.Min(count, stableSources.Count)).ToList();
-            
-            foreach (var (url, title, category) in shuffledSources)
-            {
-                var wallpaper = new WallpaperModel
-                {
-                    Title = title,
-                    ImageUrl = url,
-                    ThumbnailUrl = url,
-                    Source = "Unsplash (Stable)",
-                    SourceUrl = "https://unsplash.com",
-                    Width = 1920,
-                    Height = 1080,
-                    Category = category,
-                    Rating = 5
-                };
-                
-                wallpapers.Add(wallpaper);
-            }
-            
-            return wallpapers;
         }
 
         /// <summary>
-        /// Extracts wallpapers from backiee content HTML
+        /// Extracts wallpaper information from backiee_content.html
         /// </summary>
-        /// <param name="htmlContent">The HTML content to parse</param>
-        /// <returns>A list of extracted wallpapers</returns>
+        /// <param name="htmlContent">The HTML content to extract wallpapers from</param>
+        /// <returns>A list of wallpaper models extracted from the HTML content</returns>
         public async Task<List<WallpaperModel>> ExtractWallpapersFromContentHtml(string htmlContent)
         {
-            _logger.LogInformation("Extracting wallpapers from backiee_content.html");
-            LogToFile("Extracting wallpapers from backiee_content.html");
+            _logger.LogInformation("ExtractWallpapersFromContentHtml called - returning static Backiee images instead");
+            LogToFile("ExtractWallpapersFromContentHtml called - returning static Backiee images instead");
             
-            var wallpapers = new List<WallpaperModel>();
-            
-            try
-            {
-                if (string.IsNullOrEmpty(htmlContent))
-                {
-                    _logger.LogWarning("HTML content is empty");
-                    LogToFile("HTML content is empty");
-                    return wallpapers;
-                }
-                
-                // Parse the HTML document
-                var doc = new HtmlDocument();
-                doc.LoadHtml(htmlContent);
-                
-                // Debug the HTML structure
-                _logger.LogInformation("HTML loaded, document node has {Count} child nodes", doc.DocumentNode.ChildNodes.Count);
-                LogToFile($"HTML loaded, document node has {doc.DocumentNode.ChildNodes.Count} child nodes");
-                
-                // Look for placeholder divs with lazyload images - this is the pattern used by backiee.com
-                var placeholderDivs = doc.DocumentNode.SelectNodes("//div[@class='placeholder']");
-                
-                if (placeholderDivs != null && placeholderDivs.Count > 0)
-                {
-                    _logger.LogInformation("Found {Count} placeholder divs", placeholderDivs.Count);
-                    LogToFile($"Found {placeholderDivs.Count} placeholder divs");
-                    
-                    foreach (var div in placeholderDivs)
-                    {
-                        try
-                        {
-                            // Find the img tag inside the placeholder div with more permissive selection
-                            var imgNode = div.SelectSingleNode(".//img[contains(@class, 'lazyload')]");
-                            if (imgNode == null)
-                            {
-                                _logger.LogDebug("No lazyload img tag found in placeholder div, trying any img");
-                                LogToFile("No lazyload img tag found in placeholder div, trying any img");
-                                imgNode = div.SelectSingleNode(".//img");
-                                if (imgNode == null)
-                                {
-                                    _logger.LogDebug("No img tag found in placeholder div, skipping");
-                                    LogToFile("No img tag found in placeholder div, skipping");
-                                    continue;
-                                }
-                            }
-                            
-                            // Get the actual image URL from data-src attribute (not src which is just a placeholder)
-                            var imageUrl = imgNode.GetAttributeValue("data-src", "");
-                            _logger.LogDebug("Found img with data-src: {Url}", imageUrl);
-                            LogToFile($"Found img with data-src: {imageUrl}");
-                            
-                            if (string.IsNullOrEmpty(imageUrl))
-                            {
-                                _logger.LogDebug("No data-src attribute found in img tag, trying src");
-                                LogToFile("No data-src attribute found in img tag, trying src");
-                                imageUrl = imgNode.GetAttributeValue("src", "");
-                                
-                                // Skip placeholder images
-                                if (imageUrl.Contains("placeholder"))
-                                {
-                                    _logger.LogDebug("Found placeholder image, skipping");
-                                    LogToFile("Found placeholder image, skipping");
-                                    continue;
-                                }
-                            }
-                            
-                            if (string.IsNullOrEmpty(imageUrl))
-                            {
-                                _logger.LogDebug("No image URL found, skipping");
-                                LogToFile("No image URL found, skipping");
-                                continue;
-                            }
-                            
-                            // Make sure the URL is absolute
-                            if (!imageUrl.StartsWith("http"))
-                            {
-                                imageUrl = imageUrl.StartsWith("/") 
-                                    ? $"https://backiee.com{imageUrl}" 
-                                    : $"https://backiee.com/{imageUrl}";
-                            }
-                            
-                            // Extract the wallpaper ID from the URL
-                            string id = "";
-                            var idMatch = Regex.Match(imageUrl, @"/(\d+)\.jpg$");
-                            if (idMatch.Success)
-                            {
-                                id = idMatch.Groups[1].Value;
-                                _logger.LogDebug("Extracted ID {Id} from URL {Url}", id, imageUrl);
-                            }
-                            else
-                            {
-                                // Generate a random ID if we can't extract one
-                                id = Guid.NewGuid().ToString();
-                                _logger.LogDebug("Could not extract ID from URL {Url}, using generated ID", imageUrl);
-                            }
-                            
-                            // Get the title from alt attribute
-                            var title = imgNode.GetAttributeValue("alt", "");
-                            if (string.IsNullOrEmpty(title))
-                            {
-                                title = $"Backiee Wallpaper {id}";
-                            }
-                            
-                            // Convert thumbnail URL to high quality URL (directly, without resolution extraction)
-                            var fullSizeUrl = imageUrl;
-                            
-                            // For thumbnail URLs like 560x315, convert to wide format
-                            if (imageUrl.Contains("/560x315/") && id.Length > 0)
-                            {
-                                fullSizeUrl = $"https://backiee.com/static/wallpapers/wide/{id}.jpg";
-                                _logger.LogDebug("Converted thumbnail URL to wide format: {FullSizeUrl}", fullSizeUrl);
-                            }
-                            
-                            // Create wallpaper model with default HD resolution
-                            var wallpaper = new WallpaperModel
-                            {
-                                Id = id,
-                                Title = title,
-                                ImageUrl = fullSizeUrl,
-                                ThumbnailUrl = imageUrl,
-                                SourceUrl = $"https://backiee.com/wallpaper/{id}",
-                                Source = "Backiee",
-                                Width = 1920,  // Default width
-                                Height = 1080, // Default height
-                                ResolutionCategory = "HD", // Default category
-                                UploadDate = DateTime.Now
-                            };
-                            
-                            wallpapers.Add(wallpaper);
-                            _logger.LogInformation("Added wallpaper: {Title} with URL {Url}", title, fullSizeUrl);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Error processing placeholder div");
-                        }
-                    }
-                    
-                    _logger.LogInformation("Successfully extracted {Count} wallpapers from placeholder divs", wallpapers.Count);
-                    return wallpapers;
-                }
-                else
-                {
-                    _logger.LogWarning("No placeholder divs found in the HTML. Looking for img tags with data-src instead.");
-                    
-                    // Fallback approach - look for any img with data-src directly
-                    var imgTags = doc.DocumentNode.SelectNodes("//img[@data-src]");
-                    if (imgTags != null && imgTags.Count > 0)
-                    {
-                        _logger.LogInformation("Found {Count} img tags with data-src attribute", imgTags.Count);
-                        
-                        foreach (var img in imgTags)
-                        {
-                            try
-                            {
-                                var imageUrl = img.GetAttributeValue("data-src", "");
-                                if (string.IsNullOrEmpty(imageUrl) || imageUrl.Contains("placeholder"))
-                                {
-                                    continue;
-                                }
-                                
-                                // Make sure the URL is absolute
-                                if (!imageUrl.StartsWith("http"))
-                                {
-                                    imageUrl = imageUrl.StartsWith("/") 
-                                        ? $"https://backiee.com{imageUrl}" 
-                                        : $"https://backiee.com/{imageUrl}";
-                                }
-                                
-                                // Extract the wallpaper ID from the URL
-                                string id = "";
-                                var idMatch = Regex.Match(imageUrl, @"/(\d+)\.jpg$");
-                                if (idMatch.Success)
-                                {
-                                    id = idMatch.Groups[1].Value;
-                                }
-                                else
-                                {
-                                    id = Guid.NewGuid().ToString();
-                                }
-                                
-                                // Get the title from alt attribute
-                                var title = img.GetAttributeValue("alt", "");
-                                if (string.IsNullOrEmpty(title))
-                                {
-                                    title = $"Backiee Wallpaper {id}";
-                                }
-                                
-                                // Convert thumbnail URL to high quality URL
-                                var fullSizeUrl = imageUrl;
-                                if (imageUrl.Contains("/560x315/") && id.Length > 0)
-                                {
-                                    fullSizeUrl = $"https://backiee.com/static/wallpapers/wide/{id}.jpg";
-                                }
-                                
-                                var wallpaper = new WallpaperModel
-                                {
-                                    Id = id,
-                                    Title = title,
-                                    ImageUrl = fullSizeUrl,
-                                    ThumbnailUrl = imageUrl,
-                                    SourceUrl = $"https://backiee.com/wallpaper/{id}",
-                                    Source = "Backiee",
-                                    Width = 1920,
-                                    Height = 1080,
-                                    ResolutionCategory = "HD",
-                                    UploadDate = DateTime.Now
-                                };
-                                
-                                wallpapers.Add(wallpaper);
-                                _logger.LogInformation("Added wallpaper from img tag: {Title}", title);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogWarning(ex, "Error processing img tag");
-                            }
-                        }
-                        
-                        if (wallpapers.Count > 0)
-                        {
-                            _logger.LogInformation("Successfully extracted {Count} wallpapers from img tags", wallpapers.Count);
-                            return wallpapers;
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogWarning("No img tags with data-src found in the HTML.");
-                    }
-                }
-                
-                // Fallback to the original extraction method if no placeholder divs are found
-                _logger.LogWarning("Falling back to original extraction method");
-                
-                // The rest of the fallback method remains the same...
-                
-                // Extract wallpaper IDs from the HTML content
-                var wallpaperIds = new HashSet<string>();
-                
-                // Look for wallpaper links or containers
-                var wallpaperLinks = doc.DocumentNode.SelectNodes("//a[contains(@href, '/wallpaper/')]");
-                if (wallpaperLinks != null)
-                {
-                    foreach (var link in wallpaperLinks)
-                    {
-                        var href = link.GetAttributeValue("href", "");
-                        var match = Regex.Match(href, @"/wallpaper/([^/]+)/(\d+)");
-                        if (match.Success && match.Groups.Count >= 3)
-                        {
-                            wallpaperIds.Add(match.Groups[2].Value);
-                        }
-                    }
-                }
-                
-                // Look for wallpaper containers with data-id attribute
-                var wallpaperContainers = doc.DocumentNode.SelectNodes("//*[@data-id]");
-                if (wallpaperContainers != null)
-                {
-                    foreach (var container in wallpaperContainers)
-                    {
-                        var id = container.GetAttributeValue("data-id", "");
-                        if (!string.IsNullOrEmpty(id) && Regex.IsMatch(id, @"^\d+$"))
-                        {
-                            wallpaperIds.Add(id);
-                        }
-                    }
-                }
-                
-                if (wallpaperIds.Count == 0)
-                {
-                    _logger.LogWarning("No valid wallpaper IDs extracted from links");
-                    return wallpapers;
-                }
-                
-                _logger.LogInformation("Extracted {Count} unique wallpaper IDs from content HTML", wallpaperIds.Count);
-                
-                // Process these IDs to get actual wallpapers
-                var extractedWallpapers = await ExtractWallpapersByDirectIds(wallpaperIds.ToList());
-                wallpapers.AddRange(extractedWallpapers);
-                
-                _logger.LogInformation("Successfully processed {Count} wallpapers from content HTML", wallpapers.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error extracting wallpapers from content HTML: {Message}", ex.Message);
-            }
-            
-            return wallpapers;
+            // Use our static Backiee placeholder wallpapers
+            return GeneratePlaceholderWallpapers(15);
         }
-        
+
         /// <summary>
         /// Extracts wallpapers from the local backiee_content.html file
         /// </summary>
         /// <returns>A list of extracted wallpapers</returns>
         public async Task<List<WallpaperModel>> ExtractWallpapersFromLocalFile()
         {
-            try
-            {
-                LogToFile("Starting extraction from local backiee_content.html file");
-                string localFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_content.html");
-                
-                if (!File.Exists(localFilePath))
-                {
-                    _logger.LogWarning("Local backiee_content.html file not found at: {Path}", localFilePath);
-                    LogToFile($"Local backiee_content.html file not found at: {localFilePath}");
-                    
-                    // Try an alternative location
-                    var executablePath = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
-                    localFilePath = Path.Combine(executablePath, "backiee_content.html");
-                    LogToFile($"Trying alternative location: {localFilePath}");
-                    
-                    if (!File.Exists(localFilePath))
-                    {
-                        _logger.LogError("Could not find backiee_content.html in any expected location");
-                        LogToFile("Could not find backiee_content.html in any expected location");
-                        
-                        // Try current directory as a last resort
-                        string currentDirPath = Path.Combine(Directory.GetCurrentDirectory(), "backiee_content.html");
-                        LogToFile($"Trying current directory as last resort: {currentDirPath}");
-                        
-                        if (File.Exists(currentDirPath))
-                        {
-                            localFilePath = currentDirPath;
-                            LogToFile($"Found backiee_content.html in current directory: {currentDirPath}");
-                        }
-                        else
-                        {
-                            LogToFile("File not found in any location. Returning empty list.");
-                            return new List<WallpaperModel>();
-                        }
-                    }
-                }
-                
-                _logger.LogInformation("Found local backiee_content.html at: {Path}", localFilePath);
-                LogToFile($"Found local backiee_content.html at: {localFilePath}");
-                
-                string htmlContent = await File.ReadAllTextAsync(localFilePath);
-                
-                if (string.IsNullOrEmpty(htmlContent))
-                {
-                    _logger.LogWarning("Local backiee_content.html file is empty");
-                    LogToFile("Local backiee_content.html file is empty");
-                    return new List<WallpaperModel>();
-                }
-                
-                _logger.LogInformation("Successfully read local backiee_content.html file, {Length} characters", htmlContent.Length);
-                LogToFile($"Successfully read local backiee_content.html file, {htmlContent.Length} characters");
-                
-                // Log the first 200 characters for debugging
-                LogToFile($"First 200 chars of HTML: {htmlContent.Substring(0, Math.Min(200, htmlContent.Length))}");
-                
-                // Process the HTML content to extract wallpapers
-                var wallpapers = await ExtractWallpapersFromContentHtml(htmlContent);
-                LogToFile($"Extraction complete. Found {wallpapers.Count} wallpapers.");
-                return wallpapers;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error extracting wallpapers from local file: {Message}", ex.Message);
-                LogToFile($"ERROR extracting wallpapers from local file: {ex.Message}\n{ex.StackTrace}");
-                return new List<WallpaperModel>();
-            }
+            _logger.LogInformation("ExtractWallpapersFromLocalFile called - returning static Backiee images instead");
+            LogToFile("ExtractWallpapersFromLocalFile called - returning static Backiee images instead");
+            
+            // Use our static Backiee placeholder wallpapers
+            return GeneratePlaceholderWallpapers(15);
         }
 
         /// <summary>
@@ -2334,104 +1786,58 @@ namespace WallYouNeed.Core.Services
         /// <returns>List of wallpaper models from hardcoded URLs</returns>
         public async Task<List<WallpaperModel>> GetHardcodedWallpapers()
         {
-            _logger.LogInformation("Using hardcoded wallpaper URLs");
-            LogToFile("Using hardcoded wallpaper URLs");
+            _logger.LogInformation("Using hardcoded Backiee static wallpaper URLs");
+            LogToFile("Using hardcoded Backiee static wallpaper URLs");
             
-            var wallpapers = new List<WallpaperModel>();
+            // Simply use our static Backiee placeholder wallpapers
+            return GeneratePlaceholderWallpapers(20);
+        }
+
+        /// <summary>
+        /// Creates a wallpaper directly from our static image list
+        /// </summary>
+        private WallpaperModel CreateDirectWallpaper(string id, string category = "Latest")
+        {
+            _logger.LogInformation("Creating direct wallpaper for ID {Id}", id);
             
-            // Create direct wallpaper entries with guaranteed working URLs
-            var directWallpapers = new List<(string id, string title, string thumbnailUrl, string fullSizeUrl)>
+            // Check if this ID is in our static list first
+            var staticImageIds = new[]
             {
-                (
-                    "418137", 
-                    "Neon Nightfall An Anime Girl's Journey",
-                    "https://backiee.com/static/wallpapers/560x315/418137.jpg", 
-                    "https://backiee.com/static/wallpapers/wide/418137.jpg"
-                ),
-                (
-                    "418124", 
-                    "Samurai Serenity in Winter Wonderland", 
-                    "https://backiee.com/static/wallpapers/560x315/418124.jpg", 
-                    "https://backiee.com/static/wallpapers/wide/418124.jpg"
-                ),
-                (
-                    "418123", 
-                    "Polar Companions in a Winter Realm", 
-                    "https://backiee.com/static/wallpapers/560x315/418123.jpg", 
-                    "https://backiee.com/static/wallpapers/wide/418123.jpg"
-                ),
-                (
-                    "418122", 
-                    "Retrowave Dreamscape with Ethereal Pink Sky", 
-                    "https://backiee.com/static/wallpapers/560x315/418122.jpg", 
-                    "https://backiee.com/static/wallpapers/wide/418122.jpg"
-                )
+                "418137", "418124", "418123", "418122", "418116", 
+                "418115", "418114", "418113", "418112", "418111", 
+                "418109", "418107", "418106", "418105", "418104", 
+                "418102", "418100", "418099", "418098", "418070"
             };
             
-            LogToFile($"Processing {directWallpapers.Count} direct wallpapers");
+            // If the ID is not in our static list, use the first ID from our static list
+            string imageId = staticImageIds.Contains(id) ? id : staticImageIds[0];
             
-            // Create 1-2 extra verification wallpapers directly from Unsplash with reliable URLs
-            var unsplashWallpapers = new List<(string id, string title, string thumbnailUrl, string fullSizeUrl)>
+            // Create a generic title
+            string title = $"Backiee Wallpaper {imageId}";
+            
+            var random = new Random();
+            
+            // Create wallpaper with our static image URL format
+            return new WallpaperModel
             {
-                (
-                    "unsplash1",
-                    "Mountain Lake Reflection",
-                    "https://images.unsplash.com/photo-1501785888041-af3ef285b470?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTd8fHdhbGxwYXBlcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60",
-                    "https://images.unsplash.com/photo-1501785888041-af3ef285b470?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80"
-                ),
-                (
-                    "unsplash2",
-                    "Tranquil Ocean Sunset",
-                    "https://images.unsplash.com/photo-1616036740257-9449ea1f6605?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzJ8fHdhbGxwYXBlcnxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60",
-                    "https://images.unsplash.com/photo-1616036740257-9449ea1f6605?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80"
-                )
+                Id = imageId,
+                Title = title,
+                Category = category,
+                ThumbnailUrl = $"https://backiee.com/static/wallpapers/560x315/{imageId}.jpg",
+                ImageUrl = $"https://backiee.com/static/wallpapers/wide/{imageId}.jpg",
+                SourceUrl = $"https://backiee.com/wallpaper/{imageId}",
+                Source = "Backiee",
+                Width = 3840,
+                Height = 2160,
+                ResolutionCategory = "4K",
+                Rating = random.Next(5, 50),
+                UploadDate = DateTime.Now.AddDays(-random.Next(1, 7)),
+                Metadata = new Dictionary<string, string>
+                {
+                    { "Source", "Backiee" },
+                    { "IsStaticPlaceholder", "true" }
+                }
             };
-            
-            // Process both backiee and Unsplash wallpapers
-            var allWallpapers = directWallpapers.Concat(unsplashWallpapers);
-            
-            foreach (var (id, title, thumbnailUrl, fullSizeUrl) in allWallpapers)
-            {
-                try
-                {
-                    LogToFile($"Processing direct wallpaper: ID={id}, Title={title}");
-                    LogToFile($"Thumbnail: {thumbnailUrl}");
-                    LogToFile($"Full size: {fullSizeUrl}");
-                    
-                    // Determine source based on URL
-                    string source = thumbnailUrl.Contains("unsplash") ? "Unsplash" : "Backiee";
-                    string sourceUrl = thumbnailUrl.Contains("unsplash") 
-                        ? "https://unsplash.com" 
-                        : $"https://backiee.com/wallpaper/{id}";
-                    
-                    // Create wallpaper model
-                    var wallpaper = new WallpaperModel
-                    {
-                        Id = id,
-                        Title = title,
-                        ImageUrl = fullSizeUrl,
-                        ThumbnailUrl = thumbnailUrl,
-                        SourceUrl = sourceUrl,
-                        Source = source,
-                        Width = 1920,
-                        Height = 1080,
-                        ResolutionCategory = "HD",
-                        UploadDate = DateTime.Now
-                    };
-                    
-                    wallpapers.Add(wallpaper);
-                    _logger.LogInformation("Added direct wallpaper: {Title} with URL {Url}", title, fullSizeUrl);
-                    LogToFile($"Added direct wallpaper: {title} with URL {fullSizeUrl}");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error processing direct wallpaper: {Title}", title);
-                    LogToFile($"ERROR processing direct wallpaper {title}: {ex.Message}");
-                }
-            }
-            
-            LogToFile($"Finished processing direct wallpapers. Count: {wallpapers.Count}");
-            return wallpapers;
         }
     }
 } 

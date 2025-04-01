@@ -10,7 +10,7 @@
       Title="Home">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid Margin="24,0,24,24">
+        <Grid x:Name="MainPanel" Margin="24,0,24,24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -32,9 +32,15 @@
                 FontWeight="SemiBold"
                 Margin="0,16,0,24"
                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
+                
+            <!-- Load Latest Backiee Button -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,0,8">
+                <ui:Button x:Name="LoadLatestBackieeButton" Content="Load Latest Backiee Wallpapers" Appearance="Primary" Icon="ArrowRepeatAll24" />
+                <ui:ProgressRing x:Name="LoadingProgressRing" IsIndeterminate="True" Visibility="Collapsed" Margin="8,0,0,0" />
+            </StackPanel>
 
             <!-- Featured Wallpapers Section -->
-            <Grid Grid.Row="1">
+            <Grid Grid.Row="2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -43,7 +49,7 @@
                 <!-- Large Featured Card -->
                 <Border Grid.Column="0" Style="{StaticResource ContentCard}" Height="320" Margin="0,0,8,16" MouseLeftButtonUp="FeaturedWallpaper_Click">
                     <Grid>
-                        <Image x:Name="FeaturedWallpaperImage" Source="https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d" Stretch="UniformToFill"/>
+                        <Image x:Name="FeaturedWallpaperImage" Source="" Stretch="UniformToFill"/>
                         
                         <!-- Overlay -->
                         <Border VerticalAlignment="Bottom" Background="#90000000" Height="100">
@@ -71,7 +77,7 @@
                     <!-- 8K Ultra HD card -->
                     <Border Grid.Row="0" Style="{StaticResource ContentCard}" Margin="0,0,0,8" Height="155" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1517976487492-5750f3195933" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             
                             <!-- Overlay -->
                             <Border VerticalAlignment="Bottom" Background="#80000000" Height="50" CornerRadius="0,0,14,14">
@@ -107,7 +113,7 @@
                     <!-- AI Generated card -->
                     <Border Grid.Row="1" Style="{StaticResource ContentCard}" Margin="0,8,0,0" Height="155" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1566808907643-7c0e79cbe703" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             
                             <!-- Overlay with gradient -->
                             <Border VerticalAlignment="Bottom" Height="50" CornerRadius="0,0,14,14">
@@ -158,7 +164,7 @@
             <!-- AI Wallpapers Promo Section -->
             
             <!-- Daily Popular Wallpapers Section -->
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="3">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -194,7 +200,7 @@
                     <!-- Wallpaper Card 1 -->
                     <Border Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="200" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1419242902214-272b3f66ee7a" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -274,7 +280,7 @@
                     <!-- Wallpaper Card 2 -->
                     <Border Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="200" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1505765050516-f72dcac9c60e" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -354,7 +360,7 @@
                     <!-- Wallpaper Card 3 -->
                     <Border Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="200" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1534447677768-be436bb09401" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -434,7 +440,7 @@
             </Grid>
 
             <!-- Weekly Popular Wallpapers Section -->
-            <Grid Grid.Row="3" Margin="0,30,0,0">
+            <Grid Grid.Row="4" Margin="0,30,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -470,7 +476,7 @@
                     <!-- Wallpaper Card 1 -->
                     <Border Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="200" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1511300636408-a63a89df3482" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -531,7 +537,7 @@
                     <!-- Wallpaper Card 2 -->
                     <Border Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="200" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1506744038136-46273834b3fb" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -592,7 +598,7 @@
                     <!-- Wallpaper Card 3 -->
                     <Border Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="200" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1470770841072-f978cf4d019e" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -653,7 +659,7 @@
             </Grid>
 
             <!-- Monthly Popular Wallpapers Section -->
-            <Grid Grid.Row="4" Margin="0,30,0,0">
+            <Grid Grid.Row="5" Margin="0,30,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -689,7 +695,7 @@
                     <!-- Wallpaper Card 1 -->
                     <Border Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="200" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1441974231531-c6227db76b6e" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -750,7 +756,7 @@
                     <!-- Wallpaper Card 2 -->
                     <Border Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="200" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1507525428034-b723cf961d3e" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -811,7 +817,7 @@
                     <!-- Wallpaper Card 3 -->
                     <Border Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="200" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1473773508845-188df298d2d1" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             <Border Style="{StaticResource ResolutionBadge}" CornerRadius="6" Margin="12,12,0,0">
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -872,7 +878,7 @@
             </Grid>
 
             <!-- Top Publishers Section -->
-            <Grid Grid.Row="5" Margin="0,30,0,0">
+            <Grid Grid.Row="6" Margin="0,30,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -909,7 +915,7 @@
                     <Border Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="200" CornerRadius="14">
                         <Grid>
                             <!-- Background Image -->
-                            <Image Source="https://images.unsplash.com/photo-1530540636408-a63a89df3482" Stretch="UniformToFill" Opacity="0.85"/>
+                            <Image Source="" Stretch="UniformToFill" Opacity="0.85"/>
                             
                             <!-- Dark Overlay -->
                             <Border Background="#60000000"/>
@@ -945,7 +951,7 @@
                     <Border Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="200" CornerRadius="14">
                         <Grid>
                             <!-- Background Image -->
-                            <Image Source="https://images.unsplash.com/photo-1463171379579-3fdfb86d6285" Stretch="UniformToFill" Opacity="0.85"/>
+                            <Image Source="" Stretch="UniformToFill" Opacity="0.85"/>
                             
                             <!-- Dark Overlay -->
                             <Border Background="#60000000"/>
@@ -981,7 +987,7 @@
                     <Border Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="200" CornerRadius="14">
                         <Grid>
                             <!-- Background Image -->
-                            <Image Source="https://images.unsplash.com/photo-1500964757637-c85e8a162699" Stretch="UniformToFill" Opacity="0.85"/>
+                            <Image Source="" Stretch="UniformToFill" Opacity="0.85"/>
                             
                             <!-- Dark Overlay -->
                             <Border Background="#60000000"/>
@@ -1016,7 +1022,7 @@
             </Grid>
 
             <!-- Categories Section -->
-            <Grid Grid.Row="6" Margin="0,30,0,0">
+            <Grid Grid.Row="7" Margin="0,30,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -1052,7 +1058,7 @@
                     <!-- Category Card 1 - Nature -->
                     <Border x:Name="NatureCategoryCard" Grid.Column="0" Style="{StaticResource ContentCard}" Margin="0,0,8,0" Height="160" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1472214103451-9374bd1c798e" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             
                             <!-- Gradient Overlay -->
                             <Border>
@@ -1075,7 +1081,7 @@
                     <!-- Category Card 2 - Architecture -->
                     <Border x:Name="ArchitectureCategoryCard" Grid.Column="1" Style="{StaticResource ContentCard}" Margin="4,0,4,0" Height="160" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1487958449943-2429e8be8625" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             
                             <!-- Gradient Overlay -->
                             <Border>
@@ -1098,7 +1104,7 @@
                     <!-- Category Card 3 - Abstract -->
                     <Border x:Name="AbstractCategoryCard" Grid.Column="2" Style="{StaticResource ContentCard}" Margin="8,0,0,0" Height="160" CornerRadius="14">
                         <Grid>
-                            <Image Source="https://images.unsplash.com/photo-1604871000636-074fa5117945" Stretch="UniformToFill"/>
+                            <Image Source="" Stretch="UniformToFill"/>
                             
                             <!-- Gradient Overlay -->
                             <Border>

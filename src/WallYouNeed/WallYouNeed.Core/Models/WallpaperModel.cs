@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace WallYouNeed.Core.Models
 {
@@ -20,11 +21,13 @@ namespace WallYouNeed.Core.Models
         public int Rating { get; set; } // User rating
         public long FileSizeBytes { get; set; } // Size of the wallpaper file in bytes
         public double FileSizeMB { get; set; } // Size of the wallpaper file in megabytes
+        public Dictionary<string, string> Metadata { get; set; } // Additional metadata
 
         public WallpaperModel()
         {
             Id = Guid.NewGuid().ToString();
             UploadDate = DateTime.Now;
+            Metadata = new Dictionary<string, string>();
         }
 
         public string GetResolution()

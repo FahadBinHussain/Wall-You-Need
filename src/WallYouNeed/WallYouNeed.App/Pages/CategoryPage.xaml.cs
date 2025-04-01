@@ -197,154 +197,129 @@ namespace WallYouNeed.App.Pages
             
             try
             {
-                // Use the injected BackieeScraperService to get real wallpapers
-                if (_backieeScraperService != null)
+                // First, try to get the latest wallpapers from the scraper service
+                var wallpaperModels = await _backieeScraperService.ScrapeLatestWallpapers();
+                
+                if (wallpaperModels != null && wallpaperModels.Any())
                 {
-                    _logger.LogInformation("Using BackieeScraperService to fetch latest wallpapers");
+                    _logger.LogInformation("Successfully fetched {Count} wallpapers from BackieeScraperService", wallpaperModels.Count);
                     
-                    // Fetch the latest wallpapers from backiee.com
-                    var backieeWallpapers = await _backieeScraperService.ScrapeLatestWallpapers();
-                    
-                    if (backieeWallpapers == null || !backieeWallpapers.Any())
+                    // Convert WallpaperModel objects to Wallpaper objects
+                    foreach (var model in wallpaperModels)
                     {
-                        _logger.LogWarning("No wallpapers returned from BackieeScraperService");
-                        
-                        // Show a snackbar notification
-                        System.Windows.Application.Current.Dispatcher.Invoke(() => 
-                        {
-                            _snackbarService.Show("Warning", "No wallpapers found from backiee.com. Using fallback data.",
-                                Wpf.Ui.Controls.ControlAppearance.Caution, null, TimeSpan.FromSeconds(3));
-                        });
-                        
-                        // Return fallback wallpapers
-                        return GetFallbackWallpapers();
+                        var wallpaper = ConvertToWallpaper(model);
+                        wallpapers.Add(wallpaper);
                     }
                     
-                    _logger.LogInformation("Successfully fetched {Count} wallpapers from backiee.com", backieeWallpapers.Count);
-                    
-                    // Convert WallpaperModel to Wallpaper
-                    foreach (var model in backieeWallpapers)
-                    {
-                        try
-                        {
-                            wallpapers.Add(new Wallpaper
-                            {
-                                Id = Guid.NewGuid().ToString(),
-                                Name = model.Title,
-                                Title = model.Title,
-                                SourceUrl = model.ImageUrl,
-                                ThumbnailUrl = model.ThumbnailUrl,
-                                Source = WallpaperSource.Custom,
-                                Width = model.Width,
-                                Height = model.Height,
-                                Tags = new List<string> { "Latest", model.ResolutionCategory },
-                                Metadata = new Dictionary<string, string>
-                                {
-                                    { "Resolution", model.ResolutionCategory },
-                                    { "Source", "backiee.com" },
-                                    { "Likes", new Random().Next(1, 60).ToString() }, // Backiee doesn't expose likes in the scraper
-                                    { "Downloads", new Random().Next(10, 300).ToString() } // Backiee doesn't expose downloads in the scraper
-                                }
-                            });
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Error converting wallpaper model to Wallpaper object");
-                        }
-                    }
-                    
-                    _logger.LogInformation("Successfully converted {Count} latest wallpapers from backiee.com", wallpapers.Count);
+                    // Save the fetched wallpapers to the wallpaper service
+                    await SaveWallpapersToService(wallpapers);
                 }
                 else
                 {
-                    _logger.LogWarning("BackieeScraperService not available, using placeholder data");
+                    _logger.LogWarning("No wallpapers returned from BackieeScraperService, trying hardcoded wallpapers");
                     
-                    // Return fallback wallpapers
-                    return GetFallbackWallpapers();
+                    // Try to get hardcoded wallpapers as a fallback
+                    var hardcodedWallpapers = await _backieeScraperService.GetHardcodedWallpapers();
+                    
+                    if (hardcodedWallpapers != null && hardcodedWallpapers.Any())
+                    {
+                        _logger.LogInformation("Successfully fetched {Count} hardcoded wallpapers", hardcodedWallpapers.Count);
+                        
+                        // Convert WallpaperModel objects to Wallpaper objects
+                        foreach (var model in hardcodedWallpapers)
+                        {
+                            var wallpaper = ConvertToWallpaper(model);
+                            wallpapers.Add(wallpaper);
+                        }
+                        
+                        // Save the fetched wallpapers to the wallpaper service
+                        await SaveWallpapersToService(wallpapers);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("No hardcoded wallpapers found, using static placeholder wallpapers");
+                        
+                        // Use static placeholder wallpapers instead of dynamic ones
+                        var placeholderModels = _backieeScraperService.GeneratePlaceholderWallpapers(12);
+                        
+                        foreach (var model in placeholderModels)
+                        {
+                            var wallpaper = ConvertToWallpaper(model);
+                            wallpapers.Add(wallpaper);
+                        }
+                    }
                 }
-                
-                return wallpapers;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching latest wallpapers from backiee.com");
+                _logger.LogError(ex, "Error fetching wallpapers from backiee.com, using static placeholder wallpapers");
                 
-                // Show a snackbar notification
-                System.Windows.Application.Current.Dispatcher.Invoke(() => 
+                // Use placeholder wallpapers as a fallback
+                var placeholderModels = _backieeScraperService.GeneratePlaceholderWallpapers(8);
+                
+                foreach (var model in placeholderModels)
                 {
-                    _snackbarService.Show("Error", "Failed to fetch latest wallpapers. Using fallback data.",
-                        Wpf.Ui.Controls.ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
-                });
-                
-                // Return fallback wallpapers on error
-                return GetFallbackWallpapers();
+                    var wallpaper = ConvertToWallpaper(model);
+                    wallpapers.Add(wallpaper);
+                }
             }
+            
+            return wallpapers;
         }
         
-        private List<Wallpaper> GetFallbackWallpapers()
+        // Helper method to convert WallpaperModel to Wallpaper
+        private Wallpaper ConvertToWallpaper(WallpaperModel model)
         {
-            var fallbackWallpapers = new List<Wallpaper>();
-            
-            _logger.LogInformation("Using fallback wallpaper data");
-            
-            // Fallback to placeholder data
-            fallbackWallpapers.Add(CreateWallpaperFromBackiee(
-                "Tiger Warrior Amidst Blazing Flames", 
-                "https://wallpaper-house.com/data/out/12/wallpaper2you_594262.jpg", 
-                3840, 2160, "backiee.com", 56, 258, "4K"));
-                
-            fallbackWallpapers.Add(CreateWallpaperFromBackiee(
-                "Colorful Brickwork Symphony in 4K Splendor", 
-                "https://images.pexels.com/photos/1308624/pexels-photo-1308624.jpeg", 
-                3840, 2160, "backiee.com", 8, 36, "4K"));
-                
-            fallbackWallpapers.Add(CreateWallpaperFromBackiee(
-                "Ford Mustang Power Duo in Stunning Sunset", 
-                "https://images.hdqwalls.com/wallpapers/ford-mustang-4k-2020-9z.jpg", 
-                5120, 2880, "backiee.com", 8, 32, "5K"));
-            
-            fallbackWallpapers.Add(CreateWallpaperFromBackiee(
-                "Mountain Landscape with Calm Lake Reflection", 
-                "https://images.pexels.com/photos/2662116/pexels-photo-2662116.jpeg", 
-                4096, 2730, "backiee.com", 12, 45, "4K"));
-                
-            fallbackWallpapers.Add(CreateWallpaperFromBackiee(
-                "Vibrant Abstract Digital Art Creation", 
-                "https://www.pixelstalk.net/wp-content/uploads/2016/05/Free-Download-Cool-Abstract-Wallpapers-HD.jpg", 
-                3840, 2160, "backiee.com", 7, 28, "4K"));
-                
-            _logger.LogInformation("Created {Count} fallback wallpapers", fallbackWallpapers.Count);
-            
-            return fallbackWallpapers;
-        }
-        
-        private Wallpaper CreateWallpaperFromBackiee(string name, string imageUrl, int width, int height, 
-            string source, int likes, int downloads, string resolution)
-        {
-            // Use a thumbnail version if available, or generate one from the URL
-            string thumbnailUrl = imageUrl.Replace(".jpg", "_thumb.jpg")
-                .Replace(".png", "_thumb.png")
-                .Replace(".jpeg", "_thumb.jpeg");
-                
-            return new Wallpaper
+            var wallpaper = new Wallpaper
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = name,
-                Title = name,
-                SourceUrl = imageUrl,
-                ThumbnailUrl = thumbnailUrl,
+                Id = model.Id,
+                Title = model.Title,
+                Name = model.Title,
+                Tags = new List<string> { model.Category, "Latest" },
+                ThumbnailUrl = model.ThumbnailUrl,
+                SourceUrl = model.ImageUrl,
+                Width = model.Width,
+                Height = model.Height,
                 Source = WallpaperSource.Custom,
-                Width = width,
-                Height = height,
-                Tags = new List<string> { "Latest", resolution },
+                CreatedAt = model.UploadDate,
                 Metadata = new Dictionary<string, string>
                 {
-                    { "Resolution", resolution },
-                    { "Source", "backiee.com" },
-                    { "Likes", likes.ToString() },
-                    { "Downloads", downloads.ToString() }
+                    { "Source", "Backiee" },
+                    { "Rating", model.Rating.ToString() },
+                    { "Resolution", model.ResolutionCategory ?? "4K" }
                 }
             };
+            
+            // Copy over any additional metadata if present
+            if (model.Metadata != null)
+            {
+                foreach (var kvp in model.Metadata)
+                {
+                    if (!wallpaper.Metadata.ContainsKey(kvp.Key))
+                    {
+                        wallpaper.Metadata.Add(kvp.Key, kvp.Value);
+                    }
+                }
+            }
+            
+            return wallpaper;
+        }
+        
+        // Helper method to save wallpapers to the service
+        private async Task SaveWallpapersToService(List<Wallpaper> wallpapers)
+        {
+            try
+            {
+                foreach (var wallpaper in wallpapers)
+                {
+                    await _wallpaperService.SaveWallpaperAsync(wallpaper);
+                }
+                _logger.LogInformation("Successfully saved {Count} wallpapers to service", wallpapers.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving wallpapers to service");
+            }
         }
         
         private void DisplayWallpapers()
@@ -692,7 +667,7 @@ namespace WallYouNeed.App.Pages
                 }
                 else
                 {
-                    // No valid image source found, use a placeholder
+                    // No valid image source found, use fallback method
                     TryLoadFallbackImage(image, wallpaper);
                 }
             }
@@ -707,48 +682,71 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                // Try to use a placeholder based on resolution category
-                string resolution = "Other";
-                if (wallpaper.Metadata != null && wallpaper.Metadata.TryGetValue("Resolution", out var res))
+                _logger.LogWarning("Using fallback image for wallpaper: {WallpaperId}", wallpaper.Id);
+                
+                // Try to load directly from thumbnail URL first
+                if (!string.IsNullOrEmpty(wallpaper.ThumbnailUrl))
                 {
-                    resolution = res;
+                    try
+                    {
+                        var bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.UriSource = new Uri(wallpaper.ThumbnailUrl);
+                        bitmap.EndInit();
+                        
+                        image.Source = bitmap;
+                        _logger.LogInformation("Successfully loaded fallback from thumbnail URL: {Url}", wallpaper.ThumbnailUrl);
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error loading thumbnail URL in fallback: {Url}", wallpaper.ThumbnailUrl);
+                    }
                 }
                 
-                // Use a solid color background with resolution text
+                // If thumbnail fails, try source URL
+                if (!string.IsNullOrEmpty(wallpaper.SourceUrl))
+                {
+                    try
+                    {
+                        var bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.UriSource = new Uri(wallpaper.SourceUrl);
+                        bitmap.EndInit();
+                        
+                        image.Source = bitmap;
+                        _logger.LogInformation("Successfully loaded fallback from source URL: {Url}", wallpaper.SourceUrl);
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error loading source URL in fallback: {Url}", wallpaper.SourceUrl);
+                    }
+                }
+                
+                // If all loading attempts failed, just show a simple "No Image" text
+                _logger.LogWarning("All image loading attempts failed, showing 'No Image Available' text");
+                
+                // Create a very simple "No Image Available" placeholder
                 var drawingVisual = new System.Windows.Media.DrawingVisual();
                 using (var drawingContext = drawingVisual.RenderOpen())
                 {
-                    // Set background color based on resolution
-                    System.Windows.Media.Color bgColor;
-                    switch (resolution)
-                    {
-                        case "8K":
-                            bgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#7B1FA2");
-                            break;
-                        case "5K":
-                            bgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E91E63");
-                            break;
-                        case "4K":
-                            bgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2196F3");
-                            break;
-                        default:
-                            bgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#607D8B");
-                            break;
-                    }
-                    
                     // Draw background
                     drawingContext.DrawRectangle(
-                        new System.Windows.Media.SolidColorBrush(bgColor),
+                        new System.Windows.Media.SolidColorBrush(
+                            (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#607D8B")),
                         null,
-                        new Rect(0, 0, 280, 200));
+                        new System.Windows.Rect(0, 0, 280, 200));
                     
-                    // Draw resolution text
+                    // Draw "No Image Available" text
                     var text = new System.Windows.Media.FormattedText(
-                        resolution,
+                        "No Image Available",
                         System.Globalization.CultureInfo.CurrentCulture,
                         System.Windows.FlowDirection.LeftToRight,
                         new System.Windows.Media.Typeface("Segoe UI"),
-                        24,
+                        16,
                         System.Windows.Media.Brushes.White,
                         System.Windows.Media.VisualTreeHelper.GetDpi(drawingVisual).PixelsPerDip);
                     
@@ -765,8 +763,6 @@ namespace WallYouNeed.App.Pages
                 
                 // Set as image source
                 image.Source = renderTarget;
-                
-                _logger.LogInformation("Set fallback image for wallpaper: {WallpaperId}", wallpaper.Id);
             }
             catch (Exception ex)
             {

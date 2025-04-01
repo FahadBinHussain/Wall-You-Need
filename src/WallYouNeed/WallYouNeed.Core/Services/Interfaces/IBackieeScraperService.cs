@@ -52,5 +52,12 @@ namespace WallYouNeed.Core.Services.Interfaces
         /// </summary>
         /// <returns>List of wallpaper models from hardcoded URLs</returns>
         Task<List<WallpaperModel>> GetHardcodedWallpapers();
+        
+        /// <summary>
+        /// Generates placeholder wallpaper models with backiee-specific formatting
+        /// </summary>
+        /// <param name="count">Number of placeholders to generate</param>
+        /// <returns>List of placeholder wallpaper models</returns>
+        List<WallpaperModel> GeneratePlaceholderWallpapers(int count = 10);
     }
 } 
