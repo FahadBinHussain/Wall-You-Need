@@ -68,7 +68,27 @@ namespace WallYouNeed.App.Pages
                 // Connect button click handlers if the elements exist
                 if (FindName("LatestViewAllButton") is System.Windows.Controls.Button latestButton)
                 {
-                    latestButton.Click += (s, e) => NavigateToCategory("Latest");
+                    _logger.LogInformation("Found LatestViewAllButton, attaching click handler");
+                    
+                    // Add a more robust click handler with explicit error handling
+                    latestButton.Click += (s, args) => 
+                    {
+                        try
+                        {
+                            _logger.LogInformation("LatestViewAllButton clicked");
+                            NavigateToCategory("Latest");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Exception in LatestViewAllButton click handler");
+                            _snackbarService.Show("Error", $"Navigation error: {ex.Message}", 
+                                ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
+                        }
+                    };
+                }
+                else
+                {
+                    _logger.LogWarning("LatestViewAllButton not found in the XAML");
                 }
                 
                 if (FindName("WeeklyViewAllButton") is System.Windows.Controls.Button weeklyButton)
@@ -100,6 +120,8 @@ namespace WallYouNeed.App.Pages
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error setting up view all buttons");
+                _snackbarService.Show("Error", $"Failed to setup navigation buttons: {ex.Message}", 
+                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
             }
         }
         
@@ -221,10 +243,19 @@ namespace WallYouNeed.App.Pages
         
         private void FeaturedWallpaper_Click(object sender, RoutedEventArgs e)
         {
-            _logger.LogInformation("Featured wallpaper clicked");
-            
-            // Navigate to the Latest category page to show latest wallpapers
-            NavigateToCategory("Latest");
+            try
+            {
+                _logger.LogInformation("Featured wallpaper clicked");
+                
+                // Navigate to the Latest category page to show latest wallpapers
+                NavigateToCategory("Latest");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in FeaturedWallpaper_Click handler");
+                _snackbarService.Show("Error", $"Navigation error: {ex.Message}", 
+                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
+            }
         }
         
         private void NavigateToCategory(string categoryName)
@@ -233,6 +264,55 @@ namespace WallYouNeed.App.Pages
             
             try
             {
+                // For "Latest" category, navigate to BackieeImagesPage instead
+                if (categoryName.Equals("Latest", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogInformation("Latest category detected - attempting to navigate to BackieeImagesPage");
+                    
+                    try
+                    {
+                        // Create an instance of BackieeImagesPage
+                        _logger.LogDebug("Resolving BackieeImagesPage from services");
+                        var backieeImagesPage = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<BackieeImagesPage>((App.Current as App).Services);
+                        _logger.LogDebug("BackieeImagesPage resolved successfully");
+                        
+                        // Navigate to the BackieeImagesPage using the frame
+                        var backieeWindow = Window.GetWindow(this) as MainWindow;
+                        if (backieeWindow == null)
+                        {
+                            _logger.LogError("Failed to get MainWindow from current window");
+                            _snackbarService.Show("Error", "Failed to navigate: MainWindow not found", 
+                                ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                            return;
+                        }
+                        
+                        // Get the ContentFrame directly through its name
+                        var backieeFrame = backieeWindow.FindName("ContentFrame") as Frame;
+                        if (backieeFrame == null)
+                        {
+                            _logger.LogError("Failed to get ContentFrame from MainWindow");
+                            _snackbarService.Show("Error", "Failed to navigate: ContentFrame not found", 
+                                ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                            return;
+                        }
+                        
+                        _logger.LogDebug("Navigating to BackieeImagesPage");
+                        backieeFrame.Navigate(backieeImagesPage);
+                        _logger.LogInformation("Successfully navigated to BackieeImagesPage");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error navigating to BackieeImagesPage");
+                        _snackbarService.Show("Error", $"Failed to navigate to BackieeImagesPage: {ex.Message}", 
+                            ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
+                    }
+                    
+                    return;
+                }
+                
+                // For other categories, use CategoryPage as before
+                _logger.LogDebug("Using CategoryPage for category: {CategoryName}", categoryName);
+                
                 // Create an instance of the CategoryPage
                 var categoryPage = new CategoryPage(
                     Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<CategoryPage>>((App.Current as App).Services),
@@ -244,17 +324,35 @@ namespace WallYouNeed.App.Pages
                 categoryPage.SetCategory(categoryName);
                 
                 // Navigate to the CategoryPage using the frame
-                if (Window.GetWindow(this) is MainWindow mainWindow &&
-                    mainWindow.FindName("MainFrame") is Frame mainFrame)
+                var categoryWindow = Window.GetWindow(this) as MainWindow;
+                if (categoryWindow != null)
                 {
-                    mainFrame.Navigate(categoryPage);
+                    // Get the ContentFrame directly through its name
+                    var categoryFrame = categoryWindow.FindName("ContentFrame") as Frame;
+                    if (categoryFrame != null)
+                    {
+                        categoryFrame.Navigate(categoryPage);
+                        _logger.LogInformation("Successfully navigated to CategoryPage for {CategoryName}", categoryName);
+                    }
+                    else
+                    {
+                        _logger.LogError("Failed to get ContentFrame for CategoryPage navigation");
+                        _snackbarService.Show("Error", "Failed to navigate: ContentFrame not found", 
+                            ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                    }
+                }
+                else
+                {
+                    _logger.LogError("Failed to get MainWindow for CategoryPage navigation");
+                    _snackbarService.Show("Error", "Failed to navigate: MainWindow not found", 
+                        ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error navigating to category: {CategoryName}", categoryName);
-                _snackbarService.Show("Error", "Failed to navigate to category", 
-                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                _snackbarService.Show("Error", $"Failed to navigate to category: {ex.Message}", 
+                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
             }
         }
         

@@ -98,12 +98,6 @@ namespace WallYouNeed.App
             SetActiveButton(sender as System.Windows.Controls.Button);
         }
 
-        private void BackieeImagesButton_Click(object sender, RoutedEventArgs e)
-        {
-            NavigateToPage("Backiee Images");
-            SetActiveButton(sender as System.Windows.Controls.Button);
-        }
-
         private void SetActiveButton(System.Windows.Controls.Button button)
         {
             if (_currentActiveButton != null)

@@ -6,7 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:local="clr-namespace:WallYouNeed.App.Pages"
     mc:Ignorable="d"
-    Title="Backiee Image Gallery" 
+    Title="Latest Wallpapers" 
     d:DesignHeight="650" 
     d:DesignWidth="800">
 
@@ -17,7 +17,7 @@
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" 
-                   Text="Backiee Image Gallery" 
+                   Text="Latest Wallpapers" 
                    FontSize="24" 
                    FontWeight="Bold" 
                    Margin="20,10,0,10"/>
@@ -35,9 +35,13 @@
                                 BorderThickness="1" 
                                 Margin="8" 
                                 Padding="3"
-                                CornerRadius="5">
+                                CornerRadius="5"
+                                Tag="{Binding}"
+                                MouseLeftButtonUp="ImageBorder_MouseLeftButtonUp"
+                                Cursor="Hand">
                             <Grid>
                                 <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
@@ -53,6 +57,22 @@
                                            Text="{Binding ImageId}" 
                                            HorizontalAlignment="Center" 
                                            Margin="0,5,0,5"/>
+                                
+                                <StackPanel Grid.Row="2" 
+                                            Orientation="Horizontal" 
+                                            HorizontalAlignment="Center" 
+                                            Margin="0,0,0,5">
+                                    <Button Content="View" 
+                                            Margin="5,0" 
+                                            Tag="{Binding}"
+                                            Click="ViewImage_Click"
+                                            Padding="8,3"/>
+                                    <Button Content="Save" 
+                                            Margin="5,0" 
+                                            Tag="{Binding}"
+                                            Click="SaveImage_Click"
+                                            Padding="8,3"/>
+                                </StackPanel>
                             </Grid>
                         </Border>
                     </DataTemplate>
