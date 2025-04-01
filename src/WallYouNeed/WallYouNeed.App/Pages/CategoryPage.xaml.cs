@@ -914,40 +914,65 @@ namespace WallYouNeed.App.Pages
                     return new List<Wallpaper>();
                 }
                 
+                _logger.LogInformation("Successfully loaded HTML content, length: {Length} characters", htmlContent.Length);
+                
+                // Check for placeholder divs in the HTML
+                bool containsPlaceholderDivs = htmlContent.Contains("class=\"placeholder\"");
+                bool containsLazyLoadImages = htmlContent.Contains("class=\"rounded-image img-fluid lazyload\"");
+                
+                _logger.LogInformation("HTML contains placeholder divs: {ContainsPlaceholderDivs}", containsPlaceholderDivs);
+                _logger.LogInformation("HTML contains lazyload images: {ContainsLazyLoadImages}", containsLazyLoadImages);
+                
                 // Extract wallpapers from the content
                 var wallpaperModels = await _backieeScraperService.ExtractWallpapersFromContentHtml(htmlContent);
                 
                 if (wallpaperModels == null || wallpaperModels.Count == 0)
                 {
                     _logger.LogWarning("No wallpapers found in the HTML content");
-                    _snackbarService.Show("No wallpapers", "No wallpapers found in the selected file", 
-                        Wpf.Ui.Controls.ControlAppearance.Caution, null, TimeSpan.FromSeconds(2));
+                    _snackbarService.Show("No wallpapers", "No wallpapers found in the selected file. Make sure you're using a proper backiee.com HTML export.", 
+                        Wpf.Ui.Controls.ControlAppearance.Caution, null, TimeSpan.FromSeconds(3));
                     return new List<Wallpaper>();
                 }
                 
                 _logger.LogInformation("Found {Count} wallpapers in the HTML content", wallpaperModels.Count);
                 
+                // Log details of the first few wallpapers for debugging
+                for (int i = 0; i < Math.Min(3, wallpaperModels.Count); i++)
+                {
+                    var model = wallpaperModels[i];
+                    _logger.LogInformation("Wallpaper {Index}: ID={Id}, Title={Title}, URL={Url}", 
+                        i+1, model.Id, model.Title, model.ImageUrl);
+                }
+                
                 // Convert WallpaperModel to Wallpaper entities
                 var wallpapers = new List<Wallpaper>();
                 foreach (var model in wallpaperModels)
                 {
-                    wallpapers.Add(new Wallpaper
+                    try
                     {
-                        Id = model.Id,
-                        Title = model.Title,
-                        Name = model.Title,
-                        SourceUrl = model.ImageUrl,
-                        ThumbnailUrl = model.ThumbnailUrl,
-                        Source = WallpaperSource.Custom,
-                        Width = model.Width,
-                        Height = model.Height,
-                        Tags = new List<string> { "Backiee Content", model.ResolutionCategory },
-                        Metadata = new Dictionary<string, string>
+                        wallpapers.Add(new Wallpaper
                         {
-                            { "Resolution", model.ResolutionCategory },
-                            { "Source", "backiee.com" }
-                        }
-                    });
+                            Id = model.Id,
+                            Title = model.Title,
+                            Name = model.Title,
+                            SourceUrl = model.ImageUrl,
+                            ThumbnailUrl = model.ThumbnailUrl,
+                            Source = WallpaperSource.Custom,
+                            Width = model.Width,
+                            Height = model.Height,
+                            Tags = new List<string> { "Backiee Content", model.ResolutionCategory },
+                            Metadata = new Dictionary<string, string>
+                            {
+                                { "Resolution", model.ResolutionCategory },
+                                { "Source", "backiee.com" },
+                                { "ID", model.Id }
+                            }
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error converting wallpaper model to Wallpaper entity: {Title}", model.Title);
+                    }
                 }
                 
                 _snackbarService.Show("Success", $"Found {wallpapers.Count} wallpapers in the content", 

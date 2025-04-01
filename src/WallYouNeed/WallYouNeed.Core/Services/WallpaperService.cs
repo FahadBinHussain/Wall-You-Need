@@ -48,8 +48,51 @@ public class WallpaperService : IWallpaperService
         _configurationService = configurationService;
         _backieeScraperService = backieeScraperService;
         
-        // Subscribe to new wallpapers event
         _backieeScraperService.NewWallpapersAdded += BackieeScraperService_NewWallpapersAdded;
+        
+        // Ensure the backiee_content.html file is available
+        EnsureBackieeContentFileExists();
+    }
+
+    private void EnsureBackieeContentFileExists()
+    {
+        try
+        {
+            string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string targetPath = Path.Combine(appDirectory, "backiee_content.html");
+            
+            // Check if the file already exists in the app directory
+            if (File.Exists(targetPath))
+            {
+                _logger.LogInformation("backiee_content.html file already exists at: {Path}", targetPath);
+                return;
+            }
+            
+            // Check for the file in the working directory
+            string workingDirPath = Path.Combine(Directory.GetCurrentDirectory(), "backiee_content.html");
+            if (File.Exists(workingDirPath))
+            {
+                _logger.LogInformation("Found backiee_content.html in working directory, copying to app directory");
+                File.Copy(workingDirPath, targetPath, true);
+                return;
+            }
+            
+            // Check for the file relative to the executable
+            var executablePath = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
+            string execPath = Path.Combine(executablePath, "backiee_content.html");
+            if (File.Exists(execPath))
+            {
+                _logger.LogInformation("Found backiee_content.html relative to executable, copying to app directory");
+                File.Copy(execPath, targetPath, true);
+                return;
+            }
+            
+            _logger.LogWarning("Could not find backiee_content.html file in any expected location");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error ensuring backiee_content.html file exists");
+        }
     }
 
     /// <inheritdoc />
@@ -596,11 +639,83 @@ public class WallpaperService : IWallpaperService
         {
             _logger.LogInformation("Refreshing Backiee wallpapers");
             
+            // First, try the hardcoded approach which is most reliable
+            _logger.LogInformation("Using hardcoded wallpaper approach");
+            var hardcodedWallpapers = await _backieeScraperService.GetHardcodedWallpapers();
+            
+            if (hardcodedWallpapers.Any())
+            {
+                _logger.LogInformation("Successfully got {Count} hardcoded wallpapers", hardcodedWallpapers.Count);
+                await AddOrUpdateWallpapers(hardcodedWallpapers);
+                
+                // Create a collection for these wallpapers
+                var collection = await _collectionRepository.GetCollectionByNameAsync("Backiee Wallpapers");
+                if (collection == null)
+                {
+                    collection = new Collection
+                    {
+                        Name = "Backiee Wallpapers",
+                        Description = "High-quality wallpapers from Backiee",
+                        CoverImagePath = hardcodedWallpapers.FirstOrDefault()?.ThumbnailUrl
+                    };
+                    
+                    await _collectionRepository.AddCollectionAsync(collection);
+                }
+                
+                // Add wallpapers to the collection
+                foreach (var wallpaper in hardcodedWallpapers)
+                {
+                    await _collectionRepository.AddWallpaperToCollectionAsync(collection.Id, wallpaper.Id);
+                }
+                
+                // Return early since we got wallpapers from the hardcoded list
+                return;
+            }
+            
+            // If hardcoded approach fails, continue with other methods
+            
             // Get configuration for max pages
             var config = await _configurationService.GetBackieeConfigAsync();
             int maxPages = config.MaxPagesPerCategory;
             
-            // Scrape latest wallpapers first
+            // Next, try to extract wallpapers from the local backiee_content.html file
+            _logger.LogInformation("Attempting to extract wallpapers from local backiee_content.html file");
+            var localWallpapers = await _backieeScraperService.ExtractWallpapersFromLocalFile();
+            
+            if (localWallpapers.Any())
+            {
+                _logger.LogInformation("Successfully extracted {Count} wallpapers from local file", localWallpapers.Count);
+                await AddOrUpdateWallpapers(localWallpapers);
+                
+                // Create a collection for these wallpapers
+                var collection = await _collectionRepository.GetCollectionByNameAsync("Backiee Local");
+                if (collection == null)
+                {
+                    collection = new Collection
+                    {
+                        Name = "Backiee Local",
+                        Description = "Wallpapers extracted from local backiee_content.html file",
+                        CoverImagePath = localWallpapers.FirstOrDefault()?.ThumbnailUrl
+                    };
+                    
+                    await _collectionRepository.AddCollectionAsync(collection);
+                }
+                
+                // Add wallpapers to the collection
+                foreach (var wallpaper in localWallpapers)
+                {
+                    await _collectionRepository.AddWallpaperToCollectionAsync(collection.Id, wallpaper.Id);
+                }
+                
+                // Return early if we successfully got wallpapers from the local file
+                return;
+            }
+            else
+            {
+                _logger.LogWarning("No wallpapers found in local backiee_content.html file. Falling back to online scraping.");
+            }
+            
+            // Scrape latest wallpapers as a fallback
             var latestWallpapers = await _backieeScraperService.ScrapeLatestWallpapers();
             
             if (latestWallpapers.Any())

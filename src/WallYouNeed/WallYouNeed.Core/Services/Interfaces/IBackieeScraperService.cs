@@ -40,5 +40,17 @@ namespace WallYouNeed.Core.Services.Interfaces
         /// <param name="htmlContent">The HTML content to extract wallpapers from</param>
         /// <returns>A list of wallpaper models extracted from the HTML content</returns>
         Task<List<WallpaperModel>> ExtractWallpapersFromContentHtml(string htmlContent);
+        
+        /// <summary>
+        /// Extracts wallpapers from the local backiee_content.html file
+        /// </summary>
+        /// <returns>A list of extracted wallpapers</returns>
+        Task<List<WallpaperModel>> ExtractWallpapersFromLocalFile();
+        
+        /// <summary>
+        /// Gets hardcoded wallpapers directly from specified URLs
+        /// </summary>
+        /// <returns>List of wallpaper models from hardcoded URLs</returns>
+        Task<List<WallpaperModel>> GetHardcodedWallpapers();
     }
 } 
