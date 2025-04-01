@@ -69,5 +69,45 @@ namespace WallYouNeed.Core.Configuration
             "space",
             "sport"
         };
+        
+        /// <summary>
+        /// Maximum consecutive failures before enabling circuit breaker
+        /// </summary>
+        public int MaxConsecutiveFailures { get; set; } = 5;
+        
+        /// <summary>
+        /// Circuit breaker cool-down period in minutes
+        /// </summary>
+        public int CircuitBreakerCooldownMinutes { get; set; } = 15;
+        
+        /// <summary>
+        /// Whether to use headless browser as fallback when standard scraping fails
+        /// </summary>
+        public bool UseHeadlessBrowserFallback { get; set; } = true;
+        
+        /// <summary>
+        /// Number of failures before triggering headless browser fallback
+        /// </summary>
+        public int FailuresBeforeHeadlessFallback { get; set; } = 3;
+        
+        /// <summary>
+        /// Maximum retries for each scraping attempt before failing
+        /// </summary>
+        public int MaxRetries { get; set; } = 3;
+        
+        /// <summary>
+        /// Whether to monitor HTML structure changes for detecting website updates
+        /// </summary>
+        public bool MonitorHtmlStructureChanges { get; set; } = true;
+        
+        /// <summary>
+        /// Maximum number of wallpapers to scrape in a single operation
+        /// </summary>
+        public int MaxWallpapersPerScrape { get; set; } = 20;
+        
+        /// <summary>
+        /// Hours before re-scraping the same wallpaper ID
+        /// </summary>
+        public int WallpaperRescrapeCooldownHours { get; set; } = 12;
     }
 } 

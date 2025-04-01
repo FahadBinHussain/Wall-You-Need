@@ -18,6 +18,8 @@ namespace WallYouNeed.Core.Models
         public bool IsDownloaded { get; set; }
         public string LocalPath { get; set; }
         public int Rating { get; set; } // User rating
+        public long FileSizeBytes { get; set; } // Size of the wallpaper file in bytes
+        public double FileSizeMB { get; set; } // Size of the wallpaper file in megabytes
 
         public WallpaperModel()
         {
