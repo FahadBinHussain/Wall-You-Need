@@ -224,6 +224,41 @@ namespace WallYouNeed.App.Pages
                     "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+        
+        // Top action buttons event handlers
+        private void FilterButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _logger?.LogInformation("Filter button clicked");
+                // Placeholder for filter functionality
+                System.Windows.MessageBox.Show("Filter functionality will be implemented in a future update.", 
+                    "Coming Soon", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error handling filter button click");
+                System.Windows.MessageBox.Show($"Error: {ex.Message}", 
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        private void SetAsSlideshowButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _logger?.LogInformation("Set as slideshow button clicked");
+                // Placeholder for slideshow functionality
+                System.Windows.MessageBox.Show("Slideshow functionality will be implemented in a future update.", 
+                    "Coming Soon", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error handling set as slideshow button click");
+                System.Windows.MessageBox.Show($"Error: {ex.Message}", 
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 
     public class BackieeImage
