@@ -1,9 +1,8 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using WallYouNeed.Core.Services.Interfaces;
@@ -40,11 +39,66 @@ namespace WallYouNeed.App
             // Set the current active button to Home by default
             _currentActiveButton = HomeButton;
 
+            // Setup window controls
+            SetupWindowControls();
+
             // Load settings
             LoadSettingsQuietly();
             
             // Navigate to home page by default
             NavigateToPage("Home");
+        }
+
+        private void SetupWindowControls()
+        {
+            // Make titlebar draggable
+            var titleBar = this.FindName("TitleBar") as System.Windows.Controls.Grid;
+            if (titleBar != null)
+            {
+                titleBar.MouseLeftButtonDown += (s, e) =>
+                {
+                    if (e.ClickCount == 2)
+                    {
+                        ToggleMaximize();
+                    }
+                    else
+                    {
+                        this.DragMove();
+                    }
+                };
+            }
+
+            // Setup window control buttons
+            var minimizeButton = this.FindName("MinimizeButton") as System.Windows.Controls.Button;
+            var maximizeButton = this.FindName("MaximizeButton") as System.Windows.Controls.Button;
+            var closeButton = this.FindName("CloseButton") as System.Windows.Controls.Button;
+
+            if (minimizeButton != null)
+            {
+                minimizeButton.Click += (s, e) => this.WindowState = WindowState.Minimized;
+            }
+
+            if (maximizeButton != null)
+            {
+                maximizeButton.Click += (s, e) => ToggleMaximize();
+            }
+
+            if (closeButton != null)
+            {
+                closeButton.Click += (s, e) => this.Close();
+            }
+        }
+
+        private void ToggleMaximize()
+        {
+            if (this.WindowState == WindowState.Maximized)
+            {
+                this.WindowState = WindowState.Normal;
+            }
+            else
+            {
+                this.WindowState = WindowState.Maximized;
+            }
         }
 
         private async void LoadSettingsQuietly()
@@ -85,47 +139,39 @@ namespace WallYouNeed.App
             {
                 _currentActiveButton.Style = this.FindResource("NavButton") as Style;
                 
-                // Reset icon and text color
-                var stackPanel = _currentActiveButton.Content as StackPanel;
-                if (stackPanel != null)
+                // Get the path content from the button
+                var path = _currentActiveButton.Content as System.Windows.Shapes.Path;
+                if (path != null)
                 {
-                    var path = stackPanel.Children.OfType<System.Windows.Shapes.Path>().FirstOrDefault();
-                    var textBlock = stackPanel.Children.OfType<System.Windows.Controls.TextBlock>().FirstOrDefault();
-                    
-                    if (path != null)
-                    {
-                        path.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#505050"));
-                    }
-                    
-                    if (textBlock != null)
-                    {
-                        textBlock.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#505050"));
-                    }
+                    path.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#666666"));
+                }
+                
+                // If button content is a border (for AI button or account)
+                var border = _currentActiveButton.Content as System.Windows.Controls.Border;
+                if (border != null && border.Child is System.Windows.Controls.TextBlock textBlock)
+                {
+                    textBlock.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#666666"));
                 }
             }
 
             // Set new active button
             if (button != null)
             {
-                button.Style = this.FindResource("SelectedNavButton") as Style;
+                button.Style = this.FindResource("ActiveNavButton") as Style;
                 _currentActiveButton = button;
                 
-                // Set icon and text color to accent color
-                var stackPanel = button.Content as StackPanel;
-                if (stackPanel != null)
+                // Update the path fill to active color
+                var path = button.Content as System.Windows.Shapes.Path;
+                if (path != null)
                 {
-                    var path = stackPanel.Children.OfType<System.Windows.Shapes.Path>().FirstOrDefault();
-                    var textBlock = stackPanel.Children.OfType<System.Windows.Controls.TextBlock>().FirstOrDefault();
-                    
-                    if (path != null)
-                    {
-                        path.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0066ff"));
-                    }
-                    
-                    if (textBlock != null)
-                    {
-                        textBlock.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0066ff"));
-                    }
+                    path.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF0000"));
+                }
+                
+                // If button content is a border (for AI button or account)
+                var border = button.Content as System.Windows.Controls.Border;
+                if (border != null && border.Child is System.Windows.Controls.TextBlock textBlock)
+                {
+                    textBlock.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF0000"));
                 }
             }
         }
@@ -138,7 +184,7 @@ namespace WallYouNeed.App
             {
                 // Get the right page from service provider
                 var app = System.Windows.Application.Current as App;
-                Page page = null;
+                System.Windows.Controls.Page page = null;
                 
                 switch (pageName)
                 {
