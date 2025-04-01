@@ -84,9 +84,13 @@ namespace WallYouNeed.BackieeScraper
                 
                 Console.WriteLine($"Extracted a total of {wallpapers.Count} wallpaper links");
 
-                // Save the wallpaper links to a markdown file
-                SaveToMarkdown(wallpapers, "backiee_wallpapers.md");
-                Console.WriteLine("Successfully saved wallpaper links to backiee_wallpapers.md");
+                // Save the static image URLs to a markdown file
+                SaveStaticImageUrls(wallpapers, "backiee_static_images.md");
+                Console.WriteLine("Successfully saved static image URLs to backiee_static_images.md");
+
+                // Save the wallpaper page URLs to a separate markdown file
+                SaveWallpaperPageUrls(wallpapers, "backiee_wallpaper_pages.md");
+                Console.WriteLine("Successfully saved wallpaper page URLs to backiee_wallpaper_pages.md");
             }
         }
 
@@ -153,6 +157,11 @@ namespace WallYouNeed.BackieeScraper
             
             string url = urlMatch.Groups[1].Value;
             
+            // Extract the placeholder image URL from data-src attribute
+            string imageSrcPattern = @"<div class=""placeholder""[^>]*?>\s*<img[^>]*?data-src=""([^""]+)""";
+            Match imageSrcMatch = Regex.Match(div, imageSrcPattern);
+            string imageUrl = imageSrcMatch.Success ? imageSrcMatch.Groups[1].Value : "";
+            
             // Find the title directly from the div box
             string boxPattern = @"<div class=""box mt-2"">\s*<div class=""max-linese"">(.*?)<\/div>";
             Match boxMatch = Regex.Match(div, boxPattern);
@@ -167,7 +176,8 @@ namespace WallYouNeed.BackieeScraper
                 return new Wallpaper
                 {
                     Url = url,
-                    Title = title
+                    Title = title,
+                    ImageUrl = imageUrl
                 };
             }
             
@@ -183,18 +193,45 @@ namespace WallYouNeed.BackieeScraper
                 return new Wallpaper
                 {
                     Url = url,
-                    Title = title
+                    Title = title,
+                    ImageUrl = imageUrl
                 };
             }
             
             return new Wallpaper
             {
                 Url = url,
-                Title = "Wallpaper"  // Default title
+                Title = "Wallpaper",  // Default title
+                ImageUrl = imageUrl
             };
         }
 
-        static void SaveToMarkdown(List<Wallpaper> wallpapers, string filePath)
+        static void SaveStaticImageUrls(List<Wallpaper> wallpapers, string filePath)
+        {
+            StringBuilder markdown = new StringBuilder();
+            
+            if (wallpapers.Count == 0)
+            {
+                // Just output an empty file if no wallpapers found
+            }
+            else
+            {
+                // Make sure we have exactly 20 wallpapers (or the max available)
+                int count = Math.Min(20, wallpapers.Count);
+                
+                for (int i = 0; i < count; i++)
+                {
+                    if (!string.IsNullOrEmpty(wallpapers[i].ImageUrl))
+                    {
+                        markdown.AppendLine($"@{wallpapers[i].ImageUrl}");
+                    }
+                }
+            }
+            
+            File.WriteAllText(filePath, markdown.ToString());
+        }
+
+        static void SaveWallpaperPageUrls(List<Wallpaper> wallpapers, string filePath)
         {
             StringBuilder markdown = new StringBuilder();
             
@@ -221,5 +258,6 @@ namespace WallYouNeed.BackieeScraper
     {
         public string Url { get; set; }
         public string Title { get; set; }
+        public string ImageUrl { get; set; }
     }
 } 
