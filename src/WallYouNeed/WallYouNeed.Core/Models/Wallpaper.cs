@@ -36,6 +36,11 @@ public class Wallpaper
     public string SourceUrl { get; set; } = string.Empty;
     
     /// <summary>
+    /// URL to the thumbnail of the wallpaper
+    /// </summary>
+    public string ThumbnailUrl { get; set; } = string.Empty;
+    
+    /// <summary>
     /// Author/creator of the wallpaper
     /// </summary>
     public string Author { get; set; } = string.Empty;

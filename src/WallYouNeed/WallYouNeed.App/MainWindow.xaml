@@ -10,8 +10,8 @@
         Height="800" 
         Width="1200"
         WindowStartupLocation="CenterScreen"
-        WindowStyle="None"
-        ResizeMode="CanResize"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="CanResizeWithGrip"
         Background="White">
 
     <Window.Resources>
@@ -96,18 +96,23 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Resize grip style -->
+        <Style x:Key="ResizeGripStyle" TargetType="Rectangle">
+            <Setter Property="Fill" Value="Transparent"/>
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
     </Window.Resources>
 
     <!-- Main Window Content -->
     <Grid>
         <Border BorderBrush="#EEEEEE" BorderThickness="1">
             <Grid>
-                <!-- Custom Title Bar -->
-                <Grid x:Name="TitleBar" Height="52" VerticalAlignment="Top" Background="White">
+                <!-- Custom Title Bar with Search -->
+                <Grid Height="52" VerticalAlignment="Top" Background="White" Margin="0,0,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     
                     <!-- App Logo and Title -->
@@ -116,40 +121,30 @@
                     </StackPanel>
 
                     <!-- Search Box (Centered) -->
-                    <Border Grid.Column="1" Width="500" Height="34" Background="#F3F3F3" CornerRadius="17" 
-                            HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="🔍" FontSize="14" Margin="12,0,8,0" VerticalAlignment="Center" Foreground="#999999"/>
-                            <TextBox Grid.Column="1" Style="{StaticResource SearchBoxStyle}" Text="Search..." Foreground="#999999"/>
-                            <Button Grid.Column="2" Content="⨯" FontSize="14" Background="Transparent" BorderThickness="0" 
-                                    Foreground="#999999" Width="30" Margin="0,0,4,0"/>
-                        </Grid>
-                    </Border>
-
-                    <!-- Window Controls -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button x:Name="MinimizeButton" Content="_" Width="45" Height="32" Background="Transparent" BorderThickness="0" Foreground="#666666"/>
-                        <Button x:Name="MaximizeButton" Content="☐" Width="45" Height="32" Background="Transparent" BorderThickness="0" Foreground="#666666"/>
-                        <Button x:Name="CloseButton" Content="✕" Width="45" Height="32" BorderThickness="0">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Background" Value="Transparent"/>
-                                    <Setter Property="Foreground" Value="#666666"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#E81123"/>
-                                            <Setter Property="Foreground" Value="White"/>
-                                        </Trigger>
-                                    </Style.Triggers>
+                    <Grid Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,120,0">
+                        <TextBox x:Name="SearchBox" Width="500" Height="32" Padding="32,6,30,6" Text="Search..." Foreground="#999999"
+                                 Background="#FFFFFF" BorderThickness="1" BorderBrush="#DDDDDD">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="TextBox">
+                                                <Border Background="{TemplateBinding Background}" 
+                                                        BorderBrush="{TemplateBinding BorderBrush}" 
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="16">
+                                                    <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
                                 </Style>
-                            </Button.Style>
-                        </Button>
-                    </StackPanel>
+                            </TextBox.Style>
+                        </TextBox>
+                        <TextBlock Text="🔍" FontSize="14" Margin="10,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Left" Foreground="#999999"/>
+                        <Button x:Name="SearchClearButton" Content="⨯" FontSize="14" Background="Transparent" BorderThickness="0" 
+                                Foreground="#999999" Width="30" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
                 </Grid>
 
                 <!-- Main Content Area -->
@@ -235,26 +230,6 @@
 
                 <!-- Snackbar Presenter -->
                 <ui:SnackbarPresenter x:Name="SnackbarPresenter" />
-                
-                <!-- Resize Grips -->
-                <Grid>
-                    <!-- Left -->
-                    <Border x:Name="ResizeLeft" Width="6" HorizontalAlignment="Left" Cursor="SizeWE" Background="Transparent" />
-                    <!-- Right -->
-                    <Border x:Name="ResizeRight" Width="6" HorizontalAlignment="Right" Cursor="SizeWE" Background="Transparent" />
-                    <!-- Top -->
-                    <Border x:Name="ResizeTop" Height="6" VerticalAlignment="Top" Cursor="SizeNS" Background="Transparent" />
-                    <!-- Bottom -->
-                    <Border x:Name="ResizeBottom" Height="6" VerticalAlignment="Bottom" Cursor="SizeNS" Background="Transparent" />
-                    <!-- TopLeft -->
-                    <Border x:Name="ResizeTopLeft" Width="6" Height="6" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="SizeNWSE" Background="Transparent" />
-                    <!-- TopRight -->
-                    <Border x:Name="ResizeTopRight" Width="6" Height="6" HorizontalAlignment="Right" VerticalAlignment="Top" Cursor="SizeNESW" Background="Transparent" />
-                    <!-- BottomLeft -->
-                    <Border x:Name="ResizeBottomLeft" Width="6" Height="6" HorizontalAlignment="Left" VerticalAlignment="Bottom" Cursor="SizeNESW" Background="Transparent" />
-                    <!-- BottomRight -->
-                    <Border x:Name="ResizeBottomRight" Width="6" Height="6" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" Background="Transparent" />
-                </Grid>
             </Grid>
         </Border>
     </Grid>

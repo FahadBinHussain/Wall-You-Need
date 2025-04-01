@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace WallYouNeed.Core.Configuration
 {
@@ -7,7 +8,19 @@ namespace WallYouNeed.Core.Configuration
         /// <summary>
         /// The base URL for Backiee.com
         /// </summary>
-        public string BaseUrl { get; set; } = "https://backiee.com";
+        public string BaseUrl { get; set; } = "https://www.backiee.com";
+
+        /// <summary>
+        /// Alternative URLs to try if the main URL doesn't work
+        /// </summary>
+        public List<string> AlternativeUrls { get; set; } = new List<string>
+        {
+            "https://backiee.com",
+            "https://www.wallpaperbackiee.com",
+            "https://backiee.com/wallpapers",
+            "https://backiee.com/latest",
+            "https://www.backiee.com/wallpapers"
+        };
 
         /// <summary>
         /// The interval in milliseconds between scraping operations (default: 1 hour)

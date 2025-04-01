@@ -42,6 +42,9 @@ namespace WallYouNeed.App
 
             // Setup window controls
             SetupWindowControls();
+            
+            // Setup search box behavior
+            SetupSearchBox();
 
             // Load settings
             LoadSettingsQuietly();
@@ -52,144 +55,10 @@ namespace WallYouNeed.App
 
         private void SetupWindowControls()
         {
-            // Make titlebar draggable
-            var titleBar = this.FindName("TitleBar") as System.Windows.Controls.Grid;
-            if (titleBar != null)
-            {
-                titleBar.MouseLeftButtonDown += (s, e) =>
-                {
-                    if (e.ClickCount == 2)
-                    {
-                        ToggleMaximize();
-                    }
-                    else
-                    {
-                        this.DragMove();
-                    }
-                };
-            }
-
-            // Setup window control buttons
-            var minimizeButton = this.FindName("MinimizeButton") as System.Windows.Controls.Button;
-            var maximizeButton = this.FindName("MaximizeButton") as System.Windows.Controls.Button;
-            var closeButton = this.FindName("CloseButton") as System.Windows.Controls.Button;
-
-            if (minimizeButton != null)
-            {
-                minimizeButton.Click += (s, e) => this.WindowState = WindowState.Minimized;
-            }
-
-            if (maximizeButton != null)
-            {
-                maximizeButton.Click += (s, e) => ToggleMaximize();
-            }
-
-            if (closeButton != null)
-            {
-                closeButton.Click += (s, e) => this.Close();
-            }
+            // We now use default Windows controls, so most of this functionality is removed
             
-            // Setup window resize functionality
-            this.MouseLeftButtonDown += (s, e) =>
-            {
-                if (e.ButtonState == MouseButtonState.Pressed)
-                {
-                    if (WindowState == WindowState.Maximized)
-                    {
-                        // When dragging a maximized window, restore it and position it under the cursor
-                        double percentHorizontal = e.GetPosition(this).X / ActualWidth;
-                        WindowState = WindowState.Normal;
-                        Left = Mouse.GetPosition(null).X - (Width * percentHorizontal);
-                        Top = Mouse.GetPosition(null).Y - (titleBar.ActualHeight / 2);
-                        DragMove();
-                    }
-                }
-            };
-
-            // Setup resize grips
-            SetupResizeGrip("ResizeLeft", StandardCursorType.SizeWE, ResizeDirection.West);
-            SetupResizeGrip("ResizeRight", StandardCursorType.SizeWE, ResizeDirection.East);
-            SetupResizeGrip("ResizeTop", StandardCursorType.SizeNS, ResizeDirection.North);
-            SetupResizeGrip("ResizeBottom", StandardCursorType.SizeNS, ResizeDirection.South);
-            SetupResizeGrip("ResizeTopLeft", StandardCursorType.SizeNWSE, ResizeDirection.NorthWest);
-            SetupResizeGrip("ResizeTopRight", StandardCursorType.SizeNESW, ResizeDirection.NorthEast);
-            SetupResizeGrip("ResizeBottomLeft", StandardCursorType.SizeNESW, ResizeDirection.SouthWest);
-            SetupResizeGrip("ResizeBottomRight", StandardCursorType.SizeNWSE, ResizeDirection.SouthEast);
-        }
-
-        private void SetupResizeGrip(string elementName, StandardCursorType cursorType, ResizeDirection direction)
-        {
-            var resizeGrip = this.FindName(elementName) as System.Windows.UIElement;
-            if (resizeGrip != null)
-            {
-                resizeGrip.MouseLeftButtonDown += (s, e) =>
-                {
-                    if (WindowState == WindowState.Normal)
-                    {
-                        ResizeWindow(direction);
-                    }
-                };
-            }
-        }
-
-        private void ResizeWindow(ResizeDirection direction)
-        {
-            SendMessage(new System.Windows.Interop.WindowInteropHelper(this).Handle, 0x112, (IntPtr)(61440 + direction), IntPtr.Zero);
-        }
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-
-        private enum ResizeDirection
-        {
-            Left = 1,
-            Right = 2,
-            Top = 3,
-            TopLeft = 4,
-            TopRight = 5,
-            Bottom = 6,
-            BottomLeft = 7,
-            BottomRight = 8,
-            North = 3,
-            South = 6,
-            East = 2,
-            West = 1,
-            NorthEast = 5,
-            NorthWest = 4,
-            SouthEast = 8,
-            SouthWest = 7
-        }
-
-        private enum StandardCursorType
-        {
-            Arrow = 0,
-            Cross = 1,
-            Hand = 2,
-            Help = 3,
-            IBeam = 4,
-            No = 5,
-            None = 6,
-            Pen = 7,
-            SizeAll = 8,
-            SizeNESW = 9,
-            SizeNS = 10,
-            SizeNWSE = 11,
-            SizeWE = 12,
-            UpArrow = 13,
-            Wait = 14,
-            AppStarting = 15
-        }
-
-        private void ToggleMaximize()
-        {
-            if (this.WindowState == WindowState.Maximized)
-            {
-                this.WindowState = WindowState.Normal;
-            }
-            else
-            {
-                this.WindowState = WindowState.Maximized;
-            }
+            // Keep only the search box functionality
+            // We no longer need to handle custom window buttons
         }
 
         private async void LoadSettingsQuietly()
@@ -372,98 +241,69 @@ namespace WallYouNeed.App
             }
         }
 
-        protected override void OnInitialized(EventArgs e)
+        protected override void OnStateChanged(EventArgs e)
         {
-            base.OnInitialized(e);
-            
-            // Add window resizing functionality
-            SourceInitialized += (s, e) =>
+            base.OnStateChanged(e);
+            // We've switched to the default window controls, so no need to update button state
+        }
+
+        private void SetupSearchBox()
+        {
+            var searchBox = this.FindName("SearchBox") as System.Windows.Controls.TextBox;
+            if (searchBox != null)
             {
-                IntPtr handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-                System.Windows.Interop.HwndSource.FromHwnd(handle)?.AddHook(WindowProc);
-            };
+                // Set placeholder text behavior
+                searchBox.GotFocus += (s, e) => 
+                {
+                    if (searchBox.Text == "Search...")
+                    {
+                        searchBox.Text = "";
+                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#333333"));
+                    }
+                };
+                
+                searchBox.LostFocus += (s, e) => 
+                {
+                    if (string.IsNullOrWhiteSpace(searchBox.Text))
+                    {
+                        searchBox.Text = "Search...";
+                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#999999"));
+                    }
+                };
+                
+                // Handle search submission with Enter key
+                searchBox.KeyDown += (s, e) =>
+                {
+                    if (e.Key == Key.Enter && !string.IsNullOrWhiteSpace(searchBox.Text) && searchBox.Text != "Search...")
+                    {
+                        PerformSearch(searchBox.Text);
+                    }
+                };
+                
+                // Setup clear button
+                var clearButton = this.FindName("SearchClearButton") as System.Windows.Controls.Button;
+                if (clearButton != null)
+                {
+                    clearButton.Click += (s, e) =>
+                    {
+                        searchBox.Text = "Search...";
+                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#999999"));
+                    };
+                }
+            }
         }
         
-        private static System.IntPtr WindowProc(System.IntPtr hwnd, int msg, System.IntPtr wParam, System.IntPtr lParam, ref bool handled)
+        private void PerformSearch(string searchQuery)
         {
-            switch (msg)
+            // TODO: Implement search functionality
+            _logger.LogInformation("Performing search for: {SearchQuery}", searchQuery);
+            // For now, just show a message
+            var snackbarService = (System.Windows.Application.Current as App)?.Services.GetService<Wpf.Ui.ISnackbarService>();
+            if (snackbarService != null)
             {
-                case 0x0024: // WM_GETMINMAXINFO
-                    WmGetMinMaxInfo(hwnd, lParam);
-                    handled = true;
-                    break;
+                snackbarService.Show("Search", $"Searching for: {searchQuery}", 
+                    Wpf.Ui.Controls.ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
             }
-
-            return System.IntPtr.Zero;
         }
-
-        private static void WmGetMinMaxInfo(System.IntPtr hwnd, System.IntPtr lParam)
-        {
-            var mmi = (MINMAXINFO)System.Runtime.InteropServices.Marshal.PtrToStructure(lParam, typeof(MINMAXINFO));
-
-            // Adjust the maximized size and position to fit the work area of the current monitor
-            System.IntPtr monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-
-            if (monitor != System.IntPtr.Zero)
-            {
-                var monitorInfo = new MONITORINFO();
-                monitorInfo.cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(MONITORINFO));
-                GetMonitorInfo(monitor, ref monitorInfo);
-                RECT rcWorkArea = monitorInfo.rcWork;
-                RECT rcMonitorArea = monitorInfo.rcMonitor;
-                mmi.ptMaxPosition.X = Math.Abs(rcWorkArea.Left - rcMonitorArea.Left);
-                mmi.ptMaxPosition.Y = Math.Abs(rcWorkArea.Top - rcMonitorArea.Top);
-                mmi.ptMaxSize.X = Math.Abs(rcWorkArea.Right - rcWorkArea.Left);
-                mmi.ptMaxSize.Y = Math.Abs(rcWorkArea.Bottom - rcWorkArea.Top);
-                mmi.ptMinTrackSize.X = 400;
-                mmi.ptMinTrackSize.Y = 300;
-            }
-
-            System.Runtime.InteropServices.Marshal.StructureToPtr(mmi, lParam, true);
-        }
-
-        // P/Invoke structures and functions
-        [StructLayout(LayoutKind.Sequential)]
-        public struct POINT
-        {
-            public int X;
-            public int Y;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct MINMAXINFO
-        {
-            public POINT ptReserved;
-            public POINT ptMaxSize;
-            public POINT ptMaxPosition;
-            public POINT ptMinTrackSize;
-            public POINT ptMaxTrackSize;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-        public class MONITORINFO
-        {
-            public int cbSize;
-            public RECT rcMonitor;
-            public RECT rcWork;
-            public int dwFlags;
-        }
-
-        [DllImport("user32")]
-        internal static extern bool GetMonitorInfo(System.IntPtr hMonitor, ref MONITORINFO lpmi);
-
-        [DllImport("user32")]
-        internal static extern System.IntPtr MonitorFromWindow(System.IntPtr handle, int flags);
-
-        internal const int MONITOR_DEFAULTTONEAREST = 0x00000002;
     }
 } 

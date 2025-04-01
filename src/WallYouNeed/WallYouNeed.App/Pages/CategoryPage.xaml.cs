@@ -196,78 +196,139 @@ namespace WallYouNeed.App.Pages
                 // Use the injected BackieeScraperService to get real wallpapers
                 if (_backieeScraperService != null)
                 {
+                    _logger.LogInformation("Using BackieeScraperService to fetch latest wallpapers");
+                    
                     // Fetch the latest wallpapers from backiee.com
                     var backieeWallpapers = await _backieeScraperService.ScrapeLatestWallpapers();
+                    
+                    if (backieeWallpapers == null || !backieeWallpapers.Any())
+                    {
+                        _logger.LogWarning("No wallpapers returned from BackieeScraperService");
+                        
+                        // Show a snackbar notification
+                        System.Windows.Application.Current.Dispatcher.Invoke(() => 
+                        {
+                            _snackbarService.Show("Warning", "No wallpapers found from backiee.com. Using fallback data.",
+                                Wpf.Ui.Controls.ControlAppearance.Caution, null, TimeSpan.FromSeconds(3));
+                        });
+                        
+                        // Return fallback wallpapers
+                        return GetFallbackWallpapers();
+                    }
+                    
+                    _logger.LogInformation("Successfully fetched {Count} wallpapers from backiee.com", backieeWallpapers.Count);
                     
                     // Convert WallpaperModel to Wallpaper
                     foreach (var model in backieeWallpapers)
                     {
-                        wallpapers.Add(new Wallpaper
+                        try
                         {
-                            Id = Guid.NewGuid().ToString(),
-                            Name = model.Title,
-                            Title = model.Title,
-                            SourceUrl = model.ImageUrl,
-                            Source = WallpaperSource.Custom,
-                            Width = model.Width,
-                            Height = model.Height,
-                            Tags = new List<string> { "Latest", model.ResolutionCategory },
-                            Metadata = new Dictionary<string, string>
+                            wallpapers.Add(new Wallpaper
                             {
-                                { "Resolution", model.ResolutionCategory },
-                                { "Source", "backiee.com" },
-                                { "Likes", new Random().Next(1, 60).ToString() }, // Backiee doesn't expose likes in the scraper
-                                { "Downloads", new Random().Next(10, 300).ToString() } // Backiee doesn't expose downloads in the scraper
-                            }
-                        });
+                                Id = Guid.NewGuid().ToString(),
+                                Name = model.Title,
+                                Title = model.Title,
+                                SourceUrl = model.ImageUrl,
+                                ThumbnailUrl = model.ThumbnailUrl,
+                                Source = WallpaperSource.Custom,
+                                Width = model.Width,
+                                Height = model.Height,
+                                Tags = new List<string> { "Latest", model.ResolutionCategory },
+                                Metadata = new Dictionary<string, string>
+                                {
+                                    { "Resolution", model.ResolutionCategory },
+                                    { "Source", "backiee.com" },
+                                    { "Likes", new Random().Next(1, 60).ToString() }, // Backiee doesn't expose likes in the scraper
+                                    { "Downloads", new Random().Next(10, 300).ToString() } // Backiee doesn't expose downloads in the scraper
+                                }
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Error converting wallpaper model to Wallpaper object");
+                        }
                     }
                     
-                    _logger.LogInformation("Successfully fetched {Count} latest wallpapers from backiee.com", wallpapers.Count);
+                    _logger.LogInformation("Successfully converted {Count} latest wallpapers from backiee.com", wallpapers.Count);
                 }
                 else
                 {
                     _logger.LogWarning("BackieeScraperService not available, using placeholder data");
                     
-                    // Fallback to placeholder data if service is not available
-                    wallpapers.Add(CreateWallpaperFromBackiee(
-                        "Tiger Warrior Amidst Blazing Flames", 
-                        "https://wallpaper-house.com/data/out/12/wallpaper2you_594262.jpg", 
-                        3840, 2160, "backiee.com", 56, 258, "4K"));
-                        
-                    wallpapers.Add(CreateWallpaperFromBackiee(
-                        "Colorful Brickwork Symphony in 4K Splendor", 
-                        "https://images.pexels.com/photos/1308624/pexels-photo-1308624.jpeg", 
-                        3840, 2160, "backiee.com", 8, 36, "4K"));
-                        
-                    wallpapers.Add(CreateWallpaperFromBackiee(
-                        "Ford Mustang Power Duo in Stunning Sunset", 
-                        "https://images.hdqwalls.com/wallpapers/ford-mustang-4k-2020-9z.jpg", 
-                        5120, 2880, "backiee.com", 8, 32, "5K"));
-                    
-                    // Add more placeholder wallpapers as needed...
-                    
-                    _logger.LogInformation("Using {Count} placeholder wallpapers", wallpapers.Count);
+                    // Return fallback wallpapers
+                    return GetFallbackWallpapers();
                 }
+                
+                return wallpapers;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error fetching latest wallpapers from backiee.com");
-                _snackbarService.Show("Error", "Failed to fetch latest wallpapers", 
-                    Wpf.Ui.Controls.ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                
+                // Show a snackbar notification
+                System.Windows.Application.Current.Dispatcher.Invoke(() => 
+                {
+                    _snackbarService.Show("Error", "Failed to fetch latest wallpapers. Using fallback data.",
+                        Wpf.Ui.Controls.ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
+                });
+                
+                // Return fallback wallpapers on error
+                return GetFallbackWallpapers();
             }
+        }
+        
+        private List<Wallpaper> GetFallbackWallpapers()
+        {
+            var fallbackWallpapers = new List<Wallpaper>();
             
-            return wallpapers;
+            _logger.LogInformation("Using fallback wallpaper data");
+            
+            // Fallback to placeholder data
+            fallbackWallpapers.Add(CreateWallpaperFromBackiee(
+                "Tiger Warrior Amidst Blazing Flames", 
+                "https://wallpaper-house.com/data/out/12/wallpaper2you_594262.jpg", 
+                3840, 2160, "backiee.com", 56, 258, "4K"));
+                
+            fallbackWallpapers.Add(CreateWallpaperFromBackiee(
+                "Colorful Brickwork Symphony in 4K Splendor", 
+                "https://images.pexels.com/photos/1308624/pexels-photo-1308624.jpeg", 
+                3840, 2160, "backiee.com", 8, 36, "4K"));
+                
+            fallbackWallpapers.Add(CreateWallpaperFromBackiee(
+                "Ford Mustang Power Duo in Stunning Sunset", 
+                "https://images.hdqwalls.com/wallpapers/ford-mustang-4k-2020-9z.jpg", 
+                5120, 2880, "backiee.com", 8, 32, "5K"));
+            
+            fallbackWallpapers.Add(CreateWallpaperFromBackiee(
+                "Mountain Landscape with Calm Lake Reflection", 
+                "https://images.pexels.com/photos/2662116/pexels-photo-2662116.jpeg", 
+                4096, 2730, "backiee.com", 12, 45, "4K"));
+                
+            fallbackWallpapers.Add(CreateWallpaperFromBackiee(
+                "Vibrant Abstract Digital Art Creation", 
+                "https://www.pixelstalk.net/wp-content/uploads/2016/05/Free-Download-Cool-Abstract-Wallpapers-HD.jpg", 
+                3840, 2160, "backiee.com", 7, 28, "4K"));
+                
+            _logger.LogInformation("Created {Count} fallback wallpapers", fallbackWallpapers.Count);
+            
+            return fallbackWallpapers;
         }
         
         private Wallpaper CreateWallpaperFromBackiee(string name, string imageUrl, int width, int height, 
             string source, int likes, int downloads, string resolution)
         {
+            // Use a thumbnail version if available, or generate one from the URL
+            string thumbnailUrl = imageUrl.Replace(".jpg", "_thumb.jpg")
+                .Replace(".png", "_thumb.png")
+                .Replace(".jpeg", "_thumb.jpeg");
+                
             return new Wallpaper
             {
                 Id = Guid.NewGuid().ToString(),
                 Name = name,
                 Title = name,
                 SourceUrl = imageUrl,
+                ThumbnailUrl = thumbnailUrl,
                 Source = WallpaperSource.Custom,
                 Width = width,
                 Height = height,
@@ -585,6 +646,13 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
+                // Default to an error handler in case image loading fails
+                image.ImageFailed += (s, e) =>
+                {
+                    _logger.LogWarning("Image loading failed for wallpaper: {WallpaperId}, trying fallback", wallpaper.Id);
+                    TryLoadFallbackImage(image, wallpaper);
+                };
+                
                 if (!string.IsNullOrEmpty(wallpaper.FilePath) && File.Exists(wallpaper.FilePath))
                 {
                     // Load from local file
@@ -596,9 +664,20 @@ namespace WallYouNeed.App.Pages
                     
                     image.Source = bitmap;
                 }
+                else if (!string.IsNullOrEmpty(wallpaper.ThumbnailUrl))
+                {
+                    // Use thumbnail if available
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.UriSource = new Uri(wallpaper.ThumbnailUrl);
+                    bitmap.EndInit();
+                    
+                    image.Source = bitmap;
+                }
                 else if (!string.IsNullOrEmpty(wallpaper.SourceUrl))
                 {
-                    // Load from source URL
+                    // Load from source URL as fallback
                     var bitmap = new BitmapImage();
                     bitmap.BeginInit();
                     bitmap.CacheOption = BitmapCacheOption.OnLoad;
@@ -607,10 +686,87 @@ namespace WallYouNeed.App.Pages
                     
                     image.Source = bitmap;
                 }
+                else
+                {
+                    // No valid image source found, use a placeholder
+                    TryLoadFallbackImage(image, wallpaper);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading image for wallpaper: {WallpaperId}", wallpaper.Id);
+                TryLoadFallbackImage(image, wallpaper);
+            }
+        }
+        
+        private void TryLoadFallbackImage(System.Windows.Controls.Image image, Wallpaper wallpaper)
+        {
+            try
+            {
+                // Try to use a placeholder based on resolution category
+                string resolution = "Other";
+                if (wallpaper.Metadata != null && wallpaper.Metadata.TryGetValue("Resolution", out var res))
+                {
+                    resolution = res;
+                }
+                
+                // Use a solid color background with resolution text
+                var drawingVisual = new System.Windows.Media.DrawingVisual();
+                using (var drawingContext = drawingVisual.RenderOpen())
+                {
+                    // Set background color based on resolution
+                    System.Windows.Media.Color bgColor;
+                    switch (resolution)
+                    {
+                        case "8K":
+                            bgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#7B1FA2");
+                            break;
+                        case "5K":
+                            bgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E91E63");
+                            break;
+                        case "4K":
+                            bgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2196F3");
+                            break;
+                        default:
+                            bgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#607D8B");
+                            break;
+                    }
+                    
+                    // Draw background
+                    drawingContext.DrawRectangle(
+                        new System.Windows.Media.SolidColorBrush(bgColor),
+                        null,
+                        new Rect(0, 0, 280, 200));
+                    
+                    // Draw resolution text
+                    var text = new System.Windows.Media.FormattedText(
+                        resolution,
+                        System.Globalization.CultureInfo.CurrentCulture,
+                        System.Windows.FlowDirection.LeftToRight,
+                        new System.Windows.Media.Typeface("Segoe UI"),
+                        24,
+                        System.Windows.Media.Brushes.White,
+                        System.Windows.Media.VisualTreeHelper.GetDpi(drawingVisual).PixelsPerDip);
+                    
+                    // Center the text
+                    drawingContext.DrawText(text, new System.Windows.Point(
+                        (280 - text.Width) / 2,
+                        (200 - text.Height) / 2));
+                }
+                
+                // Convert drawing to bitmap
+                var renderTarget = new System.Windows.Media.Imaging.RenderTargetBitmap(
+                    280, 200, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                renderTarget.Render(drawingVisual);
+                
+                // Set as image source
+                image.Source = renderTarget;
+                
+                _logger.LogInformation("Set fallback image for wallpaper: {WallpaperId}", wallpaper.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating fallback image for wallpaper: {WallpaperId}", wallpaper.Id);
             }
         }
         
