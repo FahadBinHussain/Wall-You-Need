@@ -968,32 +968,37 @@ namespace WallYouNeed.Core.Services
         /// </summary>
         private string DetermineResolutionCategory(int width, int height)
         {
-            long pixels = (long)width * height;
+            if (width == 0 || height == 0)
+                return "Unknown";
+                
+            var ratio = (double)width / height;
             
-            if (width >= 7680 || height >= 4320 || pixels >= 33177600) // 7680x4320 or higher
+            if (Math.Abs(ratio - 1.78) < 0.1) // 16:9 ratio
             {
-                return "8K";
+                if (width >= 3840) return "4K";
+                if (width >= 2560) return "2K";
+                if (width >= 1920) return "Full HD";
+                if (width >= 1280) return "HD";
+                return "SD";
             }
-            else if (width >= 3840 || height >= 2160 || pixels >= 8294400) // 3840x2160 or higher
+            else if (Math.Abs(ratio - 1.33) < 0.1) // 4:3 ratio
             {
-                return "4K";
+                return "4:3";
             }
-            else if (width >= 2560 || height >= 1440 || pixels >= 3686400) // 2560x1440 or higher
+            else if (ratio > 2) // Ultrawide
             {
-                return "2K";
+                return "Ultrawide";
             }
-            else if (width >= 1920 || height >= 1080 || pixels >= 2073600) // 1920x1080 or higher
+            else if (width > height) // Landscape but irregular
             {
-                return "FullHD";
+                return "Wide";
             }
-            else if (width >= 1280 || height >= 720 || pixels >= 921600) // 1280x720 or higher
+            else if (height > width) // Portrait
             {
-                return "HD";
+                return "Portrait";
             }
-            else
-            {
-                return "Other";
-            }
+            
+            return "Other";
         }
         
         /// <summary>
@@ -1372,17 +1377,36 @@ namespace WallYouNeed.Core.Services
                                 return null;
                             }
                             
+                            // Check if we got actual HTML or binary data (anti-scraping measure)
+                            if (IsBinaryData(html))
+                            {
+                                _logger.LogWarning("Received binary data instead of HTML for wallpaper ID {Id}. Site may be serving images to block scrapers.", id);
+                                // Create wallpaper with direct URL construction as fallback
+                                return CreateDirectWallpaper(id);
+                            }
+                            
                             var wallpaper = ExtractSingleWallpaperDetails(html, id);
                             
                             if (wallpaper != null)
                             {
                                 _logger.LogInformation("Successfully extracted wallpaper with ID {Id}: {Title}", id, wallpaper.Title);
-                                return wallpaper;
+                                
+                                // Verify the image URL actually works
+                                if (await _htmlDownloader.VerifyImageUrl(wallpaper.ImageUrl))
+                                {
+                                    _logger.LogDebug("Verified image URL for ID {Id}: {ImageUrl}", id, wallpaper.ImageUrl);
+                                    return wallpaper;
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Image URL verification failed for ID {Id}, using direct construction", id);
+                                    return CreateDirectWallpaper(id);
+                                }
                             }
                             else
                             {
-                                _logger.LogWarning("Failed to extract wallpaper details for ID {Id}", id);
-                                return null;
+                                _logger.LogWarning("Failed to extract wallpaper details for ID {Id}, using direct construction", id);
+                                return CreateDirectWallpaper(id);
                             }
                         }
                         catch (Exception ex)
@@ -1449,6 +1473,40 @@ namespace WallYouNeed.Core.Services
             }
             
             return wallpapers;
+        }
+
+        // Add a helper method to check if data is binary
+        private bool IsBinaryData(string content)
+        {
+            if (string.IsNullOrEmpty(content) || content.Length < 10)
+                return false;
+            
+            // Check for common binary file signatures
+            // JPEG signature (0xFF, 0xD8)
+            if (content[0] == (char)0xFF && content[1] == (char)0xD8)
+                return true;
+            
+            // PNG signature (0x89, 'P', 'N', 'G')
+            if (content[0] == (char)0x89 && content.StartsWith("\u0089PNG", StringComparison.Ordinal))
+                return true;
+            
+            // GIF signature ('G', 'I', 'F')
+            if (content.StartsWith("GIF", StringComparison.Ordinal))
+                return true;
+            
+            // Check for high concentration of non-printable characters
+            int nonPrintableCount = 0;
+            for (int i = 0; i < Math.Min(200, content.Length); i++)
+            {
+                if (content[i] < 32 && content[i] != '\r' && content[i] != '\n' && content[i] != '\t')
+                    nonPrintableCount++;
+            }
+            
+            // If more than 15% of the first 200 characters are non-printable, it's likely binary
+            if (nonPrintableCount > 30)
+                return true;
+            
+            return false;
         }
 
         /// <summary>
@@ -1830,6 +1888,83 @@ namespace WallYouNeed.Core.Services
                 };
                 
                 wallpapers.Add(wallpaper);
+            }
+            
+            return wallpapers;
+        }
+
+        /// <summary>
+        /// Extracts wallpapers from backiee content HTML
+        /// </summary>
+        /// <param name="htmlContent">The HTML content to parse</param>
+        /// <returns>A list of extracted wallpapers</returns>
+        public async Task<List<WallpaperModel>> ExtractWallpapersFromContentHtml(string htmlContent)
+        {
+            _logger.LogInformation("Extracting wallpapers from content HTML");
+            
+            var wallpapers = new List<WallpaperModel>();
+            
+            try
+            {
+                if (string.IsNullOrEmpty(htmlContent))
+                {
+                    _logger.LogWarning("HTML content is empty");
+                    return wallpapers;
+                }
+                
+                // Extract wallpaper IDs from the HTML content
+                var wallpaperIds = new HashSet<string>();
+                
+                // Parse the HTML document
+                var doc = new HtmlDocument();
+                doc.LoadHtml(htmlContent);
+                
+                // Look for wallpaper links or containers
+                var wallpaperLinks = doc.DocumentNode.SelectNodes("//a[contains(@href, '/wallpaper/')]");
+                if (wallpaperLinks != null)
+                {
+                    foreach (var link in wallpaperLinks)
+                    {
+                        var href = link.GetAttributeValue("href", "");
+                        var match = Regex.Match(href, @"/wallpaper/(\d+)");
+                        if (match.Success)
+                        {
+                            wallpaperIds.Add(match.Groups[1].Value);
+                        }
+                    }
+                }
+                
+                // Look for wallpaper containers with data-id attribute
+                var wallpaperContainers = doc.DocumentNode.SelectNodes("//*[@data-id]");
+                if (wallpaperContainers != null)
+                {
+                    foreach (var container in wallpaperContainers)
+                    {
+                        var id = container.GetAttributeValue("data-id", "");
+                        if (!string.IsNullOrEmpty(id) && Regex.IsMatch(id, @"^\d+$"))
+                        {
+                            wallpaperIds.Add(id);
+                        }
+                    }
+                }
+                
+                if (wallpaperIds.Count == 0)
+                {
+                    _logger.LogWarning("No valid wallpaper IDs extracted from links");
+                    return wallpapers;
+                }
+                
+                _logger.LogInformation("Extracted {Count} unique wallpaper IDs from content HTML", wallpaperIds.Count);
+                
+                // Process these IDs to get actual wallpapers
+                var extractedWallpapers = await ExtractWallpapersByDirectIds(wallpaperIds.ToList());
+                wallpapers.AddRange(extractedWallpapers);
+                
+                _logger.LogInformation("Successfully processed {Count} wallpapers from content HTML", wallpapers.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting wallpapers from content HTML: {Message}", ex.Message);
             }
             
             return wallpapers;

@@ -150,10 +150,14 @@ namespace WallYouNeed.App.Pages
                 
                 List<Wallpaper> wallpapers;
                 
-                // Special handling for "Latest" category - fetch from backiee.com
+                // Special handling for different categories
                 if (categoryName.Equals("Latest", StringComparison.OrdinalIgnoreCase))
                 {
                     wallpapers = await FetchLatestWallpapersFromBackieeAsync();
+                }
+                else if (categoryName.Equals("Backiee Content", StringComparison.OrdinalIgnoreCase))
+                {
+                    wallpapers = await LoadWallpapersFromBackieeContentHtml();
                 }
                 else
                 {
@@ -867,6 +871,97 @@ namespace WallYouNeed.App.Pages
                 "Not Implemented",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Information);
+        }
+        
+        private async Task<List<Wallpaper>> LoadWallpapersFromBackieeContentHtml()
+        {
+            try
+            {
+                _logger.LogInformation("Loading wallpapers from backiee_content.html");
+                
+                // Open file dialog to let user select the backiee_content.html file
+                var openFileDialog = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = "Select backiee_content.html file",
+                    Filter = "HTML files (*.html)|*.html",
+                    Multiselect = false
+                };
+                
+                if (openFileDialog.ShowDialog() != true)
+                {
+                    _logger.LogInformation("User cancelled the file selection");
+                    return new List<Wallpaper>();
+                }
+                
+                string filePath = openFileDialog.FileName;
+                _logger.LogInformation("Selected file: {FilePath}", filePath);
+                
+                // Get an instance of HtmlDownloader to load the file
+                var htmlDownloader = new WallYouNeed.Core.Utils.HtmlDownloader(
+                    new System.Net.Http.HttpClient(),
+                    Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<WallYouNeed.Core.Utils.HtmlDownloader>>(
+                        ((App)System.Windows.Application.Current).Services)
+                );
+                
+                // Load the HTML content from the file
+                string htmlContent = await htmlDownloader.LoadHtmlFromFileAsync(filePath);
+                
+                if (string.IsNullOrEmpty(htmlContent))
+                {
+                    _logger.LogWarning("Failed to load HTML content from file");
+                    _snackbarService.Show("Error", "Failed to load HTML content from file", 
+                        Wpf.Ui.Controls.ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                    return new List<Wallpaper>();
+                }
+                
+                // Extract wallpapers from the content
+                var wallpaperModels = await _backieeScraperService.ExtractWallpapersFromContentHtml(htmlContent);
+                
+                if (wallpaperModels == null || wallpaperModels.Count == 0)
+                {
+                    _logger.LogWarning("No wallpapers found in the HTML content");
+                    _snackbarService.Show("No wallpapers", "No wallpapers found in the selected file", 
+                        Wpf.Ui.Controls.ControlAppearance.Caution, null, TimeSpan.FromSeconds(2));
+                    return new List<Wallpaper>();
+                }
+                
+                _logger.LogInformation("Found {Count} wallpapers in the HTML content", wallpaperModels.Count);
+                
+                // Convert WallpaperModel to Wallpaper entities
+                var wallpapers = new List<Wallpaper>();
+                foreach (var model in wallpaperModels)
+                {
+                    wallpapers.Add(new Wallpaper
+                    {
+                        Id = model.Id,
+                        Title = model.Title,
+                        Name = model.Title,
+                        SourceUrl = model.ImageUrl,
+                        ThumbnailUrl = model.ThumbnailUrl,
+                        Source = WallpaperSource.Custom,
+                        Width = model.Width,
+                        Height = model.Height,
+                        Tags = new List<string> { "Backiee Content", model.ResolutionCategory },
+                        Metadata = new Dictionary<string, string>
+                        {
+                            { "Resolution", model.ResolutionCategory },
+                            { "Source", "backiee.com" }
+                        }
+                    });
+                }
+                
+                _snackbarService.Show("Success", $"Found {wallpapers.Count} wallpapers in the content", 
+                    Wpf.Ui.Controls.ControlAppearance.Success, null, TimeSpan.FromSeconds(2));
+                
+                return wallpapers;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading wallpapers from backiee_content.html");
+                _snackbarService.Show("Error", $"Failed to load wallpapers: {ex.Message}", 
+                    Wpf.Ui.Controls.ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
+                return new List<Wallpaper>();
+            }
         }
     }
 }

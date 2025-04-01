@@ -92,48 +92,30 @@ namespace WallYouNeed.App
             SetActiveButton(SettingsButton);
         }
 
+        private void BackieeContentButton_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateToPage("Backiee Content");
+            SetActiveButton(sender as System.Windows.Controls.Button);
+        }
+
         private void SetActiveButton(System.Windows.Controls.Button button)
         {
-            // Reset previous active button style
             if (_currentActiveButton != null)
             {
-                _currentActiveButton.Style = this.FindResource("NavButton") as Style;
-                
-                // Get the path content from the button
-                var path = _currentActiveButton.Content as System.Windows.Shapes.Path;
-                if (path != null)
-                {
-                    path.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#666666"));
-                }
-                
-                // If button content is a border (for AI button or account)
-                var border = _currentActiveButton.Content as System.Windows.Controls.Border;
-                if (border != null && border.Child is System.Windows.Controls.TextBlock textBlock)
-                {
-                    textBlock.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#666666"));
-                }
+                // Remove active style from current button
+                _currentActiveButton.Style = FindResource("NavButton") as Style;
             }
-
+            
             // Set new active button
-            if (button != null)
+            _currentActiveButton = button;
+            
+            if (_currentActiveButton != null)
             {
-                button.Style = this.FindResource("ActiveNavButton") as Style;
-                _currentActiveButton = button;
-                
-                // Update the path fill to active color
-                var path = button.Content as System.Windows.Shapes.Path;
-                if (path != null)
-                {
-                    path.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF0000"));
-                }
-                
-                // If button content is a border (for AI button or account)
-                var border = button.Content as System.Windows.Controls.Border;
-                if (border != null && border.Child is System.Windows.Controls.TextBlock textBlock)
-                {
-                    textBlock.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF0000"));
-                }
+                // Apply active style to new button
+                _currentActiveButton.Style = FindResource("ActiveNavButton") as Style;
             }
+            
+            _logger.LogDebug("Active navigation button changed to: {Button}", _currentActiveButton?.Tag?.ToString() ?? "Unknown");
         }
 
         private void NavigateToPage(string pageName)
@@ -156,6 +138,10 @@ namespace WallYouNeed.App
                         break;
                     case "Settings":
                         page = app.Services.GetRequiredService<SettingsPage>();
+                        break;
+                    case "Backiee Content":
+                        page = app.Services.GetRequiredService<CategoryPage>();
+                        (page as CategoryPage)?.SetCategory("Backiee Content");
                         break;
                 }
                 

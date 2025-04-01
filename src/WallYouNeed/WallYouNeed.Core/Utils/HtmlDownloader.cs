@@ -591,5 +591,40 @@ namespace WallYouNeed.Core.Utils
                 return false;
             }
         }
+
+        /// <summary>
+        /// Loads HTML from a local file
+        /// </summary>
+        /// <param name="filePath">Path to the HTML file</param>
+        /// <returns>The HTML content or empty string if file doesn't exist</returns>
+        public async Task<string> LoadHtmlFromFileAsync(string filePath)
+        {
+            try
+            {
+                _logger.LogInformation("Loading HTML from local file: {FilePath}", filePath);
+                
+                if (!File.Exists(filePath))
+                {
+                    _logger.LogWarning("HTML file not found: {FilePath}", filePath);
+                    return string.Empty;
+                }
+                
+                string html = await File.ReadAllTextAsync(filePath);
+                
+                if (string.IsNullOrEmpty(html))
+                {
+                    _logger.LogWarning("HTML file is empty: {FilePath}", filePath);
+                    return string.Empty;
+                }
+                
+                _logger.LogInformation("Successfully loaded {Length} bytes from local file", html.Length);
+                return html;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading HTML from file {FilePath}: {Message}", filePath, ex.Message);
+                return string.Empty;
+            }
+        }
     }
 } 

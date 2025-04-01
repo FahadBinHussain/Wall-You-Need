@@ -33,5 +33,12 @@ namespace WallYouNeed.Core.Services.Interfaces
         /// <param name="category">The category to scrape</param>
         /// <param name="maxPages">Maximum number of pages to scrape</param>
         Task<List<WallpaperModel>> ScrapeWallpapersByCategory(string category, int maxPages = 3);
+        
+        /// <summary>
+        /// Extracts wallpaper information from backiee_content.html
+        /// </summary>
+        /// <param name="htmlContent">The HTML content to extract wallpapers from</param>
+        /// <returns>A list of wallpaper models extracted from the HTML content</returns>
+        Task<List<WallpaperModel>> ExtractWallpapersFromContentHtml(string htmlContent);
     }
 } 
