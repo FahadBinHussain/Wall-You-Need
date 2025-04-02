@@ -26,11 +26,13 @@ namespace WallYouNeed.App.Pages
 
         // Infinite scrolling variables
         private int _currentImageId = 418183; // Start with the highest ID from the sample
-        private bool _isLoadingMore = false;
-        private readonly object _loadLock = new object();
+        private volatile bool _isLoadingMore = false;
+        private readonly SemaphoreSlim _loadingSemaphore = new SemaphoreSlim(1, 1);
         private readonly int _batchSize = 20; // Number of images to load at once
-        private readonly int _scrollThreshold = 200; // Pixels from bottom to trigger more loading
+        private readonly int _scrollThreshold = 400; // Increased threshold for smoother loading
         private CancellationTokenSource _cts;
+        private DateTime _lastScrollCheck = DateTime.MinValue;
+        private readonly TimeSpan _scrollDebounceTime = TimeSpan.FromMilliseconds(250);
         
         // Cache to track which IDs have been attempted
         private HashSet<int> _attemptedIds = new HashSet<int>();
@@ -232,21 +234,26 @@ namespace WallYouNeed.App.Pages
             }
         }
 
-        private void MainScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        private async void MainScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
-            // Check if we're near the bottom of the scroll viewer
-            if (e.VerticalOffset + e.ViewportHeight + _scrollThreshold >= e.ExtentHeight)
+            try
             {
-                // Load more images if we're not already loading
-                if (!_isLoadingMore)
+                // Debounce scroll events
+                if ((DateTime.Now - _lastScrollCheck) < _scrollDebounceTime)
                 {
-                    _isLoadingMore = true;
-                    
-                    // Load more images asynchronously
-                    Task.Run(async () => 
+                    return;
+                }
+                _lastScrollCheck = DateTime.Now;
+
+                // Check if we're near the bottom of the scroll viewer
+                if (e.VerticalOffset + e.ViewportHeight + _scrollThreshold >= e.ExtentHeight)
+                {
+                    // Try to acquire the semaphore without blocking
+                    if (!_isLoadingMore && await _loadingSemaphore.WaitAsync(0))
                     {
                         try
                         {
+                            _isLoadingMore = true;
                             await LoadMoreImagesAsync(_cts.Token);
                         }
                         catch (Exception ex)
@@ -256,9 +263,14 @@ namespace WallYouNeed.App.Pages
                         finally
                         {
                             _isLoadingMore = false;
+                            _loadingSemaphore.Release();
                         }
-                    });
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error in scroll changed handler");
             }
         }
 
@@ -268,155 +280,121 @@ namespace WallYouNeed.App.Pages
             {
                 _logger?.LogInformation("LoadMoreImagesAsync called, current imageId: {ImageId}", _currentImageId);
                 
-                // Check if we're already loading
-                if (Monitor.TryEnter(_loadLock))
+                // Show status to indicate loading is in progress
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => {
+                    StatusTextBlock.Text = $"Loading wallpapers... (ID: {_currentImageId})";
+                    StatusTextBlock.Visibility = Visibility.Visible;
+                    LoadingProgressBar.Visibility = Visibility.Visible;
+                });
+
+                // Create a list to hold the successful images in this batch
+                List<BackieeImage> batchImages = new List<BackieeImage>();
+                int consecutiveMisses = 0;
+                int imagesFound = 0;
+
+                // Use HttpClient for parallel requests
+                using (var client = new HttpClient())
                 {
-                    try
+                    client.Timeout = TimeSpan.FromSeconds(10); // Set a reasonable timeout
+
+                    var tasks = new List<Task<Tuple<int, bool, string>>>();
+                    var currentBatchIds = new List<int>();
+
+                    // Prepare batch of IDs to check
+                    for (int i = 0; i < _batchSize; i++)
                     {
-                        // Show status to indicate loading is in progress
-                        System.Windows.Application.Current.Dispatcher.Invoke(() => {
-                            StatusTextBlock.Text = $"Loading wallpapers... (ID: {_currentImageId})";
-                            StatusTextBlock.Visibility = Visibility.Visible;
-                            LoadingProgressBar.Visibility = Visibility.Visible;
-                        });
-                        
-                        // Create a list to hold the successful images in this batch
-                        List<BackieeImage> batchImages = new List<BackieeImage>();
-                        int consecutiveMisses = 0;
-                        int imagesFound = 0;
-                        
-                        // Use HttpClient for parallel requests
-                        using (HttpClient client = new HttpClient())
+                        int imageId = _currentImageId - i;
+                        if (imageId <= 0 || _attemptedIds.Contains(imageId))
+                            continue;
+
+                        currentBatchIds.Add(imageId);
+                        string imageUrl = $"https://backiee.com/static/wallpapers/560x315/{imageId}.jpg";
+                        tasks.Add(CheckImageExistsAsync(client, imageId, imageUrl, cancellationToken));
+                    }
+
+                    // Wait for all tasks to complete with a timeout
+                    if (tasks.Any())
+                    {
+                        var completedTasks = await Task.WhenAll(tasks);
+
+                        foreach (var result in completedTasks.Where(r => r != null))
                         {
-                            // Add headers to simulate a browser request
-                            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36");
-                            client.DefaultRequestHeaders.Add("Accept", "image/avif,image/webp,image/apng,image/*,*/*;q=0.8");
-                            client.Timeout = TimeSpan.FromSeconds(10);
-                            
-                            // Create a list of tasks for parallel image fetching
-                            List<Task<Tuple<int, bool, string>>> tasks = new List<Task<Tuple<int, bool, string>>>();
-                            
-                            // Prepare tasks for a batch of images
-                            for (int i = 0; i < _batchSize; i++)
+                            int imageId = result.Item1;
+                            bool exists = result.Item2;
+                            string imageUrl = result.Item3;
+
+                            _attemptedIds.Add(imageId);
+                            _totalRequests++;
+
+                            if (exists)
                             {
-                                // Calculate the next ID to try
-                                int imageId = _currentImageId - i;
-                                
-                                // Skip if we've already tried this ID
-                                if (_attemptedIds.Contains(imageId))
+                                _successfulRequests++;
+                                imagesFound++;
+                                consecutiveMisses = 0;
+
+                                batchImages.Add(new BackieeImage
                                 {
-                                    continue;
-                                }
-                                
-                                // Add to attempted IDs
-                                _attemptedIds.Add(imageId);
-                                
-                                // Construct the image URL
-                                string imageUrl = $"https://backiee.com/static/wallpapers/560x315/{imageId}.jpg";
-                                
-                                // Create a task to fetch the image
-                                tasks.Add(CheckImageExistsAsync(client, imageId, imageUrl, cancellationToken));
+                                    ImageUrl = imageUrl,
+                                    ImageId = imageId.ToString(),
+                                    IsLoading = false
+                                });
                             }
-                            
-                            // Wait for all tasks to complete
-                            await Task.WhenAll(tasks);
-                            
-                            // Process the results
-                            foreach (var task in tasks)
+                            else
                             {
-                                var result = task.Result;
-                                int imageId = result.Item1;
-                                bool exists = result.Item2;
-                                string imageUrl = result.Item3;
-                                
-                                _totalRequests++;
-                                
-                                if (exists)
-                                {
-                                    _successfulRequests++;
-                                    imagesFound++;
-                                    consecutiveMisses = 0;
-                                    
-                                    // Add the image to our batch
-                                    batchImages.Add(new BackieeImage
-                                    {
-                                        ImageUrl = imageUrl,
-                                        ImageId = imageId.ToString(),
-                                        IsLoading = false
-                                    });
-                                }
-                                else
-                                {
-                                    _failedRequests++;
-                                    consecutiveMisses++;
-                                    
-                                    // If we get too many consecutive misses, we might want to skip ahead
-                                    if (consecutiveMisses > 50)
-                                    {
-                                        _logger?.LogWarning("Too many consecutive misses, skipping ahead");
-                                        // Skip ahead by 100 IDs
-                                        _currentImageId -= 100;
-                                        consecutiveMisses = 0;
-                                        break;
-                                    }
-                                }
-                                
-                                // Update the current ID to continue from
-                                _currentImageId = Math.Min(_currentImageId, imageId - 1);
+                                _failedRequests++;
+                                consecutiveMisses++;
                             }
                         }
-                        
+
+                        // Update the current ID to continue from
+                        if (currentBatchIds.Any())
+                        {
+                            _currentImageId = currentBatchIds.Min() - 1;
+                        }
+
                         // Sort the batch images by ID (descending)
                         batchImages = batchImages.OrderByDescending(img => int.Parse(img.ImageId)).ToList();
-                        
+
                         // Add the images to our collection on the UI thread
-                        System.Windows.Application.Current.Dispatcher.Invoke(() => {
-                            foreach (var image in batchImages)
-                            {
-                                Images.Add(image);
-                            }
-                            
-                            // Update the status
-                            StatusTextBlock.Text = $"Loaded {imagesFound} new wallpapers (Total: {Images.Count})";
-                            _logger?.LogInformation("Added {Count} images to collection. Total: {Total}", 
-                                imagesFound, Images.Count);
-                            
-                            // Update statistics in the status bar
-                            StatusTextBlock.Text += $" | Success: {_successfulRequests}/{_totalRequests} ({_failedRequests} failed)";
-                        });
-                        
-                        // If we didn't find any images in this batch, recursively try another batch
-                        if (imagesFound == 0 && !cancellationToken.IsCancellationRequested)
+                        if (batchImages.Any())
                         {
-                            _logger?.LogInformation("No images found in current batch, trying another batch");
-                            await LoadMoreImagesAsync(cancellationToken);
+                            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => {
+                                foreach (var image in batchImages)
+                                {
+                                    Images.Add(image);
+                                }
+
+                                // Update the status
+                                StatusTextBlock.Text = $"Loaded {imagesFound} new wallpapers (Total: {Images.Count})";
+                                _logger?.LogInformation("Added {Count} images to collection. Total: {Total}", 
+                                    imagesFound, Images.Count);
+
+                                StatusTextBlock.Text += $" | Success: {_successfulRequests}/{_totalRequests} ({_failedRequests} failed)";
+                            });
+                        }
+
+                        // If we didn't find any images and have too many consecutive misses, skip ahead
+                        if (imagesFound == 0 && consecutiveMisses >= 50)
+                        {
+                            _logger?.LogWarning("Too many consecutive misses, skipping ahead");
+                            _currentImageId -= 100;
                         }
                     }
-                    finally
-                    {
-                        // Hide loading indicators after we're done
-                        System.Windows.Application.Current.Dispatcher.Invoke(() => {
-                            StatusTextBlock.Visibility = Visibility.Collapsed;
-                            LoadingProgressBar.Visibility = Visibility.Collapsed;
-                        });
-                        
-                        Monitor.Exit(_loadLock);
-                    }
                 }
-                else
-                {
-                    _logger?.LogInformation("Another thread is already loading images, skipping this request");
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                _logger?.LogInformation("Image loading operation was canceled");
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error in LoadMoreImagesAsync");
-                System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => {
                     StatusTextBlock.Text = $"Error loading images: {ex.Message}";
+                });
+            }
+            finally
+            {
+                // Hide loading indicators
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => {
+                    StatusTextBlock.Visibility = Visibility.Collapsed;
+                    LoadingProgressBar.Visibility = Visibility.Collapsed;
                 });
             }
         }
