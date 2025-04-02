@@ -22,8 +22,22 @@ namespace WallYouNeed.Core.Repositories
             _logger = logger;
             _wallpapers = new List<WallpaperModel>();
             
-            // Ensure directory exists
-            Directory.CreateDirectory(Path.GetDirectoryName(dataPath));
+            // Fix directory creation logic
+            try 
+            {
+                // Get the directory path without filename
+                string storageDir = Path.GetDirectoryName(_dataPath);
+                
+                if (!string.IsNullOrEmpty(storageDir))
+                {
+                    Directory.CreateDirectory(storageDir);
+                    _logger.LogInformation("Created wallpaper storage directory: {Dir}", storageDir);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating wallpaper storage directory");
+            }
             
             // Load wallpapers
             LoadWallpapers();
@@ -64,7 +78,7 @@ namespace WallYouNeed.Core.Repositories
             return Task.FromResult(_wallpapers.ToList());
         }
 
-        public Task<WallpaperModel> GetWallpaperByIdAsync(string id)
+        public Task<WallpaperModel?> GetWallpaperByIdAsync(string id)
         {
             return Task.FromResult(_wallpapers.FirstOrDefault(w => w.Id == id));
         }
@@ -79,7 +93,7 @@ namespace WallYouNeed.Core.Repositories
             return Task.FromResult(_wallpapers.Where(w => w.ResolutionCategory == resolutionCategory).ToList());
         }
 
-        public Task<WallpaperModel> GetWallpapersBySourceUrlAsync(string sourceUrl)
+        public Task<WallpaperModel?> GetWallpapersBySourceUrlAsync(string sourceUrl)
         {
             return Task.FromResult(_wallpapers.FirstOrDefault(w => w.SourceUrl == sourceUrl));
         }

@@ -24,7 +24,7 @@ namespace WallYouNeed.Core.Services
         private readonly ILogger<BackieeScraperService> _logger;
         private readonly IWallpaperConfigurationService _configService;
         private readonly HtmlDownloader _htmlDownloader;
-        private Timer _timer;
+        private Timer? _timer;
         private bool _isScrapingInProgress;
         private readonly object _lock = new object();
         
@@ -37,13 +37,18 @@ namespace WallYouNeed.Core.Services
         // Cache recently successful wallpaper IDs to minimize redundant scraping
         private readonly ConcurrentDictionary<string, DateTime> _recentlyScrapedIds = new ConcurrentDictionary<string, DateTime>();
         
-        // Keep track of HTML structure changes
-        private string _lastSuccessfulHtmlStructureHash;
-        
         // File-based logging
         private readonly string _logFilePath;
 
-        public event EventHandler<List<WallpaperModel>> NewWallpapersAdded;
+        // Add these constants for headers and patterns
+        private const string UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+        private const string AcceptHeader = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7";
+        private static readonly Regex WallpaperIdRegex = new Regex(@"data-wallpaper-id=""(\d+)""", RegexOptions.Compiled);
+        private static readonly Regex TitleRegex = new Regex(@"<title>(.*?)\s*-\s*Free\s*HD\s*Wallpapers<\/title>", RegexOptions.Compiled);
+        private static readonly Regex QualityRegex = new Regex(@"class=""resolution""[^>]*>([^<]+)<", RegexOptions.Compiled);
+        private static readonly Regex AiStatusRegex = new Regex(@"<div class=""ai-tag"">", RegexOptions.Compiled);
+
+        public event EventHandler<List<WallpaperModel>>? NewWallpapersAdded;
 
         public BackieeScraperService(
             HttpClient httpClient,
@@ -56,9 +61,15 @@ namespace WallYouNeed.Core.Services
             _configService = configService;
             _htmlDownloader = htmlDownloader;
             
+            // Configure HTTP client headers from standalone version
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+            _httpClient.DefaultRequestHeaders.Accept.ParseAdd(AcceptHeader);
+            
             // Set up file-based logging in project directory
             _logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_scraper.log");
             LogToFile("BackieeScraperService initialized");
+
+            _timer = new Timer(ScrapeCallback, null, Timeout.Infinite, Timeout.Infinite);
         }
 
         /// <summary>
@@ -412,296 +423,56 @@ namespace WallYouNeed.Core.Services
         /// <summary>
         /// Scrapes a single page of wallpapers with timeout safeguards
         /// </summary>
-        private async Task<List<WallpaperModel>> ScrapeWallpaperPage(string url, string category = null)
+        private async Task<List<WallpaperModel>> ScrapeWallpaperPage(string url, string? category = null)
         {
-            var wallpapers = new List<WallpaperModel>();
-            
-            // Add a timeout to prevent hanging
-            using var cts = new CancellationTokenSource();
-            cts.CancelAfter(TimeSpan.FromSeconds(20)); // 20-second timeout for page scraping
-            
-            try
+            try 
             {
-                _logger.LogInformation("Starting to scrape page: {Url}", url);
+                var html = await _httpClient.GetStringAsync(url);
+                if (string.IsNullOrEmpty(html)) return new List<WallpaperModel>();
+
+                var matches = WallpaperIdRegex.Matches(html);
+                var titleMatch = TitleRegex.Match(html);
+                var categoryName = titleMatch.Success ? titleMatch.Groups[1].Value.Trim() : "Unknown";
                 
-                // Download HTML with timeout
-                var downloadTask = _htmlDownloader.DownloadHtmlAsync(url);
-                var completedTask = await Task.WhenAny(
-                    downloadTask,
-                    Task.Delay(10000, cts.Token) // 10 second timeout
-                );
+                // New extraction patterns
+                var qualityMatch = QualityRegex.Match(html);
+                var hasAI = AiStatusRegex.IsMatch(html);
+
+                var wallpapers = new List<WallpaperModel>();
                 
-                if (completedTask != downloadTask)
+                foreach (Match match in matches)
                 {
-                    _logger.LogWarning("HTML download timed out for URL: {Url}", url);
-                    return wallpapers;
-                }
-                
-                var html = await downloadTask;
-                
-                if (string.IsNullOrEmpty(html))
-                {
-                    _logger.LogWarning("Downloaded HTML is empty for URL: {Url}", url);
-                    return wallpapers;
-                }
-                
-                _logger.LogDebug("Successfully downloaded HTML content of length: {Length}", html.Length);
-                
-                // Get all wallpaper items
-                var findElementsTask = _htmlDownloader.FindElementsAsync(url, "//div[contains(@class, 'item')]");
-                var elementsCompletedTask = await Task.WhenAny(
-                    findElementsTask,
-                    Task.Delay(5000, cts.Token) // 5 second timeout
-                );
-                
-                if (elementsCompletedTask != findElementsTask)
-                {
-                    _logger.LogWarning("Finding elements timed out for URL: {Url}", url);
-                    // Try direct extraction as a fallback
-                    return await ExtractWallpapersDirectlyFromHtml(html, url, category);
-                }
-                
-                var wallpaperElements = await findElementsTask;
-                
-                _logger.LogInformation("Found {Count} wallpaper elements on page", wallpaperElements.Count);
-                
-                foreach (var element in wallpaperElements)
-                {
-                    try
+                    if (match.Success && match.Groups.Count > 1)
                     {
-                        // Extract data
-                        string title = _htmlDownloader.ExtractTextFromElement(element, "h3");
-                        if (string.IsNullOrEmpty(title))
-                        {
-                            // Try alternative heading elements
-                            title = _htmlDownloader.ExtractTextFromElement(element, "h2");
-                            if (string.IsNullOrEmpty(title))
-                            {
-                                title = _htmlDownloader.ExtractTextFromElement(element, "h4");
-                                if (string.IsNullOrEmpty(title))
-                                {
-                                    // Try looking for a title attribute
-                                    title = _htmlDownloader.ExtractAttributeFromElement(element, "title");
-                                    if (string.IsNullOrEmpty(title))
-                                    {
-                                        // Use alt text from image as fallback
-                                        title = _htmlDownloader.ExtractAttributeFromElement(element, "alt");
-                                        if (string.IsNullOrEmpty(title))
-                                        {
-                                            title = "Untitled Wallpaper";
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        string detailUrl = _htmlDownloader.ExtractAttributeFromElement(element, "href");
-                        string thumbnailUrl = _htmlDownloader.ExtractAttributeFromElement(element, "src");
-                        
-                        // Try to find nested <a> tag if href not found at this level
-                        if (string.IsNullOrEmpty(detailUrl))
-                        {
-                            var aTagMatch = Regex.Match(element, "<a[^>]*href\\s*=\\s*['\"]([^'\"]*)['\"][^>]*>");
-                            if (aTagMatch.Success && aTagMatch.Groups.Count > 1)
-                            {
-                                detailUrl = aTagMatch.Groups[1].Value;
-                            }
-                        }
-                        
-                        // Try to find nested <img> tag if src not found at this level
-                        if (string.IsNullOrEmpty(thumbnailUrl))
-                        {
-                            var imgTagMatch = Regex.Match(element, "<img[^>]*src\\s*=\\s*['\"]([^'\"]*)['\"][^>]*>");
-                            if (imgTagMatch.Success && imgTagMatch.Groups.Count > 1)
-                            {
-                                thumbnailUrl = imgTagMatch.Groups[1].Value;
-                            }
-                            
-                            // Look for data-src attribute for lazy-loaded images (common in modern sites)
-                            if (string.IsNullOrEmpty(thumbnailUrl) || thumbnailUrl.Contains("placeholder"))
-                            {
-                                var dataSrcMatch = Regex.Match(element, "<img[^>]*data-src\\s*=\\s*['\"]([^'\"]*)['\"][^>]*>");
-                                if (dataSrcMatch.Success && dataSrcMatch.Groups.Count > 1)
-                                {
-                                    thumbnailUrl = dataSrcMatch.Groups[1].Value;
-                                    _logger.LogDebug("Found image URL in data-src attribute: {Url}", thumbnailUrl);
-                                }
-                            }
-                        }
-                        
-                        if (string.IsNullOrEmpty(detailUrl) || string.IsNullOrEmpty(thumbnailUrl))
-                        {
-                            _logger.LogWarning("Missing required data for wallpaper: detailUrl={DetailUrl}, thumbnailUrl={ThumbnailUrl}", 
-                                detailUrl, thumbnailUrl);
-                            continue;
-                        }
-                        
-                        // Create URL with base if it's relative
-                        if (!detailUrl.StartsWith("http"))
-                        {
-                            var config = await _configService.GetBackieeConfigAsync();
-                            detailUrl = $"{config.BaseUrl.TrimEnd('/')}/{detailUrl.TrimStart('/')}";
-                        }
-                        
-                        // Extract wallpaper ID from detail URL
-                        string wallpaperId = string.Empty;
-                        var wallpaperIdMatch = Regex.Match(detailUrl, "/wallpaper/[^/]+/(\\d+)");
-                        if (wallpaperIdMatch.Success && wallpaperIdMatch.Groups.Count > 1)
-                        {
-                            wallpaperId = wallpaperIdMatch.Groups[1].Value;
-                            _logger.LogDebug("Extracted wallpaper ID: {WallpaperId}", wallpaperId);
-                        }
-                        
-                        // Same for thumbnail URL
-                        if (!thumbnailUrl.StartsWith("http"))
-                        {
-                            var config = await _configService.GetBackieeConfigAsync();
-                            thumbnailUrl = $"{config.BaseUrl.TrimEnd('/')}/{thumbnailUrl.TrimStart('/')}";
-                        }
-                        
-                        // Extract resolution from title
-                        var match = Regex.Match(title, @"(\d+)\s*[xX]\s*(\d+)");
-                        int width = 0, height = 0;
-                        
-                        if (match.Success && match.Groups.Count >= 3)
-                        {
-                            int.TryParse(match.Groups[1].Value, out width);
-                            int.TryParse(match.Groups[2].Value, out height);
-                        }
-                        
-                        // Default resolution if not found
-                        if (width == 0 || height == 0)
-                        {
-                            width = 1920;
-                            height = 1080;
-                        }
-                        
-                        // Determine resolution category
-                        string resolutionCategory = DetermineResolutionCategory(width, height);
-                        
-                        // Try to construct image URL directly from thumbnail URL
-                        string imageUrl = string.Empty;
-                        
-                        // If we have a wallpaper ID, try to construct the full-size image URL
-                        if (!string.IsNullOrEmpty(wallpaperId))
-                        {
-                            // Common pattern for backiee.com full wallpaper URLs
-                            imageUrl = $"https://backiee.com/static/wallpapers/wide/{wallpaperId}.jpg";
-                            _logger.LogDebug("Constructed potential image URL from wallpaper ID: {ImageUrl}", imageUrl);
-                        }
-                        
-                        // Extract image URL from detail page if we don't have a direct construction
-                        if (string.IsNullOrEmpty(imageUrl))
-                        {
-                            imageUrl = await ExtractImageUrlFromDetailPage(detailUrl);
-                        }
-                        
-                        if (string.IsNullOrEmpty(imageUrl))
-                        {
-                            _logger.LogWarning("Could not extract image URL from detail page: {DetailUrl}", detailUrl);
-                            
-                            // Try to use thumbnail as fallback (potentially enlarging it)
-                            if (thumbnailUrl.Contains("/static/wallpapers/") && !thumbnailUrl.Contains("placeholder"))
-                            {
-                                // Examples: 
-                                // /static/wallpapers/560x315/418137.jpg -> /static/wallpapers/wide/418137.jpg
-                                // /static/wallpapers/thumb/418137.jpg -> /static/wallpapers/wide/418137.jpg
-                                
-                                var idMatch = Regex.Match(thumbnailUrl, "/static/wallpapers/(?:[^/]+/)?([\\d]+)\\.jpg");
-                                if (idMatch.Success && idMatch.Groups.Count > 1)
-                                {
-                                    string id = idMatch.Groups[1].Value;
-                                    imageUrl = $"https://backiee.com/static/wallpapers/wide/{id}.jpg";
-                                    _logger.LogDebug("Constructed image URL from thumbnail pattern: {ImageUrl}", imageUrl);
-                                }
-                                else
-                                {
-                                    imageUrl = thumbnailUrl.Replace("560x315", "wide").Replace("thumb", "wide");
-                                    _logger.LogDebug("Modified thumbnail URL to get full image: {ImageUrl}", imageUrl);
-                                }
-                            }
-                            else
-                            {
-                                imageUrl = thumbnailUrl;
-                                _logger.LogDebug("Using thumbnail URL as fallback for image URL: {ImageUrl}", imageUrl);
-                            }
-                            
-                            if (string.IsNullOrEmpty(imageUrl))
-                            {
-                                _logger.LogWarning("No viable image URL found, skipping wallpaper");
-                                continue;
-                            }
-                        }
-                        
+                        var id = match.Groups[1].Value;
                         var wallpaper = new WallpaperModel
                         {
-                            Title = title,
-                            Category = category ?? "Latest",
-                            ResolutionCategory = resolutionCategory,
-                            ThumbnailUrl = thumbnailUrl,
-                            ImageUrl = imageUrl,
-                            SourceUrl = detailUrl,
+                            Id = id,
+                            Title = $"Wallpaper {id}",
+                            Category = category ?? categoryName,
+                            ThumbnailUrl = $"https://backiee.com/static/wallpapers/560x315/{id}.jpg",
+                            ImageUrl = $"https://backiee.com/static/wallpapers/wide/{id}.jpg",
+                            SourceUrl = $"https://backiee.com/wallpaper/{id}",
                             Source = "Backiee",
-                            Width = width,
-                            Height = height,
-                            UploadDate = DateTime.Now // The site doesn't provide upload date, so we use current time
+                            Width = 1920,
+                            Height = 1080,
+                            // Add quality and AI status handling
+                            ResolutionCategory = qualityMatch.Success ? qualityMatch.Groups[1].Value.Trim() : "Unknown",
+                            Metadata = new Dictionary<string, string> {
+                                { "AI_Generated", hasAI.ToString() }
+                            },
+                            UploadDate = DateTime.Now
                         };
-                        
-                        _logger.LogDebug("Successfully scraped wallpaper: {Title}", title);
                         wallpapers.Add(wallpaper);
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error parsing wallpaper item");
-                    }
                 }
-                
-                _logger.LogInformation("Found {Count} wallpapers on page", wallpapers.Count);
-                
-                // Save diagnostic information about found wallpapers
-                try
-                {
-                    if (wallpapers.Any())
-                    {
-                        string logDir = Path.Combine(Path.GetTempPath(), "WallYouNeed_Logs");
-                        Directory.CreateDirectory(logDir);
-                        string filename = $"found_wallpapers_{DateTime.Now:yyyyMMdd_HHmmss}_{Path.GetFileNameWithoutExtension(url)}.txt";
-                        string fullPath = Path.Combine(logDir, filename);
-                        
-                        var sb = new System.Text.StringBuilder();
-                        sb.AppendLine($"Found {wallpapers.Count} wallpapers from {url} at {DateTime.Now}");
-                        
-                        foreach (var wallpaper in wallpapers)
-                        {
-                            sb.AppendLine($"Title: {wallpaper.Title}");
-                            sb.AppendLine($"Category: {wallpaper.Category}");
-                            sb.AppendLine($"ThumbnailUrl: {wallpaper.ThumbnailUrl}");
-                            sb.AppendLine($"ImageUrl: {wallpaper.ImageUrl}");
-                            sb.AppendLine($"SourceUrl: {wallpaper.SourceUrl}");
-                            sb.AppendLine($"Resolution: {wallpaper.Width}x{wallpaper.Height} ({wallpaper.ResolutionCategory})");
-                            sb.AppendLine();
-                        }
-                        
-                        File.WriteAllText(fullPath, sb.ToString());
-                        _logger.LogInformation("Saved wallpaper details to: {Path}", fullPath);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to save wallpaper details");
-                }
-                
-                return wallpapers;
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogWarning("Page scraping was cancelled due to timeout for URL: {Url}", url);
-                return wallpapers;
+
+                return wallpapers.Distinct().ToList();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error scraping wallpaper page: {Url}", url);
-                return wallpapers;
+                _logger.LogError(ex, "Error scraping page: {Url}", url);
+                return new List<WallpaperModel>();
             }
         }
         
@@ -1007,7 +778,7 @@ namespace WallYouNeed.Core.Services
         /// <summary>
         /// Extract wallpapers directly from HTML content when element-based approach fails
         /// </summary>
-        private async Task<List<WallpaperModel>> ExtractWallpapersDirectlyFromHtml(string html, string sourceUrl, string category = null)
+        private async Task<List<WallpaperModel>> ExtractWallpapersDirectlyFromHtml(string html, string sourceUrl, string? category = null)
         {
             var wallpapers = new List<WallpaperModel>();
             
@@ -1253,7 +1024,7 @@ namespace WallYouNeed.Core.Services
                 _logger.LogInformation("Starting HTML analysis for debugging: {Url}", url);
                 
                 // Download the HTML
-                var html = await _htmlDownloader.DownloadHtmlAsync(url);
+                var html = await _httpClient.GetStringAsync(url);
                 if (string.IsNullOrEmpty(html))
                 {
                     _logger.LogWarning("Couldn't download HTML for analysis from {Url}", url);
@@ -1372,7 +1143,7 @@ namespace WallYouNeed.Core.Services
                             var url = $"https://backiee.com/wallpaper/{id}";
                             _logger.LogDebug("Downloading HTML for wallpaper ID {Id} from {Url}", id, url);
                             
-                            string html = await _htmlDownloader.DownloadHtmlAsync(url);
+                            string html = await _httpClient.GetStringAsync(url);
                             
                             if (string.IsNullOrEmpty(html))
                             {
@@ -1385,7 +1156,7 @@ namespace WallYouNeed.Core.Services
                             {
                                 _logger.LogWarning("Received binary data instead of HTML for wallpaper ID {Id}. Site may be serving images to block scrapers.", id);
                                 // Create wallpaper with direct URL construction as fallback
-                                return CreateDirectWallpaper(id);
+                                return CreateDirectWallpaper(id) ?? new WallpaperModel();
                             }
                             
                             var wallpaper = ExtractSingleWallpaperDetails(html, id);
@@ -1403,13 +1174,13 @@ namespace WallYouNeed.Core.Services
                                 else
                                 {
                                     _logger.LogWarning("Image URL verification failed for ID {Id}, using direct construction", id);
-                                    return CreateDirectWallpaper(id);
+                                    return CreateDirectWallpaper(id) ?? new WallpaperModel();
                                 }
                             }
                             else
                             {
                                 _logger.LogWarning("Failed to extract wallpaper details for ID {Id}, using direct construction", id);
-                                return CreateDirectWallpaper(id);
+                                return CreateDirectWallpaper(id) ?? new WallpaperModel();
                             }
                         }
                         catch (Exception ex)
@@ -1515,6 +1286,7 @@ namespace WallYouNeed.Core.Services
         /// <summary>
         /// Gets wallpapers using a list of known working wallpaper IDs
         /// </summary>
+        #pragma warning disable CS1998
         private async Task<List<WallpaperModel>> GetKnownWorkingWallpapers(int count)
         {
             _logger.LogInformation("Attempting to get {Count} known working wallpapers as fallback", count);
@@ -1541,7 +1313,7 @@ namespace WallYouNeed.Core.Services
                     var url = $"https://backiee.com/wallpaper/{id}";
                     _logger.LogInformation("Attempting to get known wallpaper with ID {Id}", id);
                     
-                    string html = await _htmlDownloader.DownloadHtmlAsync(url);
+                    string html = await _httpClient.GetStringAsync(url);
                     if (string.IsNullOrEmpty(html))
                     {
                         _logger.LogWarning("Failed to download HTML for known wallpaper ID {Id}", id);
@@ -1556,7 +1328,8 @@ namespace WallYouNeed.Core.Services
                     }
                     else
                     {
-                        _logger.LogWarning("Failed to extract wallpaper details for known ID {Id}", id);
+                        // Handle null case
+                        results.Add(CreateDirectWallpaper(id) ?? new WallpaperModel());
                     }
                     
                     // Add a small delay to avoid hitting rate limits
@@ -1609,6 +1382,7 @@ namespace WallYouNeed.Core.Services
             
             return results;
         }
+        #pragma warning restore CS1998
 
         /// <summary>
         /// Extracts wallpaper details by directly accessing individual wallpaper pages by ID
@@ -1838,6 +1612,35 @@ namespace WallYouNeed.Core.Services
                     { "IsStaticPlaceholder", "true" }
                 }
             };
+        }
+
+        private async void ScrapeCallback(object? state)
+        {
+            if (_isScrapingInProgress) return;
+            
+            lock (_lock)
+            {
+                if (_isScrapingInProgress) return;
+                _isScrapingInProgress = true;
+            }
+
+            try
+            {
+                _logger.LogInformation("Periodic scrape started");
+                var wallpapers = await ScrapeLatestWallpapers();
+                NewWallpapersAdded?.Invoke(this, wallpapers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during periodic scrape");
+            }
+            finally
+            {
+                lock (_lock)
+                {
+                    _isScrapingInProgress = false;
+                }
+            }
         }
     }
 } 

@@ -931,10 +931,10 @@ public class WallpaperService : IWallpaperService
     /// <summary>
     /// Handler for when new wallpapers are found by the Backiee scraper
     /// </summary>
-    private async void BackieeScraperService_NewWallpapersAdded(object sender, List<WallpaperModel> wallpapers)
+    private void BackieeScraperService_NewWallpapersAdded(object? sender, List<WallpaperModel> wallpapers)
     {
         // Process in a non-blocking way
-        await Task.Run(async () => 
+        Task.Run(async () => 
         {
             try
             {

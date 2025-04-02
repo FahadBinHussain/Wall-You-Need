@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using WallYouNeed.Core.Models;
 using WallYouNeed.Core.Services.Interfaces;
 using Microsoft.Win32;
+using System.IO;
 
 namespace WallYouNeed.Core.Services;
 
@@ -46,6 +47,13 @@ public class SettingsService : ISettingsService
             RotationIntervalMinutes = 60,
             Theme = AppTheme.Dark
         };
+
+        // Add null check before creating directory
+        var dirPath = Path.GetDirectoryName(_databasePath);
+        if (!string.IsNullOrEmpty(dirPath))
+        {
+            Directory.CreateDirectory(dirPath);
+        }
     }
 
     /// <inheritdoc />

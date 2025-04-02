@@ -2,12 +2,15 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
+using System.Runtime.Versioning;
+using System.IO;
 
 namespace WallYouNeed.Core.Utilities;
 
 /// <summary>
 /// Utility class for Windows wallpaper operations
 /// </summary>
+[SupportedOSPlatform("windows")]
 public class WindowsWallpaperUtil
 {
     private readonly ILogger<WindowsWallpaperUtil> _logger;
