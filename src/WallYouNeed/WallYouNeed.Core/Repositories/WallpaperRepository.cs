@@ -26,12 +26,12 @@ namespace WallYouNeed.Core.Repositories
             try 
             {
                 // Get the directory path without filename
-                string storageDir = Path.GetDirectoryName(_dataPath);
+                var wallpaperDir = Path.GetDirectoryName(_dataPath);
                 
-                if (!string.IsNullOrEmpty(storageDir))
+                if (wallpaperDir != null)
                 {
-                    Directory.CreateDirectory(storageDir);
-                    _logger.LogInformation("Created wallpaper storage directory: {Dir}", storageDir);
+                    Directory.CreateDirectory(wallpaperDir);
+                    _logger.LogInformation("Created wallpaper storage directory: {Dir}", wallpaperDir);
                 }
             }
             catch (Exception ex)

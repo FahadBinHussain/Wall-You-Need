@@ -430,44 +430,43 @@ namespace WallYouNeed.Core.Services
                 var html = await _httpClient.GetStringAsync(url);
                 if (string.IsNullOrEmpty(html)) return new List<WallpaperModel>();
 
-                var matches = WallpaperIdRegex.Matches(html);
-                var titleMatch = TitleRegex.Match(html);
-                var categoryName = titleMatch.Success ? titleMatch.Groups[1].Value.Trim() : "Unknown";
-                
-                // New extraction patterns
-                var qualityMatch = QualityRegex.Match(html);
-                var hasAI = AiStatusRegex.IsMatch(html);
-
                 var wallpapers = new List<WallpaperModel>();
+                var wallpaperDivs = FindWallpaperDivs(html);
                 
-                foreach (Match match in matches)
+                foreach (var div in wallpaperDivs)
                 {
-                    if (match.Success && match.Groups.Count > 1)
+                    try 
                     {
-                        var id = match.Groups[1].Value;
+                        var idMatch = WallpaperIdRegex.Match(div);
+                        if (!idMatch.Success) continue;
+                        
+                        string id = idMatch.Groups[1].Value;
+                        bool isAI = CheckAIStatus(div);
+                        string quality = GetQualityFromDiv(div);
+
                         var wallpaper = new WallpaperModel
                         {
                             Id = id,
                             Title = $"Wallpaper {id}",
-                            Category = category ?? categoryName,
+                            Category = category ?? "Latest",
                             ThumbnailUrl = $"https://backiee.com/static/wallpapers/560x315/{id}.jpg",
                             ImageUrl = $"https://backiee.com/static/wallpapers/wide/{id}.jpg",
                             SourceUrl = $"https://backiee.com/wallpaper/{id}",
                             Source = "Backiee",
                             Width = 1920,
                             Height = 1080,
-                            // Add quality and AI status handling
-                            ResolutionCategory = qualityMatch.Success ? qualityMatch.Groups[1].Value.Trim() : "Unknown",
-                            Metadata = new Dictionary<string, string> {
-                                { "AI_Generated", hasAI.ToString() }
-                            },
+                            Metadata = new Dictionary<string, string>(),
                             UploadDate = DateTime.Now
                         };
                         wallpapers.Add(wallpaper);
                     }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing wallpaper div");
+                    }
                 }
 
-                return wallpapers.Distinct().ToList();
+                return wallpapers;
             }
             catch (Exception ex)
             {
@@ -476,6 +475,19 @@ namespace WallYouNeed.Core.Services
             }
         }
         
+        private static List<string> FindWallpaperDivs(string html)
+        {
+            var pattern = @"<div class=""col-sm-3 col-md-3"">(.*?)<\/div>\s+<\/div>";
+            return Regex.Matches(html, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase)
+                        .Cast<Match>()
+                        .Select(m => m.Groups[0].Value)
+                        .ToList();
+        }
+
+        private static string GetQualityFromDiv(string div) => "";
+
+        private bool CheckAIStatus(string div) => false;
+
         /// <summary>
         /// Extracts the full resolution image URL from the detail page
         /// </summary>
@@ -1493,22 +1505,14 @@ namespace WallYouNeed.Core.Services
                         Id = id,
                         Title = title,
                         Category = "Latest",
-                        ResolutionCategory = "4K",
-                        // Use exact thumbnail URLs from the user's list
                         ThumbnailUrl = $"https://backiee.com/static/wallpapers/560x315/{id}.jpg",
-                        // For full image, use the wide version
                         ImageUrl = $"https://backiee.com/static/wallpapers/wide/{id}.jpg",
                         SourceUrl = $"https://backiee.com/wallpaper/{id}",
                         Source = "Backiee",
                         Width = 3840,
                         Height = 2160,
-                        Rating = random.Next(5, 50),
-                        UploadDate = DateTime.Now.AddDays(-random.Next(1, 7)),
-                        Metadata = new Dictionary<string, string>
-                        {
-                            { "Source", "Backiee" },
-                            { "IsStaticPlaceholder", "true" }
-                        }
+                        Metadata = new Dictionary<string, string>(),
+                        UploadDate = DateTime.Now.AddDays(-random.Next(1, 7))
                     };
                     
                     placeholders.Add(wallpaper);
@@ -1601,16 +1605,10 @@ namespace WallYouNeed.Core.Services
                 ImageUrl = $"https://backiee.com/static/wallpapers/wide/{imageId}.jpg",
                 SourceUrl = $"https://backiee.com/wallpaper/{imageId}",
                 Source = "Backiee",
-                Width = 3840,
-                Height = 2160,
-                ResolutionCategory = "4K",
-                Rating = random.Next(5, 50),
-                UploadDate = DateTime.Now.AddDays(-random.Next(1, 7)),
-                Metadata = new Dictionary<string, string>
-                {
-                    { "Source", "Backiee" },
-                    { "IsStaticPlaceholder", "true" }
-                }
+                Width = 1920,
+                Height = 1080,
+                Metadata = new Dictionary<string, string>(),
+                UploadDate = DateTime.Now.AddDays(-random.Next(1, 7))
             };
         }
 

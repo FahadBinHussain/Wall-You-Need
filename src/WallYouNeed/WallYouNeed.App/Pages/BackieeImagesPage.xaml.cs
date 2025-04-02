@@ -143,11 +143,7 @@ namespace WallYouNeed.App.Pages
                             _logger?.LogInformation($"Content fetched successfully. Length: {html.Length} characters");
 
                             // Extract image information using a more comprehensive regex pattern
-                            string pattern = @"<div class=""placeholder""[^>]*?>\s*" +
-                                           @"<img[^>]*?data-src=""([^""]+)""[^>]*?>\s*" +
-                                           @"(?:<div class=""ai-generated""[^>]*?>)?\s*" +
-                                           @"(?:<div class=""quality-badge""[^>]*?>([^<]*)</div>)?\s*" +
-                                           @"(?:<div class=""resolution""[^>]*?>([^<]*)</div>)?";
+                            string pattern = @"<div class=""placeholder""[^>]*?>\s*<img[^>]*?data-src=""([^""]+)""[^>]*?>\s*";
 
                             var matches = System.Text.RegularExpressions.Regex.Matches(html, pattern, System.Text.RegularExpressions.RegexOptions.Singleline);
                             
@@ -161,31 +157,15 @@ namespace WallYouNeed.App.Pages
                                 {
                                     string imageId = GetImageIdFromUrl(imageUrl);
                                     
-                                    // Look for AI-generated indicator more thoroughly
-                                    bool isAiGenerated = html.Contains($"ai-generated-{imageId}") || 
-                                                       html.Contains($"class=\"ai-generated\"") ||
-                                                       html.Contains($"class='ai-generated'");
-                                    
-                                    // Extract quality and resolution, providing defaults if not found
-                                    string quality = match.Groups[2].Success ? match.Groups[2].Value.Trim() : "HD";
-                                    string resolution = match.Groups[3].Success ? match.Groups[3].Value.Trim() : "1920x1080";
-                                    
-                                    if (int.TryParse(imageId, out int numericId))
-                                    {
-                                        _currentImageId = Math.Max(_currentImageId, numericId);
-                                    }
-                                    
                                     var newImage = new BackieeImage
                                     {
                                         ImageUrl = imageUrl,
                                         ImageId = imageId,
                                         IsLoading = false,
-                                        IsAiGenerated = isAiGenerated,
-                                        Quality = quality,
-                                        Resolution = resolution
+                                        Resolution = "1920x1080"
                                     };
                                     
-                                    _logger?.LogDebug($"Adding image: ID={imageId}, AI={isAiGenerated}, Quality={quality}, Resolution={resolution}");
+                                    _logger?.LogDebug($"Adding image: ID={imageId}, Resolution={newImage.Resolution}");
                                     orderedImages.Add(newImage);
                                     
                                     if (int.TryParse(imageId, out int id))
@@ -341,7 +321,8 @@ namespace WallYouNeed.App.Pages
                                 {
                                     ImageUrl = imageUrl,
                                     ImageId = id.ToString(),
-                                    IsLoading = false
+                                    IsLoading = false,
+                                    Resolution = "1920x1080"
                                 });
                                 
                                 _loadedUrls.Add(imageUrl);
@@ -545,8 +526,6 @@ namespace WallYouNeed.App.Pages
                         {
                             ImageUrl = wallpaper.ThumbnailUrl,
                             ImageId = wallpaper.Id,
-                            IsAiGenerated = wallpaper.Source == WallpaperSource.AI,
-                            Quality = wallpaper.Metadata.GetValueOrDefault("quality", ""),
                             Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
                         };
 
@@ -600,9 +579,15 @@ namespace WallYouNeed.App.Pages
         public string ImageUrl { get; set; }
         public string ImageId { get; set; }
         public bool IsLoading { get; set; }
-        public bool IsAiGenerated { get; set; }
-        public string Quality { get; set; }
         public string Resolution { get; set; }
+
+        // Add constructor to handle nullability warnings
+        public BackieeImage()
+        {
+            ImageUrl = string.Empty;
+            ImageId = string.Empty;
+            Resolution = string.Empty;
+        }
     }
 
     // Value converter for binding boolean values to visibility

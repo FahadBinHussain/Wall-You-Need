@@ -137,31 +137,6 @@
                                              HorizontalAlignment="Center"
                                              Panel.ZIndex="2"/>
 
-                                <!-- Badges Container -->
-                                <Grid Panel.ZIndex="2">
-                                    <!-- Resolution Badge -->
-                                    <Border CornerRadius="3" 
-                                            HorizontalAlignment="Left"
-                                            VerticalAlignment="Top"
-                                            Margin="0,0,0,0">
-                                        <Image Source="/WallYouNeed.App;component/Assets/5k_logo.png" 
-                                               Width="48" 
-                                               Height="48"
-                                               RenderOptions.BitmapScalingMode="HighQuality"/>
-                                    </Border>
-
-                                    <!-- AI Generated Badge -->
-                                    <Border CornerRadius="3" 
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Top"
-                                            Margin="0,4,4,0">
-                                        <Image Source="/WallYouNeed.App;component/Assets/aigenerated-icon.png" 
-                                               Width="42" 
-                                               Height="42"
-                                               RenderOptions.BitmapScalingMode="HighQuality"/>
-                                    </Border>
-                                </Grid>
-
                                 <!-- Resolution text (now hidden) -->
                                 <Border Background="#80000000" 
                                         CornerRadius="3" 

@@ -429,8 +429,6 @@ namespace WallYouNeed.App.Pages
             {
                 ImageUrl = wallpaper.ThumbnailUrl,
                 ImageId = wallpaper.Id,
-                IsAiGenerated = wallpaper.Source == WallpaperSource.AI,
-                Quality = wallpaper.Metadata.GetValueOrDefault("quality", ""),
                 Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
             };
 

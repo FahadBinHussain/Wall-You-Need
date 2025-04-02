@@ -94,6 +94,16 @@ public class Wallpaper
     /// Additional metadata for the wallpaper
     /// </summary>
     public Dictionary<string, string> Metadata { get; set; } = new();
+    
+    /// <summary>
+    /// Number of likes for the wallpaper
+    /// </summary>
+    public int Likes { get; set; }
+    
+    /// <summary>
+    /// Number of downloads for the wallpaper
+    /// </summary>
+    public int Downloads { get; set; }
 }
 
 /// <summary>
