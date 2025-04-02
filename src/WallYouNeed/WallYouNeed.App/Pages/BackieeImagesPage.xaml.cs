@@ -111,7 +111,7 @@ namespace WallYouNeed.App.Pages
                 // Show loading indicator or message
                 System.Windows.Application.Current.Dispatcher.Invoke(() => {
                     Images.Clear();
-                    _loadedUrls.Clear(); // Clear loaded URLs when clearing images
+                    _loadedUrls.Clear();
                     StatusTextBlock.Text = "Loading initial wallpapers...";
                     StatusTextBlock.Visibility = Visibility.Visible;
                     LoadingProgressBar.Visibility = Visibility.Visible;
@@ -119,20 +119,16 @@ namespace WallYouNeed.App.Pages
                 
                 List<BackieeImage> fetchedImages = new List<BackieeImage>();
                 
-                // Use the BackieeScraper to fetch the latest images
                 await Task.Run(async () => {
                     try
                     {
                         _logger?.LogInformation("Starting to fetch images from Backiee website");
                         
-                        // Create HTTP client
                         using (HttpClient client = new HttpClient())
                         {
-                            // Add headers to simulate a browser request
                             client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36");
-                            client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
+                            client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
                             
-                            // Fetch the main page
                             _logger?.LogInformation("Fetching content from backiee.com...");
                             HttpResponseMessage response = await client.GetAsync("https://backiee.com");
                             
@@ -141,36 +137,52 @@ namespace WallYouNeed.App.Pages
                                 throw new Exception($"Failed to fetch the webpage. Status code: {response.StatusCode}");
                             }
 
-                            // Read the content
                             string html = await response.Content.ReadAsStringAsync();
                             _logger?.LogInformation($"Content fetched successfully. Length: {html.Length} characters");
 
-                            // Extract the image URLs using regex
-                            string pattern = @"<div class=""placeholder""[^>]*?>\s*<img[^>]*?data-src=""([^""]+)""";
-                            var matches = System.Text.RegularExpressions.Regex.Matches(html, pattern);
+                            // Extract image information using a more comprehensive regex pattern
+                            string pattern = @"<div class=""placeholder""[^>]*?>\s*" +
+                                           @"<img[^>]*?data-src=""([^""]+)""[^>]*?>\s*" +
+                                           @"(?:<div class=""ai-generated""[^>]*?>)?\s*" +
+                                           @"(?:<div class=""quality-badge""[^>]*?>([^<]*)</div>)?\s*" +
+                                           @"(?:<div class=""resolution""[^>]*?>([^<]*)</div>)?";
+
+                            var matches = System.Text.RegularExpressions.Regex.Matches(html, pattern, System.Text.RegularExpressions.RegexOptions.Singleline);
                             
                             foreach (System.Text.RegularExpressions.Match match in matches)
                             {
                                 string imageUrl = match.Groups[1].Value;
                                 if (!string.IsNullOrEmpty(imageUrl))
                                 {
-                                    // Extract the image ID from the URL
                                     string imageId = GetImageIdFromUrl(imageUrl);
                                     
-                                    // Try to find the highest image ID
+                                    // Look for AI-generated indicator more thoroughly
+                                    bool isAiGenerated = html.Contains($"ai-generated-{imageId}") || 
+                                                       html.Contains($"class=\"ai-generated\"") ||
+                                                       html.Contains($"class='ai-generated'");
+                                    
+                                    // Extract quality and resolution, providing defaults if not found
+                                    string quality = match.Groups[2].Success ? match.Groups[2].Value.Trim() : "HD";
+                                    string resolution = match.Groups[3].Success ? match.Groups[3].Value.Trim() : "1920x1080";
+                                    
                                     if (int.TryParse(imageId, out int numericId))
                                     {
                                         _currentImageId = Math.Max(_currentImageId, numericId);
                                     }
                                     
-                                    fetchedImages.Add(new BackieeImage
+                                    var newImage = new BackieeImage
                                     {
                                         ImageUrl = imageUrl,
                                         ImageId = imageId,
-                                        IsLoading = false
-                                    });
+                                        IsLoading = false,
+                                        IsAiGenerated = isAiGenerated,
+                                        Quality = quality,
+                                        Resolution = resolution
+                                    };
                                     
-                                    // Add this ID to the attempted IDs cache
+                                    _logger?.LogDebug($"Adding image: ID={imageId}, AI={isAiGenerated}, Quality={quality}, Resolution={resolution}");
+                                    fetchedImages.Add(newImage);
+                                    
                                     if (int.TryParse(imageId, out int id))
                                     {
                                         _attemptedIds.Add(id);
@@ -184,8 +196,6 @@ namespace WallYouNeed.App.Pages
                     catch (Exception ex)
                     {
                         _logger?.LogError(ex, "Error fetching images from Backiee website");
-                        
-                        // Fallback to reading from the markdown file if the fetch fails
                         _logger?.LogInformation("Falling back to reading from static markdown file");
                         await LoadImagesFromMarkdownFile();
                         return;
@@ -202,7 +212,6 @@ namespace WallYouNeed.App.Pages
                             Images.Add(image);
                             _loadedUrls.Add(image.ImageUrl);
                             
-                            // Add to attempted IDs
                             if (int.TryParse(image.ImageId, out int id))
                             {
                                 _attemptedIds.Add(id);
@@ -213,7 +222,7 @@ namespace WallYouNeed.App.Pages
                 
                 _logger?.LogInformation("Successfully added {Count} initial images to the collection", Images.Count);
                 
-                // Save the fetched images to the markdown file for backup
+                // Save to markdown with additional metadata
                 await Task.Run(() => {
                     try
                     {
@@ -223,16 +232,16 @@ namespace WallYouNeed.App.Pages
                         {
                             foreach (var image in fetchedImages)
                             {
-                                writer.WriteLine(image.ImageUrl);
+                                // Save metadata in a structured format
+                                writer.WriteLine($"{image.ImageUrl}|{image.IsAiGenerated}|{image.Quality}|{image.Resolution}");
                             }
                         }
                         
-                        _logger?.LogInformation("Successfully saved fetched images to markdown file as backup");
+                        _logger?.LogInformation("Successfully saved fetched images with metadata to markdown file");
                     }
                     catch (Exception ex)
                     {
                         _logger?.LogError(ex, "Error saving fetched images to markdown file");
-                        // Continue anyway, as this is just a backup operation
                     }
                 });
             }
@@ -240,8 +249,6 @@ namespace WallYouNeed.App.Pages
             {
                 _logger?.LogError(ex, "Error in FetchInitialImages");
                 System.Windows.MessageBox.Show($"Error fetching initial images: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                
-                // Fallback to reading from the markdown file
                 await LoadImagesFromMarkdownFile();
             }
         }
@@ -668,6 +675,9 @@ namespace WallYouNeed.App.Pages
         public string ImageUrl { get; set; }
         public string ImageId { get; set; }
         public bool IsLoading { get; set; }
+        public bool IsAiGenerated { get; set; }
+        public string Quality { get; set; } // e.g., "5K", "4K", etc.
+        public string Resolution { get; set; }
     }
     
     // Value converter for binding boolean values to visibility

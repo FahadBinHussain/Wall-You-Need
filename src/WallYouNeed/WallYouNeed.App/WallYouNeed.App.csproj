@@ -27,7 +27,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Assets\" />
+    <Resource Include="Assets\5k_logo.png" />
+    <Resource Include="Assets\aigenerated-icon.png" />
   </ItemGroup>
 
 </Project> 
