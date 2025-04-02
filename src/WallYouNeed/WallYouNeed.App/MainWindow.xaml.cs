@@ -98,6 +98,12 @@ namespace WallYouNeed.App
             SetActiveButton(sender as System.Windows.Controls.Button);
         }
 
+        private void InfiniteWallpaperButton_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateToPage("Infinite Wallpapers");
+            SetActiveButton(sender as System.Windows.Controls.Button);
+        }
+
         private void SetActiveButton(System.Windows.Controls.Button button)
         {
             if (_currentActiveButton != null)
@@ -144,6 +150,9 @@ namespace WallYouNeed.App
                         (page as CategoryPage)?.SetCategory("Backiee Content");
                         break;
                     case "Backiee Images":
+                        page = app.Services.GetRequiredService<BackieeImagesPage>();
+                        break;
+                    case "Infinite Wallpapers":
                         page = app.Services.GetRequiredService<BackieeImagesPage>();
                         break;
                 }

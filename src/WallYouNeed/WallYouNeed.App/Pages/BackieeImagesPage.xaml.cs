@@ -4,9 +4,11 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.Logging;
@@ -22,6 +24,22 @@ namespace WallYouNeed.App.Pages
         private ObservableCollection<BackieeImage> Images { get; set; }
         private ILogger<BackieeImagesPage> _logger;
 
+        // Infinite scrolling variables
+        private int _currentImageId = 418183; // Start with the highest ID from the sample
+        private bool _isLoadingMore = false;
+        private readonly object _loadLock = new object();
+        private readonly int _batchSize = 20; // Number of images to load at once
+        private readonly int _scrollThreshold = 200; // Pixels from bottom to trigger more loading
+        private CancellationTokenSource _cts;
+        
+        // Cache to track which IDs have been attempted
+        private HashSet<int> _attemptedIds = new HashSet<int>();
+        
+        // Stats counters
+        private int _totalRequests = 0;
+        private int _successfulRequests = 0;
+        private int _failedRequests = 0;
+
         public BackieeImagesPage(ILogger<BackieeImagesPage> logger = null)
         {
             try
@@ -31,11 +49,17 @@ namespace WallYouNeed.App.Pages
                 
                 InitializeComponent();
                 
+                // Create a value converter for boolean to visibility
+                Resources.Add("BooleanToVisibilityConverter", new BooleanToVisibilityConverter());
+                
                 Images = new ObservableCollection<BackieeImage>();
                 ImagesItemsControl.ItemsSource = Images;
                 
                 // Load images asynchronously
                 Loaded += BackieeImagesPage_Loaded;
+                
+                // Create a new cancellation token source for infinite scrolling
+                _cts = new CancellationTokenSource();
                 
                 _logger?.LogInformation("BackieeImagesPage initialized successfully");
             }
@@ -52,7 +76,20 @@ namespace WallYouNeed.App.Pages
             try
             {
                 _logger?.LogInformation("BackieeImagesPage_Loaded event fired");
-                await FetchAndDisplayImages();
+                
+                // Show loading indicators
+                StatusTextBlock.Visibility = Visibility.Visible;
+                LoadingProgressBar.Visibility = Visibility.Visible;
+                
+                // First try to get the initial images to determine highest image ID
+                await FetchInitialImages();
+                
+                // Then start the infinite loading
+                await LoadMoreImagesAsync(_cts.Token);
+                
+                // Hide loading indicators
+                StatusTextBlock.Visibility = Visibility.Collapsed;
+                LoadingProgressBar.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
             {
@@ -62,15 +99,18 @@ namespace WallYouNeed.App.Pages
             }
         }
 
-        private async Task FetchAndDisplayImages()
+        private async Task FetchInitialImages()
         {
             try
             {
-                _logger?.LogInformation("FetchAndDisplayImages called");
+                _logger?.LogInformation("FetchInitialImages called");
                 
                 // Show loading indicator or message
                 System.Windows.Application.Current.Dispatcher.Invoke(() => {
                     Images.Clear();
+                    StatusTextBlock.Text = "Loading initial wallpapers...";
+                    StatusTextBlock.Visibility = Visibility.Visible;
+                    LoadingProgressBar.Visibility = Visibility.Visible;
                 });
                 
                 List<BackieeImage> fetchedImages = new List<BackieeImage>();
@@ -113,15 +153,28 @@ namespace WallYouNeed.App.Pages
                                     // Extract the image ID from the URL
                                     string imageId = GetImageIdFromUrl(imageUrl);
                                     
+                                    // Try to find the highest image ID
+                                    if (int.TryParse(imageId, out int numericId))
+                                    {
+                                        _currentImageId = Math.Max(_currentImageId, numericId);
+                                    }
+                                    
                                     fetchedImages.Add(new BackieeImage
                                     {
                                         ImageUrl = imageUrl,
-                                        ImageId = imageId
+                                        ImageId = imageId,
+                                        IsLoading = false
                                     });
+                                    
+                                    // Add this ID to the attempted IDs cache
+                                    if (int.TryParse(imageId, out int id))
+                                    {
+                                        _attemptedIds.Add(id);
+                                    }
                                 }
                             }
                             
-                            _logger?.LogInformation($"Extracted {fetchedImages.Count} images from the webpage");
+                            _logger?.LogInformation($"Extracted {fetchedImages.Count} images from the webpage. Highest ID: {_currentImageId}");
                         }
                     }
                     catch (Exception ex)
@@ -144,7 +197,7 @@ namespace WallYouNeed.App.Pages
                     }
                 });
                 
-                _logger?.LogInformation("Successfully added {Count} images to the collection", Images.Count);
+                _logger?.LogInformation("Successfully added {Count} initial images to the collection", Images.Count);
                 
                 // Save the fetched images to the markdown file for backup
                 await Task.Run(() => {
@@ -171,11 +224,218 @@ namespace WallYouNeed.App.Pages
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error in FetchAndDisplayImages");
-                System.Windows.MessageBox.Show($"Error fetching images: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logger?.LogError(ex, "Error in FetchInitialImages");
+                System.Windows.MessageBox.Show($"Error fetching initial images: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 
                 // Fallback to reading from the markdown file
                 await LoadImagesFromMarkdownFile();
+            }
+        }
+
+        private void MainScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            // Check if we're near the bottom of the scroll viewer
+            if (e.VerticalOffset + e.ViewportHeight + _scrollThreshold >= e.ExtentHeight)
+            {
+                // Load more images if we're not already loading
+                if (!_isLoadingMore)
+                {
+                    _isLoadingMore = true;
+                    
+                    // Load more images asynchronously
+                    Task.Run(async () => 
+                    {
+                        try
+                        {
+                            await LoadMoreImagesAsync(_cts.Token);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogError(ex, "Error loading more images in scroll handler");
+                        }
+                        finally
+                        {
+                            _isLoadingMore = false;
+                        }
+                    });
+                }
+            }
+        }
+
+        private async Task LoadMoreImagesAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                _logger?.LogInformation("LoadMoreImagesAsync called, current imageId: {ImageId}", _currentImageId);
+                
+                // Check if we're already loading
+                if (Monitor.TryEnter(_loadLock))
+                {
+                    try
+                    {
+                        // Show status to indicate loading is in progress
+                        System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                            StatusTextBlock.Text = $"Loading wallpapers... (ID: {_currentImageId})";
+                            StatusTextBlock.Visibility = Visibility.Visible;
+                            LoadingProgressBar.Visibility = Visibility.Visible;
+                        });
+                        
+                        // Create a list to hold the successful images in this batch
+                        List<BackieeImage> batchImages = new List<BackieeImage>();
+                        int consecutiveMisses = 0;
+                        int imagesFound = 0;
+                        
+                        // Use HttpClient for parallel requests
+                        using (HttpClient client = new HttpClient())
+                        {
+                            // Add headers to simulate a browser request
+                            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36");
+                            client.DefaultRequestHeaders.Add("Accept", "image/avif,image/webp,image/apng,image/*,*/*;q=0.8");
+                            client.Timeout = TimeSpan.FromSeconds(10);
+                            
+                            // Create a list of tasks for parallel image fetching
+                            List<Task<Tuple<int, bool, string>>> tasks = new List<Task<Tuple<int, bool, string>>>();
+                            
+                            // Prepare tasks for a batch of images
+                            for (int i = 0; i < _batchSize; i++)
+                            {
+                                // Calculate the next ID to try
+                                int imageId = _currentImageId - i;
+                                
+                                // Skip if we've already tried this ID
+                                if (_attemptedIds.Contains(imageId))
+                                {
+                                    continue;
+                                }
+                                
+                                // Add to attempted IDs
+                                _attemptedIds.Add(imageId);
+                                
+                                // Construct the image URL
+                                string imageUrl = $"https://backiee.com/static/wallpapers/560x315/{imageId}.jpg";
+                                
+                                // Create a task to fetch the image
+                                tasks.Add(CheckImageExistsAsync(client, imageId, imageUrl, cancellationToken));
+                            }
+                            
+                            // Wait for all tasks to complete
+                            await Task.WhenAll(tasks);
+                            
+                            // Process the results
+                            foreach (var task in tasks)
+                            {
+                                var result = task.Result;
+                                int imageId = result.Item1;
+                                bool exists = result.Item2;
+                                string imageUrl = result.Item3;
+                                
+                                _totalRequests++;
+                                
+                                if (exists)
+                                {
+                                    _successfulRequests++;
+                                    imagesFound++;
+                                    consecutiveMisses = 0;
+                                    
+                                    // Add the image to our batch
+                                    batchImages.Add(new BackieeImage
+                                    {
+                                        ImageUrl = imageUrl,
+                                        ImageId = imageId.ToString(),
+                                        IsLoading = false
+                                    });
+                                }
+                                else
+                                {
+                                    _failedRequests++;
+                                    consecutiveMisses++;
+                                    
+                                    // If we get too many consecutive misses, we might want to skip ahead
+                                    if (consecutiveMisses > 50)
+                                    {
+                                        _logger?.LogWarning("Too many consecutive misses, skipping ahead");
+                                        // Skip ahead by 100 IDs
+                                        _currentImageId -= 100;
+                                        consecutiveMisses = 0;
+                                        break;
+                                    }
+                                }
+                                
+                                // Update the current ID to continue from
+                                _currentImageId = Math.Min(_currentImageId, imageId - 1);
+                            }
+                        }
+                        
+                        // Sort the batch images by ID (descending)
+                        batchImages = batchImages.OrderByDescending(img => int.Parse(img.ImageId)).ToList();
+                        
+                        // Add the images to our collection on the UI thread
+                        System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                            foreach (var image in batchImages)
+                            {
+                                Images.Add(image);
+                            }
+                            
+                            // Update the status
+                            StatusTextBlock.Text = $"Loaded {imagesFound} new wallpapers (Total: {Images.Count})";
+                            _logger?.LogInformation("Added {Count} images to collection. Total: {Total}", 
+                                imagesFound, Images.Count);
+                            
+                            // Update statistics in the status bar
+                            StatusTextBlock.Text += $" | Success: {_successfulRequests}/{_totalRequests} ({_failedRequests} failed)";
+                        });
+                        
+                        // If we didn't find any images in this batch, recursively try another batch
+                        if (imagesFound == 0 && !cancellationToken.IsCancellationRequested)
+                        {
+                            _logger?.LogInformation("No images found in current batch, trying another batch");
+                            await LoadMoreImagesAsync(cancellationToken);
+                        }
+                    }
+                    finally
+                    {
+                        // Hide loading indicators after we're done
+                        System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                            StatusTextBlock.Visibility = Visibility.Collapsed;
+                            LoadingProgressBar.Visibility = Visibility.Collapsed;
+                        });
+                        
+                        Monitor.Exit(_loadLock);
+                    }
+                }
+                else
+                {
+                    _logger?.LogInformation("Another thread is already loading images, skipping this request");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("Image loading operation was canceled");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error in LoadMoreImagesAsync");
+                System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                    StatusTextBlock.Text = $"Error loading images: {ex.Message}";
+                });
+            }
+        }
+        
+        private async Task<Tuple<int, bool, string>> CheckImageExistsAsync(HttpClient client, int imageId, string imageUrl, CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Make a HEAD request first to check if the image exists
+                var request = new HttpRequestMessage(HttpMethod.Head, imageUrl);
+                var response = await client.SendAsync(request, cancellationToken);
+                
+                // Return the result - true if the image exists, false otherwise
+                return new Tuple<int, bool, string>(imageId, response.IsSuccessStatusCode, imageUrl);
+            }
+            catch (Exception)
+            {
+                // If there's an error, assume the image doesn't exist
+                return new Tuple<int, bool, string>(imageId, false, imageUrl);
             }
         }
 
@@ -203,105 +463,85 @@ namespace WallYouNeed.App.Pages
             {
                 if (sender is FrameworkElement element && element.Tag is BackieeImage image)
                 {
+                    // Show image details or open in full screen
                     _logger?.LogInformation("Image clicked: {ImageId}", image.ImageId);
                     
-                    // Open the image in default browser
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = image.ImageUrl,
-                        UseShellExecute = true
-                    });
+                    // Create a context menu with options
+                    var contextMenu = new ContextMenu();
+                    
+                    // Add view option
+                    var viewMenuItem = new MenuItem { Header = "View fullscreen" };
+                    viewMenuItem.Click += (s, args) => ViewImage_Click(image);
+                    contextMenu.Items.Add(viewMenuItem);
+                    
+                    // Add save option
+                    var saveMenuItem = new MenuItem { Header = "Save to disk" };
+                    saveMenuItem.Click += (s, args) => SaveImage_Click(image);
+                    contextMenu.Items.Add(saveMenuItem);
+                    
+                    // Add set as wallpaper option
+                    var setAsWallpaperMenuItem = new MenuItem { Header = "Set as wallpaper" };
+                    setAsWallpaperMenuItem.Click += (s, args) => SetAsWallpaper_Click(image);
+                    contextMenu.Items.Add(setAsWallpaperMenuItem);
+                    
+                    // Show the context menu
+                    contextMenu.IsOpen = true;
                 }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error handling image click");
-                System.Windows.MessageBox.Show($"Error opening image: {ex.Message}", 
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         
-        private void ViewImage_Click(object sender, RoutedEventArgs e)
+        private void ViewImage_Click(BackieeImage image)
         {
             try
             {
-                if (sender is FrameworkElement element && element.Tag is BackieeImage image)
-                {
-                    _logger?.LogInformation("View button clicked for image: {ImageId}", image.ImageId);
-                    
-                    // Open the image in default browser
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = image.ImageUrl,
-                        UseShellExecute = true
-                    });
-                }
+                _logger?.LogInformation("ViewImage_Click called for image: {ImageId}", image.ImageId);
+                
+                // TODO: Implement full screen image viewing
+                System.Windows.MessageBox.Show($"Viewing image: {image.ImageId}", "View Image", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error handling view button click");
-                System.Windows.MessageBox.Show($"Error viewing image: {ex.Message}", 
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logger?.LogError(ex, "Error in ViewImage_Click");
+                System.Windows.MessageBox.Show($"Error viewing image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         
-        private void SaveImage_Click(object sender, RoutedEventArgs e)
+        private void SaveImage_Click(BackieeImage image)
         {
             try
             {
-                if (sender is FrameworkElement element && element.Tag is BackieeImage image)
-                {
-                    _logger?.LogInformation("Save button clicked for image: {ImageId}", image.ImageId);
-                    
-                    // Show a message since we don't have access to the WallpaperService here
-                    System.Windows.MessageBox.Show($"Image {image.ImageId} would be saved to your collection.", 
-                        "Save Image", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
+                _logger?.LogInformation("SaveImage_Click called for image: {ImageId}", image.ImageId);
+                
+                // TODO: Implement save image functionality
+                System.Windows.MessageBox.Show($"Saving image: {image.ImageId}", "Save Image", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error handling save button click");
-                System.Windows.MessageBox.Show($"Error saving image: {ex.Message}", 
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logger?.LogError(ex, "Error in SaveImage_Click");
+                System.Windows.MessageBox.Show($"Error saving image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         
-        // Top action buttons event handlers
-        private void FilterButton_Click(object sender, RoutedEventArgs e)
+        private void SetAsWallpaper_Click(BackieeImage image)
         {
             try
             {
-                _logger?.LogInformation("Filter button clicked");
-                // Placeholder for filter functionality
-                System.Windows.MessageBox.Show("Filter functionality will be implemented in a future update.", 
-                    "Coming Soon", MessageBoxButton.OK, MessageBoxImage.Information);
+                _logger?.LogInformation("SetAsWallpaper_Click called for image: {ImageId}", image.ImageId);
+                
+                // TODO: Implement set as wallpaper functionality
+                System.Windows.MessageBox.Show($"Setting as wallpaper: {image.ImageId}", "Set as Wallpaper", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error handling filter button click");
-                System.Windows.MessageBox.Show($"Error: {ex.Message}", 
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-        
-        private void SetAsSlideshowButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                _logger?.LogInformation("Set as slideshow button clicked");
-                // Placeholder for slideshow functionality
-                System.Windows.MessageBox.Show("Slideshow functionality will be implemented in a future update.", 
-                    "Coming Soon", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error handling set as slideshow button click");
-                System.Windows.MessageBox.Show($"Error: {ex.Message}", 
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logger?.LogError(ex, "Error in SetAsWallpaper_Click");
+                System.Windows.MessageBox.Show($"Error setting as wallpaper: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        // Keep the LoadImagesFromMarkdownFile method as a fallback
         private async Task LoadImagesFromMarkdownFile()
         {
             try
@@ -358,24 +598,64 @@ namespace WallYouNeed.App.Pages
                         // Extract the image ID from the URL
                         string imageId = GetImageIdFromUrl(url);
                         
+                        // Find the highest image ID
+                        if (int.TryParse(imageId, out int numericId))
+                        {
+                            _currentImageId = Math.Max(_currentImageId, numericId);
+                            _attemptedIds.Add(numericId);
+                        }
+                        
                         // Add the image to our collection
                         System.Windows.Application.Current.Dispatcher.Invoke(() =>
                         {
                             Images.Add(new BackieeImage
                             {
                                 ImageUrl = url.Trim(),
-                                ImageId = imageId
+                                ImageId = imageId,
+                                IsLoading = false
                             });
                         });
                     }
                 }
                 
-                _logger?.LogInformation("Successfully added {Count} images to the collection", Images.Count);
+                _logger?.LogInformation("Successfully added {Count} images to the collection from markdown file. Current highest ID: {CurrentId}", Images.Count, _currentImageId);
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error loading images from markdown file");
                 System.Windows.MessageBox.Show($"Error loading images: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        private void FilterButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _logger?.LogInformation("FilterButton_Click called");
+                
+                // TODO: Implement filter functionality
+                System.Windows.MessageBox.Show("Filter functionality not implemented yet", "Filter", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error in FilterButton_Click");
+                System.Windows.MessageBox.Show($"Error with filter: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        private void SetAsSlideshowButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _logger?.LogInformation("SetAsSlideshowButton_Click called");
+                
+                // TODO: Implement set as slideshow functionality
+                System.Windows.MessageBox.Show("Set as slideshow functionality not implemented yet", "Set as Slideshow", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error in SetAsSlideshowButton_Click");
+                System.Windows.MessageBox.Show($"Error setting as slideshow: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -384,5 +664,28 @@ namespace WallYouNeed.App.Pages
     {
         public string ImageUrl { get; set; }
         public string ImageId { get; set; }
+        public bool IsLoading { get; set; }
+    }
+    
+    // Value converter for binding boolean values to visibility
+    public class BooleanToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            if (value is bool boolValue)
+            {
+                return boolValue ? Visibility.Visible : Visibility.Collapsed;
+            }
+            return Visibility.Collapsed;
+        }
+        
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            if (value is Visibility visibility)
+            {
+                return visibility == Visibility.Visible;
+            }
+            return false;
+        }
     }
 } 
