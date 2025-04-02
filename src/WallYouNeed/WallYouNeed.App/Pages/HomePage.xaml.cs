@@ -19,6 +19,7 @@ using WallYouNeed.App.Pages;
 using System.Collections.Generic;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 
 namespace WallYouNeed.App.Pages
 {
@@ -30,10 +31,11 @@ namespace WallYouNeed.App.Pages
         private readonly ICollectionService _collectionService;
         private readonly ISettingsService _settingsService;
         private readonly IBackieeScraperService _backieeScraperService;
+        private ObservableCollection<BackieeImage> Images { get; set; }
 
-        public ObservableCollection<Wallpaper> RecentWallpapers { get; } = new();
-        public ObservableCollection<Wallpaper> FavoriteWallpapers { get; } = new();
-        public ObservableCollection<Wallpaper> CurrentWallpaper { get; } = new();
+        public ObservableCollection<Core.Models.Wallpaper> RecentWallpapers { get; } = new();
+        public ObservableCollection<Core.Models.Wallpaper> FavoriteWallpapers { get; } = new();
+        public ObservableCollection<Core.Models.Wallpaper> CurrentWallpaper { get; } = new();
 
         public HomePage ViewModel => this;
 
@@ -54,6 +56,7 @@ namespace WallYouNeed.App.Pages
 
             InitializeComponent();
             DataContext = this;
+            Images = new ObservableCollection<BackieeImage>();
 
             Loaded += HomePage_Loaded;
             
@@ -313,12 +316,13 @@ namespace WallYouNeed.App.Pages
                 // For other categories, use CategoryPage as before
                 _logger.LogDebug("Using CategoryPage for category: {CategoryName}", categoryName);
                 
-                // Create an instance of the CategoryPage
+                // Create an instance of the CategoryPage with all required services
                 var categoryPage = new CategoryPage(
                     Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<CategoryPage>>((App.Current as App).Services),
                     _wallpaperService,
                     _snackbarService,
-                    _backieeScraperService);
+                    _backieeScraperService,
+                    _settingsService);
                 
                 // Set the category
                 categoryPage.SetCategory(categoryName);
@@ -414,6 +418,57 @@ namespace WallYouNeed.App.Pages
             {
                 _logger.LogError(ex, "Error loading initial content");
                 throw;
+            }
+        }
+
+        private void ConvertAndAddWallpaper(Wallpaper wallpaper)
+        {
+            if (wallpaper == null) return;
+
+            var backieeImage = new BackieeImage
+            {
+                ImageUrl = wallpaper.ThumbnailUrl,
+                ImageId = wallpaper.Id,
+                IsAiGenerated = wallpaper.Source == WallpaperSource.AI,
+                Quality = wallpaper.Metadata.GetValueOrDefault("quality", ""),
+                Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
+            };
+
+            Images.Add(backieeImage);
+        }
+
+        private async Task LoadWallpapersAsync()
+        {
+            try
+            {
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_wallpapers.json");
+                _logger?.LogInformation($"Loading wallpapers from JSON file: {jsonPath}");
+
+                if (!File.Exists(jsonPath))
+                {
+                    _logger?.LogError($"JSON file not found: {jsonPath}");
+                    return;
+                }
+
+                string jsonContent = await File.ReadAllTextAsync(jsonPath);
+                var wallpapers = JsonSerializer.Deserialize<List<Wallpaper>>(jsonContent);
+
+                if (wallpapers == null)
+                {
+                    _logger?.LogError("Failed to deserialize wallpapers from JSON");
+                    return;
+                }
+
+                foreach (var wallpaper in wallpapers)
+                {
+                    ConvertAndAddWallpaper(wallpaper);
+                }
+
+                _logger?.LogInformation($"Successfully loaded {Images.Count} wallpapers");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error loading wallpapers from JSON file");
             }
         }
     }

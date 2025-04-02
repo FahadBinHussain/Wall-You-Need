@@ -13,6 +13,10 @@ using WallYouNeed.Core.Models;
 using WallYouNeed.Core.Services.Interfaces;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
+using System.Threading;
+using System.Collections.Concurrent;
 
 namespace WallYouNeed.App.Pages
 {
@@ -22,10 +26,20 @@ namespace WallYouNeed.App.Pages
         private readonly IWallpaperService _wallpaperService;
         private readonly ISnackbarService _snackbarService;
         private readonly IBackieeScraperService _backieeScraperService;
+        private readonly ISettingsService _settingsService;
         
         private string _currentCategory = string.Empty;
+        private volatile bool _isLoadingMore = false;
+        private readonly SemaphoreSlim _loadingSemaphore = new SemaphoreSlim(1, 1);
+        private readonly int _batchSize = 20;
+        private readonly int _scrollThreshold = 400;
+        private CancellationTokenSource _cts;
+        private DateTime _lastScrollCheck = DateTime.MinValue;
+        private readonly TimeSpan _scrollDebounceTime = TimeSpan.FromMilliseconds(250);
+        private HashSet<string> _loadedUrls = new HashSet<string>();
         
-        public ObservableCollection<Wallpaper> Wallpapers { get; } = new();
+        public ObservableCollection<Core.Models.Wallpaper> Wallpapers { get; } = new();
+        public ObservableCollection<BackieeImage> Images { get; set; }
         
         public string CategoryTitle { get; private set; } = "Category";
         public string CategoryDescription { get; private set; } = "Browse wallpapers by category.";
@@ -36,14 +50,17 @@ namespace WallYouNeed.App.Pages
             ILogger<CategoryPage> logger,
             IWallpaperService wallpaperService,
             ISnackbarService snackbarService,
-            IBackieeScraperService backieeScraperService)
+            IBackieeScraperService backieeScraperService,
+            ISettingsService settingsService)
         {
             _logger = logger;
             _wallpaperService = wallpaperService;
             _snackbarService = snackbarService;
             _backieeScraperService = backieeScraperService;
+            _settingsService = settingsService;
             
             InitializeComponent();
+            Images = new ObservableCollection<BackieeImage>();
             DataContext = this;
         }
         
@@ -533,7 +550,7 @@ namespace WallYouNeed.App.Pages
         }
         
         // Add a new method to create and add wallpaper cards to the UI
-        private void AddWallpaperCardToUI(Wallpaper wallpaper)
+        private void AddWallpaperCardToUI(Core.Models.Wallpaper wallpaper)
         {
             try
             {
@@ -739,7 +756,7 @@ namespace WallYouNeed.App.Pages
         }
         
         // Helper method to create a fallback image when loading fails
-        private void DrawFallbackImage(System.Windows.Controls.Image imageControl, Wallpaper wallpaper)
+        private void DrawFallbackImage(System.Windows.Controls.Image imageControl, Core.Models.Wallpaper wallpaper)
         {
             try
             {
@@ -812,7 +829,7 @@ namespace WallYouNeed.App.Pages
         }
         
         // Placeholder methods for wallpaper actions (to be implemented later)
-        private void ApplyWallpaper(Wallpaper wallpaper)
+        private void ApplyWallpaper(Core.Models.Wallpaper wallpaper)
         {
             _logger.LogInformation("Apply wallpaper clicked: {Id}", wallpaper.Id);
             _snackbarService.Show(
@@ -823,7 +840,7 @@ namespace WallYouNeed.App.Pages
                 TimeSpan.FromSeconds(2));
         }
         
-        private void ToggleFavorite(Wallpaper wallpaper)
+        private void ToggleFavorite(Core.Models.Wallpaper wallpaper)
         {
             _logger.LogInformation("Toggle favorite clicked: {Id}", wallpaper.Id);
             _snackbarService.Show(
@@ -834,7 +851,7 @@ namespace WallYouNeed.App.Pages
                 TimeSpan.FromSeconds(2));
         }
         
-        private void ShowMoreOptions(Wallpaper wallpaper)
+        private void ShowMoreOptions(Core.Models.Wallpaper wallpaper)
         {
             _logger.LogInformation("More options clicked: {Id}", wallpaper.Id);
             _snackbarService.Show(
@@ -845,7 +862,7 @@ namespace WallYouNeed.App.Pages
                 TimeSpan.FromSeconds(2));
         }
         
-        private void ViewWallpaperDetails(Wallpaper wallpaper)
+        private void ViewWallpaperDetails(Core.Models.Wallpaper wallpaper)
         {
             _logger.LogInformation("View wallpaper details clicked: {Id}", wallpaper.Id);
             _snackbarService.Show(
@@ -854,6 +871,57 @@ namespace WallYouNeed.App.Pages
                 ControlAppearance.Info,
                 null,
                 TimeSpan.FromSeconds(2));
+        }
+
+        private void ConvertAndAddWallpaper(Core.Models.Wallpaper wallpaper)
+        {
+            if (wallpaper == null) return;
+
+            var backieeImage = new BackieeImage
+            {
+                ImageUrl = wallpaper.ThumbnailUrl,
+                ImageId = wallpaper.Id,
+                IsAiGenerated = wallpaper.Source == WallpaperSource.AI,
+                Quality = wallpaper.Metadata.GetValueOrDefault("quality", ""),
+                Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
+            };
+
+            Images.Add(backieeImage);
+        }
+
+        private async Task LoadWallpapersAsync()
+        {
+            try
+            {
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_wallpapers.json");
+                _logger?.LogInformation($"Loading wallpapers from JSON file: {jsonPath}");
+
+                if (!File.Exists(jsonPath))
+                {
+                    _logger?.LogError($"JSON file not found: {jsonPath}");
+                    return;
+                }
+
+                string jsonContent = await File.ReadAllTextAsync(jsonPath);
+                var wallpapers = JsonSerializer.Deserialize<List<Core.Models.Wallpaper>>(jsonContent);
+
+                if (wallpapers == null)
+                {
+                    _logger?.LogError("Failed to deserialize wallpapers from JSON");
+                    return;
+                }
+
+                foreach (var wallpaper in wallpapers)
+                {
+                    ConvertAndAddWallpaper(wallpaper);
+                }
+
+                _logger?.LogInformation($"Successfully loaded {Images.Count} wallpapers");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error loading wallpapers from JSON file");
+            }
         }
     }
 }

@@ -13,6 +13,8 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.Logging;
 using System.Net.Http;
+using System.Text.Json;
+using WallYouNeed.Core.Models;
 
 namespace WallYouNeed.App.Pages
 {
@@ -212,42 +214,19 @@ namespace WallYouNeed.App.Pages
                     catch (Exception ex)
                     {
                         _logger?.LogError(ex, "Error fetching images from Backiee website");
-                        _logger?.LogInformation("Falling back to reading from static markdown file");
-                        await LoadImagesFromMarkdownFile();
+                        _logger?.LogInformation("Falling back to reading from JSON file");
+                        await LoadImagesFromJsonFile();
                         return;
                     }
                 });
                 
                 _logger?.LogInformation("Successfully added {Count} initial images to the collection", Images.Count);
-                
-                // Save to markdown with additional metadata
-                await Task.Run(() => {
-                    try
-                    {
-                        string mdFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_static_images.md");
-                        
-                        using (StreamWriter writer = new StreamWriter(mdFilePath))
-                        {
-                            foreach (var image in fetchedImages)
-                            {
-                                // Save metadata in a structured format
-                                writer.WriteLine($"{image.ImageUrl}|{image.IsAiGenerated}|{image.Quality}|{image.Resolution}");
-                            }
-                        }
-                        
-                        _logger?.LogInformation("Successfully saved fetched images with metadata to markdown file");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogError(ex, "Error saving fetched images to markdown file");
-                    }
-                });
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error in FetchInitialImages");
                 System.Windows.MessageBox.Show($"Error fetching initial images: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                await LoadImagesFromMarkdownFile();
+                await LoadImagesFromJsonFile();
             }
         }
 
@@ -536,93 +515,50 @@ namespace WallYouNeed.App.Pages
             }
         }
 
-        private async Task LoadImagesFromMarkdownFile()
+        private async Task LoadImagesFromJsonFile()
         {
             try
             {
-                _logger?.LogInformation("LoadImagesFromMarkdownFile called");
-                
-                // Path to the markdown file relative to the solution directory
-                string mdFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "backiee_static_images.md");
-                _logger?.LogDebug("Attempting to load markdown file from path: {Path}", mdFilePath);
-                
-                // Check if file exists and can be accessed
-                if (!File.Exists(mdFilePath))
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_wallpapers.json");
+                _logger?.LogInformation($"Loading images from JSON file: {jsonPath}");
+
+                if (!File.Exists(jsonPath))
                 {
-                    // Try an alternative path
-                    mdFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_static_images.md");
-                    _logger?.LogDebug("First path not found, trying alternative path: {Path}", mdFilePath);
-                    
-                    if (!File.Exists(mdFilePath))
+                    _logger?.LogError($"JSON file not found: {jsonPath}");
+                    return;
+                }
+
+                string jsonContent = await File.ReadAllTextAsync(jsonPath);
+                var wallpapers = JsonSerializer.Deserialize<List<Wallpaper>>(jsonContent);
+
+                if (wallpapers == null)
+                {
+                    _logger?.LogError("Failed to deserialize wallpapers from JSON");
+                    return;
+                }
+
+                foreach (var wallpaper in wallpapers)
+                {
+                    if (!string.IsNullOrEmpty(wallpaper.ThumbnailUrl))
                     {
-                        // Try one more absolute path as a last resort
-                        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                        var solutionDir = Directory.GetParent(baseDir)?.Parent?.Parent?.Parent?.Parent?.FullName;
-                        
-                        if (solutionDir != null)
+                        var backieeImage = new BackieeImage
                         {
-                            mdFilePath = Path.Combine(solutionDir, "backiee_static_images.md");
-                            _logger?.LogDebug("Second path not found, trying solution dir path: {Path}", mdFilePath);
-                        }
-                        
-                        if (!File.Exists(mdFilePath))
-                        {
-                            _logger?.LogError("Could not find the backiee_static_images.md file at any attempted location");
-                            System.Windows.MessageBox.Show($"Could not find the backiee_static_images.md file. Attempted paths:\n" + 
-                                $"1. {Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "backiee_static_images.md")}\n" +
-                                $"2. {Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_static_images.md")}\n" +
-                                $"3. {mdFilePath}",
-                                "File Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
-                            return;
-                        }
+                            ImageUrl = wallpaper.ThumbnailUrl,
+                            ImageId = wallpaper.Id,
+                            IsAiGenerated = wallpaper.Source == WallpaperSource.AI,
+                            Quality = wallpaper.Metadata.GetValueOrDefault("quality", ""),
+                            Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
+                        };
+
+                        Images.Add(backieeImage);
                     }
                 }
 
-                _logger?.LogInformation("Found markdown file at: {Path}", mdFilePath);
-
-                // Read all lines from the markdown file
-                string[] imageUrls = await Task.Run(() => File.ReadAllLines(mdFilePath));
-                _logger?.LogInformation("Read {Count} lines from markdown file", imageUrls.Length);
-
-                // Process each URL
-                foreach (string url in imageUrls)
-                {
-                    if (!string.IsNullOrWhiteSpace(url))
-                    {
-                        string trimmedUrl = url.Trim();
-                        if (_loadedUrls.Contains(trimmedUrl))
-                            continue;
-
-                        // Extract the image ID from the URL
-                        string imageId = GetImageIdFromUrl(trimmedUrl);
-                        
-                        // Find the highest image ID
-                        if (int.TryParse(imageId, out int numericId))
-                        {
-                            _currentImageId = Math.Max(_currentImageId, numericId);
-                            _attemptedIds.Add(numericId);
-                        }
-                        
-                        // Add the image to our collection
-                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                        {
-                            Images.Add(new BackieeImage
-                            {
-                                ImageUrl = trimmedUrl,
-                                ImageId = imageId,
-                                IsLoading = false
-                            });
-                            _loadedUrls.Add(trimmedUrl);
-                        });
-                    }
-                }
-                
-                _logger?.LogInformation("Successfully added {Count} images to the collection from markdown file. Current highest ID: {CurrentId}", Images.Count, _currentImageId);
+                _logger?.LogInformation($"Successfully loaded {Images.Count} images from JSON");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error loading images from markdown file");
-                System.Windows.MessageBox.Show($"Error loading images: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logger?.LogError(ex, "Error loading images from JSON file");
             }
         }
         
@@ -665,10 +601,10 @@ namespace WallYouNeed.App.Pages
         public string ImageId { get; set; }
         public bool IsLoading { get; set; }
         public bool IsAiGenerated { get; set; }
-        public string Quality { get; set; } // e.g., "5K", "4K", etc.
+        public string Quality { get; set; }
         public string Resolution { get; set; }
     }
-    
+
     // Value converter for binding boolean values to visibility
     public class BooleanToVisibilityConverter : IValueConverter
     {

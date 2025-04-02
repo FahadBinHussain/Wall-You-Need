@@ -90,13 +90,6 @@ namespace WallYouNeed.BackieeScraper
                 string jsonContent = JsonSerializer.Serialize(wallpapers, jsonOptions);
                 File.WriteAllText("backiee_wallpapers.json", jsonContent);
                 Console.WriteLine("Successfully saved wallpapers to backiee_wallpapers.json");
-
-                // Keep existing markdown file generation
-                SaveStaticImageUrls(wallpapers, "backiee_static_images.md");
-                Console.WriteLine("Successfully saved static image URLs to backiee_static_images.md");
-
-                SaveWallpaperPageUrls(wallpapers, "backiee_wallpaper_pages.md");
-                Console.WriteLine("Successfully saved wallpaper page URLs to backiee_wallpaper_pages.md");
             }
         }
 
@@ -125,11 +118,11 @@ namespace WallYouNeed.BackieeScraper
                 // Try to extract the wallpaper URL and title
                 var wallpaper = ExtractWallpaperFromDiv(div);
                 
-                if (wallpaper != null && !uniqueUrls.Contains(wallpaper.real_page_url))
+                if (wallpaper != null && !uniqueUrls.Contains(wallpaper.SourceUrl))
                 {
-                    uniqueUrls.Add(wallpaper.real_page_url);
+                    uniqueUrls.Add(wallpaper.SourceUrl);
                     wallpapers.Add(wallpaper);
-                    Console.WriteLine($"Found wallpaper {count+1}: {wallpaper.real_page_url}");
+                    Console.WriteLine($"Found wallpaper {count+1}: {wallpaper.SourceUrl}");
                     count++;
                 }
             }
@@ -190,15 +183,28 @@ namespace WallYouNeed.BackieeScraper
                 likes = int.Parse(likesMatch.Groups[1].Value);
                 downloads = int.Parse(likesMatch.Groups[2].Value);
             }
+
+            // Extract ID from URL
+            string id = url.Split('/').Last();
             
             return new Wallpaper
             {
-                placeholder_url = imageUrl,
-                real_page_url = url,
-                quality = quality,
-                ai_status = aiStatus,
-                likes = likes,
-                downloads = downloads
+                Id = id,
+                Title = $"Backiee Wallpaper {id}",
+                Name = $"Backiee Wallpaper {id}",
+                Description = $"Wallpaper from Backiee.com",
+                SourceUrl = url,
+                ThumbnailUrl = imageUrl,
+                Author = "Backiee.com",
+                Source = aiStatus ? WallpaperSource.AI : WallpaperSource.Custom,
+                CreatedAt = DateTime.Now,
+                LastUsedAt = DateTime.Now,
+                Metadata = new Dictionary<string, string>
+                {
+                    { "quality", quality },
+                    { "likes", likes.ToString() },
+                    { "downloads", downloads.ToString() }
+                }
             };
         }
 
@@ -217,9 +223,9 @@ namespace WallYouNeed.BackieeScraper
                 
                 for (int i = 0; i < count; i++)
                 {
-                    if (!string.IsNullOrEmpty(wallpapers[i].placeholder_url))
+                    if (!string.IsNullOrEmpty(wallpapers[i].ThumbnailUrl))
                     {
-                        markdown.AppendLine($"{wallpapers[i].placeholder_url}");
+                        markdown.AppendLine($"{wallpapers[i].ThumbnailUrl}");
                     }
                 }
             }
@@ -242,7 +248,7 @@ namespace WallYouNeed.BackieeScraper
                 
                 for (int i = 0; i < count; i++)
                 {
-                    markdown.AppendLine($"{wallpapers[i].real_page_url}");
+                    markdown.AppendLine($"{wallpapers[i].SourceUrl}");
                 }
             }
             
@@ -252,11 +258,33 @@ namespace WallYouNeed.BackieeScraper
 
     public class Wallpaper
     {
-        public string placeholder_url { get; set; }
-        public string real_page_url { get; set; }
-        public string quality { get; set; }
-        public bool ai_status { get; set; }
-        public int likes { get; set; }
-        public int downloads { get; set; }
+        public string Id { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string FilePath { get; set; } = string.Empty;
+        public string SourceUrl { get; set; } = string.Empty;
+        public string ThumbnailUrl { get; set; } = string.Empty;
+        public string Author { get; set; } = string.Empty;
+        public List<string> Tags { get; set; } = new();
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public bool IsLive { get; set; }
+        public WallpaperSource Source { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime LastUsedAt { get; set; } = DateTime.Now;
+        public bool IsFavorite { get; set; }
+        public List<string> CollectionIds { get; set; } = new();
+        public Dictionary<string, string> Metadata { get; set; } = new();
+    }
+
+    public enum WallpaperSource
+    {
+        Unsplash,
+        Pexels,
+        WallpaperEngine,
+        Local,
+        Custom,
+        AI
     }
 } 
