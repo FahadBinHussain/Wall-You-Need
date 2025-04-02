@@ -34,8 +34,9 @@ namespace WallYouNeed.App.Pages
         private DateTime _lastScrollCheck = DateTime.MinValue;
         private readonly TimeSpan _scrollDebounceTime = TimeSpan.FromMilliseconds(250);
         
-        // Cache to track which IDs have been attempted
+        // Cache to track which IDs have been attempted and loaded
         private HashSet<int> _attemptedIds = new HashSet<int>();
+        private HashSet<string> _loadedUrls = new HashSet<string>();
         
         // Stats counters
         private int _totalRequests = 0;
@@ -110,6 +111,7 @@ namespace WallYouNeed.App.Pages
                 // Show loading indicator or message
                 System.Windows.Application.Current.Dispatcher.Invoke(() => {
                     Images.Clear();
+                    _loadedUrls.Clear(); // Clear loaded URLs when clearing images
                     StatusTextBlock.Text = "Loading initial wallpapers...";
                     StatusTextBlock.Visibility = Visibility.Visible;
                     LoadingProgressBar.Visibility = Visibility.Visible;
@@ -195,7 +197,17 @@ namespace WallYouNeed.App.Pages
                 {
                     foreach (var image in fetchedImages)
                     {
-                        Images.Add(image);
+                        if (!_loadedUrls.Contains(image.ImageUrl))
+                        {
+                            Images.Add(image);
+                            _loadedUrls.Add(image.ImageUrl);
+                            
+                            // Add to attempted IDs
+                            if (int.TryParse(image.ImageId, out int id))
+                            {
+                                _attemptedIds.Add(id);
+                            }
+                        }
                     }
                 });
                 
@@ -295,7 +307,7 @@ namespace WallYouNeed.App.Pages
                 // Use HttpClient for parallel requests
                 using (var client = new HttpClient())
                 {
-                    client.Timeout = TimeSpan.FromSeconds(10); // Set a reasonable timeout
+                    client.Timeout = TimeSpan.FromSeconds(10);
 
                     var tasks = new List<Task<Tuple<int, bool, string>>>();
                     var currentBatchIds = new List<int>();
@@ -309,6 +321,11 @@ namespace WallYouNeed.App.Pages
 
                         currentBatchIds.Add(imageId);
                         string imageUrl = $"https://backiee.com/static/wallpapers/560x315/{imageId}.jpg";
+                        
+                        // Skip if we already have this URL
+                        if (_loadedUrls.Contains(imageUrl))
+                            continue;
+                            
                         tasks.Add(CheckImageExistsAsync(client, imageId, imageUrl, cancellationToken));
                     }
 
@@ -323,10 +340,11 @@ namespace WallYouNeed.App.Pages
                             bool exists = result.Item2;
                             string imageUrl = result.Item3;
 
+                            // Add to attempted IDs before checking existence
                             _attemptedIds.Add(imageId);
                             _totalRequests++;
 
-                            if (exists)
+                            if (exists && !_loadedUrls.Contains(imageUrl))
                             {
                                 _successfulRequests++;
                                 imagesFound++;
@@ -338,6 +356,8 @@ namespace WallYouNeed.App.Pages
                                     ImageId = imageId.ToString(),
                                     IsLoading = false
                                 });
+                                
+                                _loadedUrls.Add(imageUrl);
                             }
                             else
                             {
@@ -573,8 +593,12 @@ namespace WallYouNeed.App.Pages
                 {
                     if (!string.IsNullOrWhiteSpace(url))
                     {
+                        string trimmedUrl = url.Trim();
+                        if (_loadedUrls.Contains(trimmedUrl))
+                            continue;
+
                         // Extract the image ID from the URL
-                        string imageId = GetImageIdFromUrl(url);
+                        string imageId = GetImageIdFromUrl(trimmedUrl);
                         
                         // Find the highest image ID
                         if (int.TryParse(imageId, out int numericId))
@@ -588,10 +612,11 @@ namespace WallYouNeed.App.Pages
                         {
                             Images.Add(new BackieeImage
                             {
-                                ImageUrl = url.Trim(),
+                                ImageUrl = trimmedUrl,
                                 ImageId = imageId,
                                 IsLoading = false
                             });
+                            _loadedUrls.Add(trimmedUrl);
                         });
                     }
                 }
