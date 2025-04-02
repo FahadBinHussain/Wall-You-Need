@@ -149,6 +149,9 @@ namespace WallYouNeed.App.Pages
 
                             var matches = System.Text.RegularExpressions.Regex.Matches(html, pattern, System.Text.RegularExpressions.RegexOptions.Singleline);
                             
+                            // Create a list to maintain order
+                            var orderedImages = new List<BackieeImage>();
+                            
                             foreach (System.Text.RegularExpressions.Match match in matches)
                             {
                                 string imageUrl = match.Groups[1].Value;
@@ -181,7 +184,7 @@ namespace WallYouNeed.App.Pages
                                     };
                                     
                                     _logger?.LogDebug($"Adding image: ID={imageId}, AI={isAiGenerated}, Quality={quality}, Resolution={resolution}");
-                                    fetchedImages.Add(newImage);
+                                    orderedImages.Add(newImage);
                                     
                                     if (int.TryParse(imageId, out int id))
                                     {
@@ -190,7 +193,20 @@ namespace WallYouNeed.App.Pages
                                 }
                             }
                             
-                            _logger?.LogInformation($"Extracted {fetchedImages.Count} images from the webpage. Highest ID: {_currentImageId}");
+                            _logger?.LogInformation($"Extracted {orderedImages.Count} images from the webpage. Highest ID: {_currentImageId}");
+                            
+                            // Add the images in the exact order they were found
+                            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                foreach (var image in orderedImages)
+                                {
+                                    if (!_loadedUrls.Contains(image.ImageUrl))
+                                    {
+                                        Images.Add(image);
+                                        _loadedUrls.Add(image.ImageUrl);
+                                    }
+                                }
+                            });
                         }
                     }
                     catch (Exception ex)
@@ -199,24 +215,6 @@ namespace WallYouNeed.App.Pages
                         _logger?.LogInformation("Falling back to reading from static markdown file");
                         await LoadImagesFromMarkdownFile();
                         return;
-                    }
-                });
-                
-                // Add the fetched images to our collection
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    foreach (var image in fetchedImages)
-                    {
-                        if (!_loadedUrls.Contains(image.ImageUrl))
-                        {
-                            Images.Add(image);
-                            _loadedUrls.Add(image.ImageUrl);
-                            
-                            if (int.TryParse(image.ImageId, out int id))
-                            {
-                                _attemptedIds.Add(id);
-                            }
-                        }
                     }
                 });
                 
@@ -341,14 +339,17 @@ namespace WallYouNeed.App.Pages
                     {
                         var completedTasks = await Task.WhenAll(tasks);
 
-                        foreach (var result in completedTasks.Where(r => r != null))
+                        // Process results in the order of IDs to maintain consistency
+                        foreach (var id in currentBatchIds)
                         {
-                            int imageId = result.Item1;
+                            var result = completedTasks.FirstOrDefault(r => r?.Item1 == id);
+                            if (result == null) continue;
+
                             bool exists = result.Item2;
                             string imageUrl = result.Item3;
 
                             // Add to attempted IDs before checking existence
-                            _attemptedIds.Add(imageId);
+                            _attemptedIds.Add(id);
                             _totalRequests++;
 
                             if (exists && !_loadedUrls.Contains(imageUrl))
@@ -360,7 +361,7 @@ namespace WallYouNeed.App.Pages
                                 batchImages.Add(new BackieeImage
                                 {
                                     ImageUrl = imageUrl,
-                                    ImageId = imageId.ToString(),
+                                    ImageId = id.ToString(),
                                     IsLoading = false
                                 });
                                 
@@ -379,33 +380,21 @@ namespace WallYouNeed.App.Pages
                             _currentImageId = currentBatchIds.Min() - 1;
                         }
 
-                        // Sort the batch images by ID (descending)
-                        batchImages = batchImages.OrderByDescending(img => int.Parse(img.ImageId)).ToList();
-
-                        // Add the images to our collection on the UI thread
-                        if (batchImages.Any())
+                        // Add images in the order they were discovered
+                        foreach (var image in batchImages)
                         {
-                            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => {
-                                foreach (var image in batchImages)
-                                {
-                                    Images.Add(image);
-                                }
-
-                                // Update the status
-                                StatusTextBlock.Text = $"Loaded {imagesFound} new wallpapers (Total: {Images.Count})";
-                                _logger?.LogInformation("Added {Count} images to collection. Total: {Total}", 
-                                    imagesFound, Images.Count);
-
-                                StatusTextBlock.Text += $" | Success: {_successfulRequests}/{_totalRequests} ({_failedRequests} failed)";
+                            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                Images.Add(image);
                             });
                         }
 
-                        // If we didn't find any images and have too many consecutive misses, skip ahead
-                        if (imagesFound == 0 && consecutiveMisses >= 50)
-                        {
-                            _logger?.LogWarning("Too many consecutive misses, skipping ahead");
-                            _currentImageId -= 100;
-                        }
+                        // Update the status
+                        StatusTextBlock.Text = $"Loaded {imagesFound} new wallpapers (Total: {Images.Count})";
+                        _logger?.LogInformation("Added {Count} images to collection. Total: {Total}", 
+                            imagesFound, Images.Count);
+
+                        StatusTextBlock.Text += $" | Success: {_successfulRequests}/{_totalRequests} ({_failedRequests} failed)";
                     }
                 }
             }
