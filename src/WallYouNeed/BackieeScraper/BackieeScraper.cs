@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace WallYouNeed.BackieeScraper
 {
@@ -84,11 +85,16 @@ namespace WallYouNeed.BackieeScraper
                 
                 Console.WriteLine($"Extracted a total of {wallpapers.Count} wallpaper links");
 
-                // Save the static image URLs to a markdown file
+                // Save wallpapers as JSON
+                var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                string jsonContent = JsonSerializer.Serialize(wallpapers, jsonOptions);
+                File.WriteAllText("backiee_wallpapers.json", jsonContent);
+                Console.WriteLine("Successfully saved wallpapers to backiee_wallpapers.json");
+
+                // Keep existing markdown file generation
                 SaveStaticImageUrls(wallpapers, "backiee_static_images.md");
                 Console.WriteLine("Successfully saved static image URLs to backiee_static_images.md");
 
-                // Save the wallpaper page URLs to a separate markdown file
                 SaveWallpaperPageUrls(wallpapers, "backiee_wallpaper_pages.md");
                 Console.WriteLine("Successfully saved wallpaper page URLs to backiee_wallpaper_pages.md");
             }
@@ -119,11 +125,11 @@ namespace WallYouNeed.BackieeScraper
                 // Try to extract the wallpaper URL and title
                 var wallpaper = ExtractWallpaperFromDiv(div);
                 
-                if (wallpaper != null && !uniqueUrls.Contains(wallpaper.Url))
+                if (wallpaper != null && !uniqueUrls.Contains(wallpaper.real_page_url))
                 {
-                    uniqueUrls.Add(wallpaper.Url);
+                    uniqueUrls.Add(wallpaper.real_page_url);
                     wallpapers.Add(wallpaper);
-                    Console.WriteLine($"Found wallpaper {count+1}: {wallpaper.Title}");
+                    Console.WriteLine($"Found wallpaper {count+1}: {wallpaper.real_page_url}");
                     count++;
                 }
             }
@@ -161,48 +167,38 @@ namespace WallYouNeed.BackieeScraper
             string imageSrcPattern = @"<div class=""placeholder""[^>]*?>\s*<img[^>]*?data-src=""([^""]+)""";
             Match imageSrcMatch = Regex.Match(div, imageSrcPattern);
             string imageUrl = imageSrcMatch.Success ? imageSrcMatch.Groups[1].Value : "";
-            
-            // Find the title directly from the div box
-            string boxPattern = @"<div class=""box mt-2"">\s*<div class=""max-linese"">(.*?)<\/div>";
-            Match boxMatch = Regex.Match(div, boxPattern);
-            
-            if (boxMatch.Success)
+
+            // Extract quality
+            string quality = "";
+            if (div.Contains("8k_logo.png"))
+                quality = "8K";
+            else if (div.Contains("5k_logo.png"))
+                quality = "5K";
+            else if (div.Contains("4k_logo.png"))
+                quality = "4K";
+
+            // Extract AI status
+            bool aiStatus = div.Contains("aigenerated-icon.png");
+
+            // Extract likes and downloads from image-likes div
+            int likes = 0;
+            int downloads = 0;
+            string likesPattern = @"<div class=""image-likes""[^>]*?>.*?(\d+).*?(\d+).*?</div>";
+            Match likesMatch = Regex.Match(div, likesPattern, RegexOptions.Singleline);
+            if (likesMatch.Success)
             {
-                string title = boxMatch.Groups[1].Value.Trim();
-                if (title.EndsWith(" wallpaper"))
-                {
-                    title = title.Substring(0, title.Length - 10);
-                }
-                return new Wallpaper
-                {
-                    Url = url,
-                    Title = title,
-                    ImageUrl = imageUrl
-                };
-            }
-            
-            // Fallback: Extract from URL
-            string[] urlParts = url.Split('/');
-            if (urlParts.Length >= 2)
-            {
-                string slug = urlParts[urlParts.Length - 2];
-                // Convert slug to title
-                string title = string.Join(" ", slug.Split('-')
-                    .Select(word => char.ToUpper(word[0]) + word.Substring(1)));
-                
-                return new Wallpaper
-                {
-                    Url = url,
-                    Title = title,
-                    ImageUrl = imageUrl
-                };
+                likes = int.Parse(likesMatch.Groups[1].Value);
+                downloads = int.Parse(likesMatch.Groups[2].Value);
             }
             
             return new Wallpaper
             {
-                Url = url,
-                Title = "Wallpaper",  // Default title
-                ImageUrl = imageUrl
+                placeholder_url = imageUrl,
+                real_page_url = url,
+                quality = quality,
+                ai_status = aiStatus,
+                likes = likes,
+                downloads = downloads
             };
         }
 
@@ -221,9 +217,9 @@ namespace WallYouNeed.BackieeScraper
                 
                 for (int i = 0; i < count; i++)
                 {
-                    if (!string.IsNullOrEmpty(wallpapers[i].ImageUrl))
+                    if (!string.IsNullOrEmpty(wallpapers[i].placeholder_url))
                     {
-                        markdown.AppendLine($"{wallpapers[i].ImageUrl}");
+                        markdown.AppendLine($"{wallpapers[i].placeholder_url}");
                     }
                 }
             }
@@ -246,7 +242,7 @@ namespace WallYouNeed.BackieeScraper
                 
                 for (int i = 0; i < count; i++)
                 {
-                    markdown.AppendLine($"{wallpapers[i].Url}");
+                    markdown.AppendLine($"{wallpapers[i].real_page_url}");
                 }
             }
             
@@ -256,8 +252,11 @@ namespace WallYouNeed.BackieeScraper
 
     public class Wallpaper
     {
-        public string Url { get; set; }
-        public string Title { get; set; }
-        public string ImageUrl { get; set; }
+        public string placeholder_url { get; set; }
+        public string real_page_url { get; set; }
+        public string quality { get; set; }
+        public bool ai_status { get; set; }
+        public int likes { get; set; }
+        public int downloads { get; set; }
     }
 } 
