@@ -190,7 +190,7 @@
                                         VerticalAlignment="Bottom"
                                         Margin="8"
                                         Panel.ZIndex="2"
-                                        Visibility="Visible">
+                                        Visibility="Collapsed">
                                     <TextBlock Text="{Binding Resolution}" 
                                              Foreground="White" 
                                              FontSize="12"/>

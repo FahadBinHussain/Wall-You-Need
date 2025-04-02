@@ -79,6 +79,7 @@
                 <Setter Property="HorizontalAlignment" Value="Left"/>
                 <Setter Property="VerticalAlignment" Value="Top"/>
                 <Setter Property="Margin" Value="8"/>
+                <Setter Property="Visibility" Value="Collapsed"/>
             </Style>
             
             <!-- Modern Button Style -->
