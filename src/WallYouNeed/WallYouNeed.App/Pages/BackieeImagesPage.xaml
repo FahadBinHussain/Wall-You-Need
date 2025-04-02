@@ -138,51 +138,31 @@
                                              Panel.ZIndex="2"/>
 
                                 <!-- Badges Container -->
-                                <StackPanel Orientation="Horizontal" 
-                                          HorizontalAlignment="Right" 
-                                          VerticalAlignment="Top" 
-                                          Margin="8"
-                                          Panel.ZIndex="2">
-                                    <!-- AI Generated Badge -->
-                                    <Border Background="#4CAF50" 
-                                            CornerRadius="3" 
-                                            Padding="4,2" 
-                                            Margin="0,0,4,0"
-                                            Visibility="Visible">
-                                        <StackPanel Orientation="Horizontal">
-                                            <Image Source="/WallYouNeed.App;component/Assets/aigenerated-icon.png" 
-                                                   Width="16" 
-                                                   Height="16" 
-                                                   Margin="0,0,4,0"
-                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
-                                            <TextBlock Text="AI" 
-                                                     Foreground="White" 
-                                                     FontSize="12" 
-                                                     FontWeight="Bold"/>
-                                        </StackPanel>
+                                <Grid Panel.ZIndex="2">
+                                    <!-- Resolution Badge -->
+                                    <Border CornerRadius="3" 
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Top"
+                                            Margin="0,0,0,0">
+                                        <Image Source="/WallYouNeed.App;component/Assets/5k_logo.png" 
+                                               Width="48" 
+                                               Height="48"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
                                     </Border>
-                                    
-                                    <!-- Quality Badge -->
-                                    <Border Background="#2196F3" 
-                                            CornerRadius="3" 
-                                            Padding="4,2"
-                                            Visibility="Visible"
-                                            Margin="0,0,4,0">
-                                        <StackPanel Orientation="Horizontal">
-                                            <Image Source="/WallYouNeed.App;component/Assets/5k_logo.png" 
-                                                   Width="16" 
-                                                   Height="16" 
-                                                   Margin="0,0,4,0"
-                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
-                                            <TextBlock Text="{Binding Quality}" 
-                                                     Foreground="White" 
-                                                     FontSize="12" 
-                                                     FontWeight="Bold"/>
-                                        </StackPanel>
-                                    </Border>
-                                </StackPanel>
 
-                                <!-- Resolution -->
+                                    <!-- AI Generated Badge -->
+                                    <Border CornerRadius="3" 
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="0,4,4,0">
+                                        <Image Source="/WallYouNeed.App;component/Assets/aigenerated-icon.png" 
+                                               Width="42" 
+                                               Height="42"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Resolution text (now hidden) -->
                                 <Border Background="#80000000" 
                                         CornerRadius="3" 
                                         Padding="4,2"
