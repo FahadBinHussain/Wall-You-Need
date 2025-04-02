@@ -1,5 +1,9 @@
 # Backiee Wallpaper Scraper
 
+<img src="https://wakapi-qt1b.onrender.com/api/badge/fahad/interval:any/project:Wall-You-Need" 
+     alt="Wakapi Time Tracking" 
+     title="Minimum amount of time spent on this project">
+
 This is a C# application that scrapes the Backiee website to extract wallpaper links. It saves the links in a markdown file.
 
 ## Prerequisites
