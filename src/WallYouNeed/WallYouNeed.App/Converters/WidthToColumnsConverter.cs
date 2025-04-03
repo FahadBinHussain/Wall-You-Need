@@ -14,7 +14,7 @@ namespace WallYouNeed.App.Converters
             if (value is double width && parameter is string minWidth)
             {
                 var minColumnWidth = double.Parse(minWidth);
-                var calculatedColumns = (int)Math.Floor((width - 20) / minColumnWidth); // Account for 10px margins on both sides
+                var calculatedColumns = (int)Math.Floor(width / minColumnWidth);
                 return Math.Clamp(calculatedColumns, 1, maxColumns);
             }
             return defaultColumns;
