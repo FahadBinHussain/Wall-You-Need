@@ -466,46 +466,21 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                // Try multiple possible locations for the JSON file, prioritizing the root directory
-                string[] possiblePaths = new string[]
+                // Only check for the JSON file in the Data directory
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "backiee_wallpapers.json");
+                var fullPath = Path.GetFullPath(jsonPath);
+                _logger?.LogInformation($"Looking for JSON file at: {fullPath}");
+                
+                if (!File.Exists(fullPath))
                 {
-                    // Check the project root directory first (2 levels up from bin/Debug)
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "backiee_wallpapers.json"),
-                    
-                    // Check the root of the solution (3 levels up from bin/Debug)
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "..", "backiee_wallpapers.json"),
-                    
-                    // Check the current directory
-                    "backiee_wallpapers.json",
-                    
-                    // Last resort: check the output directory 
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_wallpapers.json")
-                };
-
-                string jsonPath = null;
-                foreach (var path in possiblePaths)
-                {
-                    var fullPath = Path.GetFullPath(path);
-                    _logger?.LogInformation($"Checking for JSON file at: {fullPath}");
-                    
-                    if (File.Exists(fullPath))
-                    {
-                        jsonPath = fullPath;
-                        _logger?.LogInformation($"Found JSON file at: {jsonPath}");
-                        break;
-                    }
-                }
-
-                if (jsonPath == null)
-                {
-                    _logger?.LogError("JSON file not found in any of the checked locations");
+                    _logger?.LogError("JSON file not found in Data directory");
                     
                     // Show a message to the user
                     await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                     {
                         System.Windows.MessageBox.Show(
                             "Could not find the wallpapers data file (backiee_wallpapers.json).\n\n" +
-                            "Please ensure the file exists in the project root directory.",
+                            "Please ensure the file exists in the Data folder of the application.",
                             "File Not Found",
                             MessageBoxButton.OK,
                             MessageBoxImage.Warning);
@@ -514,8 +489,10 @@ namespace WallYouNeed.App.Pages
                     return;
                 }
 
+                _logger?.LogInformation($"Found JSON file at: {fullPath}");
+
                 // Read the JSON content directly
-                string jsonContent = await File.ReadAllTextAsync(jsonPath);
+                string jsonContent = await File.ReadAllTextAsync(fullPath);
                 
                 // Use the simplest direct approach for the list of wallpapers
                 var wallpapers = new List<SimpleWallpaper>();
@@ -655,7 +632,7 @@ namespace WallYouNeed.App.Pages
                     _logger?.LogInformation($"Set next imageId to {_currentImageId} based on loaded images");
                 }
                 
-                _logger?.LogInformation($"Successfully loaded {Images.Count} images from JSON file at {jsonPath}");
+                _logger?.LogInformation($"Successfully loaded {Images.Count} images from JSON file at {fullPath}");
             }
             catch (Exception ex)
             {

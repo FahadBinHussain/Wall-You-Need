@@ -33,4 +33,11 @@
     <Resource Include="Assets\aigenerated-icon.png" />
   </ItemGroup>
 
+  <!-- Data files -->
+  <ItemGroup>
+    <None Include="Data\backiee_wallpapers.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project> 
