@@ -12,6 +12,7 @@
 
     <Page.Resources>
         <local:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <local:StringCompareVisibilityConverter x:Key="StringCompareVisibilityConverter"/>
     </Page.Resources>
 
     <Grid>
@@ -131,35 +132,37 @@
                                 <Border Background="#20000000" 
                                         Panel.ZIndex="1"/>
                                 
-                                <!-- Tags/Badges -->
-                                <StackPanel Orientation="Horizontal" 
-                                            HorizontalAlignment="Left" 
-                                            VerticalAlignment="Top" 
-                                            Margin="8"
-                                            Panel.ZIndex="2">
-                                    <!-- Resolution badge (e.g. 5K) -->
-                                    <Border Background="#FF3366" 
-                                            CornerRadius="4" 
-                                            Padding="6,3"
-                                            Margin="0,0,4,0" 
-                                            Visibility="{Binding HasHighResolution, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
-                                        <TextBlock Text="{Binding ResolutionLabel}" 
-                                                   Foreground="White" 
-                                                   FontSize="12"
-                                                   FontWeight="Bold"/>
-                                    </Border>
+                                <!-- Image overlay with badges -->
+                                <Grid Panel.ZIndex="2">
+                                    <!-- Quality tags on the left -->
+                                    <StackPanel Orientation="Horizontal" 
+                                                HorizontalAlignment="Left" 
+                                                VerticalAlignment="Top" 
+                                                Margin="0,0,0,0">
+                                        <!-- 4K tag -->
+                                        <Image Source="/Assets/4k_logo.png" 
+                                               Height="48" 
+                                               Visibility="{Binding ResolutionLabel, Converter={StaticResource StringCompareVisibilityConverter}, ConverterParameter=4K}"/>
+                                        
+                                        <!-- 5K tag -->
+                                        <Image Source="/Assets/5k_logo.png" 
+                                               Height="48" 
+                                               Visibility="{Binding ResolutionLabel, Converter={StaticResource StringCompareVisibilityConverter}, ConverterParameter=5K}"/>
+                                        
+                                        <!-- 8K tag -->
+                                        <Image Source="/Assets/8k_logo.png" 
+                                               Height="48" 
+                                               Visibility="{Binding ResolutionLabel, Converter={StaticResource StringCompareVisibilityConverter}, ConverterParameter=8K}"/>
+                                    </StackPanel>
                                     
-                                    <!-- AI badge -->
-                                    <Border Background="#5577FF" 
-                                            CornerRadius="4" 
-                                            Padding="6,3"
-                                            Visibility="{Binding IsAI, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
-                                        <TextBlock Text="AI" 
-                                                   Foreground="White" 
-                                                   FontSize="12"
-                                                   FontWeight="Bold"/>
-                                    </Border>
-                                </StackPanel>
+                                    <!-- AI badge on the right -->
+                                    <Image Source="/Assets/aigenerated-icon.png" 
+                                           Height="36" 
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Top"
+                                           Margin="0,5,5,0"
+                                           Visibility="{Binding IsAI, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}"/>
+                                </Grid>
                                 
                                 <!-- Loading indicator overlay -->
                                 <ProgressBar x:Name="ImageLoadingProgress"

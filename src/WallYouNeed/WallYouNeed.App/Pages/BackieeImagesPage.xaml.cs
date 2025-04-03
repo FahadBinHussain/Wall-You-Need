@@ -815,6 +815,30 @@ namespace WallYouNeed.App.Pages
         }
     }
 
+    // Converter to compare strings and return visibility
+    public class StringCompareVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            Debug.WriteLine($"StringCompareVisibilityConverter called with value: {value}, parameter: {parameter}");
+            
+            if (value is string stringValue && parameter is string paramString)
+            {
+                bool isEqual = stringValue.Equals(paramString, StringComparison.OrdinalIgnoreCase);
+                Debug.WriteLine($"Comparing '{stringValue}' with '{paramString}', result: {isEqual}");
+                return isEqual ? Visibility.Visible : Visibility.Collapsed;
+            }
+            
+            Debug.WriteLine($"Value or parameter was not a string, returning Collapsed");
+            return Visibility.Collapsed;
+        }
+        
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return System.Windows.Data.Binding.DoNothing;
+        }
+    }
+
     internal class BackieeWallpaper
     {
         public string placeholder_url { get; set; } = string.Empty;
