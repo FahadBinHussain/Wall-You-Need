@@ -116,82 +116,85 @@
                                 BorderThickness="1" 
                                 Margin="5" 
                                 Padding="0"
-                                CornerRadius="5"
+                                CornerRadius="15"
+                                ClipToBounds="True"
                                 Tag="{Binding}"
                                 MouseLeftButtonUp="ImageBorder_MouseLeftButtonUp"
                                 Cursor="Hand">
-                            <Grid>
-                                <!-- Background Image -->
-                                <Image Source="{Binding ImageUrl}" 
-                                       Height="150" 
-                                       Stretch="UniformToFill" 
-                                       RenderOptions.BitmapScalingMode="HighQuality"
-                                       Panel.ZIndex="0"/>
-                                
-                                <!-- Semi-transparent overlay for better badge visibility -->
-                                <Border Background="#20000000" 
-                                        Panel.ZIndex="1"/>
-                                
-                                <!-- Image overlay with badges -->
-                                <Grid Panel.ZIndex="2">
-                                    <!-- Quality tags on the left -->
-                                    <StackPanel Orientation="Horizontal" 
-                                                HorizontalAlignment="Left" 
-                                                VerticalAlignment="Top" 
-                                                Margin="0,0,0,0">
-                                        <!-- 4K tag -->
-                                        <Image Source="/Assets/4k_logo.png" 
-                                               Height="48" 
-                                               Visibility="{Binding ResolutionLabel, Converter={StaticResource StringCompareVisibilityConverter}, ConverterParameter=4K}"/>
+                                    <Border.Clip>
+                                        <RectangleGeometry Rect="0,0,250,150" RadiusX="15" RadiusY="15"/>
+                                    </Border.Clip>
+                                    <Grid>
+                                        <!-- Background Image -->
+                                        <Image Source="{Binding ImageUrl}" 
+                                               Width="250"
+                                               Height="150"
+                                               Stretch="UniformToFill" 
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
                                         
-                                        <!-- 5K tag -->
-                                        <Image Source="/Assets/5k_logo.png" 
-                                               Height="48" 
-                                               Visibility="{Binding ResolutionLabel, Converter={StaticResource StringCompareVisibilityConverter}, ConverterParameter=5K}"/>
+                                        <!-- Semi-transparent overlay -->
+                                        <Border Background="#20000000" CornerRadius="15"/>
                                         
-                                        <!-- 8K tag -->
-                                        <Image Source="/Assets/8k_logo.png" 
-                                               Height="48" 
-                                               Visibility="{Binding ResolutionLabel, Converter={StaticResource StringCompareVisibilityConverter}, ConverterParameter=8K}"/>
-                                    </StackPanel>
-                                    
-                                    <!-- AI badge on the right -->
-                                    <Image Source="/Assets/aigenerated-icon.png" 
-                                           Height="36" 
-                                           HorizontalAlignment="Right"
-                                           VerticalAlignment="Top"
-                                           Margin="0,5,5,0"
-                                           Visibility="{Binding IsAI, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}"/>
-                                </Grid>
-                                
-                                <!-- Loading indicator overlay -->
-                                <ProgressBar x:Name="ImageLoadingProgress"
-                                             IsIndeterminate="True"
-                                             Width="80"
-                                             Height="10"
-                                             Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                             VerticalAlignment="Center"
-                                             HorizontalAlignment="Center"
-                                             Panel.ZIndex="2"/>
+                                        <!-- Badges overlay -->
+                                        <Grid>
+                                            <!-- Quality tags on the left -->
+                                            <StackPanel Orientation="Horizontal" 
+                                                        HorizontalAlignment="Left" 
+                                                        VerticalAlignment="Top" 
+                                                        Margin="0,0,0,0">
+                                                <!-- 4K tag -->
+                                                <Image Source="/Assets/4k_logo.png" 
+                                                       Height="48" 
+                                                       Visibility="{Binding ResolutionLabel, Converter={StaticResource StringCompareVisibilityConverter}, ConverterParameter=4K}"/>
+                                                
+                                                <!-- 5K tag -->
+                                                <Image Source="/Assets/5k_logo.png" 
+                                                       Height="48" 
+                                                       Visibility="{Binding ResolutionLabel, Converter={StaticResource StringCompareVisibilityConverter}, ConverterParameter=5K}"/>
+                                                
+                                                <!-- 8K tag -->
+                                                <Image Source="/Assets/8k_logo.png" 
+                                                       Height="48" 
+                                                       Visibility="{Binding ResolutionLabel, Converter={StaticResource StringCompareVisibilityConverter}, ConverterParameter=8K}"/>
+                                            </StackPanel>
+                                            
+                                            <!-- AI badge on the right -->
+                                            <Image Source="/Assets/aigenerated-icon.png" 
+                                                   Height="36" 
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Top"
+                                                   Margin="0,5,5,0"
+                                                   Visibility="{Binding IsAI, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}"/>
+                                        </Grid>
+                                        
+                                        <!-- Loading indicator overlay -->
+                                        <ProgressBar x:Name="ImageLoadingProgress"
+                                                     IsIndeterminate="True"
+                                                     Width="80"
+                                                     Height="10"
+                                                     Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                     VerticalAlignment="Center"
+                                                     HorizontalAlignment="Center"
+                                                     Panel.ZIndex="2"/>
 
-                                <!-- Resolution text (now hidden) -->
-                                <Border Background="#80000000" 
-                                        CornerRadius="3" 
-                                        Padding="4,2"
-                                        HorizontalAlignment="Left"
-                                        VerticalAlignment="Bottom"
-                                        Margin="8"
-                                        Panel.ZIndex="2"
-                                        Visibility="Collapsed">
-                                    <TextBlock Text="{Binding Resolution}" 
-                                             Foreground="White" 
-                                             FontSize="12"/>
+                                        <!-- Resolution text (now hidden) -->
+                                        <Border Background="#80000000" 
+                                                CornerRadius="3" 
+                                                Padding="4,2"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Bottom"
+                                                Margin="8"
+                                                Panel.ZIndex="2"
+                                                Visibility="Collapsed">
+                                            <TextBlock Text="{Binding Resolution}" 
+                                                     Foreground="White" 
+                                                     FontSize="12"/>
+                                        </Border>
+                                    </Grid>
                                 </Border>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-    </Grid>
-</Page> 
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Page> 
