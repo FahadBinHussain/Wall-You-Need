@@ -91,11 +91,8 @@ namespace WallYouNeed.App.Pages
                 StatusTextBlock.Visibility = Visibility.Visible;
                 LoadingProgressBar.Visibility = Visibility.Visible;
                 
-                // First try to get the initial images to determine highest image ID
+                // Load initial images from JSON
                 await FetchInitialImages();
-                
-                // Then start the infinite loading
-                await LoadMoreImagesAsync(_cts.Token);
                 
                 // Hide loading indicators
                 StatusTextBlock.Visibility = Visibility.Collapsed;
@@ -124,92 +121,8 @@ namespace WallYouNeed.App.Pages
                     LoadingProgressBar.Visibility = Visibility.Visible;
                 });
                 
-                List<BackieeImage> fetchedImages = new List<BackieeImage>();
-                
-                await Task.Run(async () => {
-                    try
-                    {
-                        _logger?.LogInformation("Starting to fetch images from Backiee website");
-                        
-                        using (HttpClient client = new HttpClient())
-                        {
-                            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36");
-                            client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
-                            
-                            _logger?.LogInformation("Fetching content from backiee.com...");
-                            HttpResponseMessage response = await client.GetAsync("https://backiee.com");
-                            
-                            if (!response.IsSuccessStatusCode)
-                            {
-                                throw new Exception($"Failed to fetch the webpage. Status code: {response.StatusCode}");
-                            }
-
-                            string html = await response.Content.ReadAsStringAsync();
-                            _logger?.LogInformation($"Content fetched successfully. Length: {html.Length} characters");
-
-                            // Extract image information using a more comprehensive regex pattern
-                            string pattern = @"<div class=""placeholder""[^>]*?>\s*<img[^>]*?data-src=""([^""]+)""[^>]*?>\s*";
-
-                            var matches = System.Text.RegularExpressions.Regex.Matches(html, pattern, System.Text.RegularExpressions.RegexOptions.Singleline);
-                            
-                            // Create a list to maintain order
-                            var orderedImages = new List<BackieeImage>();
-                            
-                            foreach (System.Text.RegularExpressions.Match match in matches)
-                            {
-                                string imageUrl = match.Groups[1].Value;
-                                if (!string.IsNullOrEmpty(imageUrl))
-                                {
-                                    string imageId = GetImageIdFromUrl(imageUrl);
-                                    
-                                    var newImage = new BackieeImage
-                                    {
-                                        ImageUrl = imageUrl,
-                                        ImageId = imageId,
-                                        IsLoading = false,
-                                        Resolution = "1920x1080"
-                                    };
-                                    
-                                    // Set resolution properties to display tags
-                                    newImage.SetResolutionProperties();
-                                    
-                                    // Randomly set some images as AI for demonstration
-                                    newImage.IsAI = Convert.ToBoolean(new Random().Next(0, 5) == 0);
-                                    
-                                    _logger?.LogDebug($"Adding image: ID={imageId}, Resolution={newImage.Resolution}");
-                                    orderedImages.Add(newImage);
-                                    
-                                    if (int.TryParse(imageId, out int id))
-                                    {
-                                        _attemptedIds.Add(id);
-                                    }
-                                }
-                            }
-                            
-                            _logger?.LogInformation($"Extracted {orderedImages.Count} images from the webpage. Highest ID: {_currentImageId}");
-                            
-                            // Add the images in the exact order they were found
-                            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                            {
-                                foreach (var image in orderedImages)
-                                {
-                                    if (!_loadedUrls.Contains(image.ImageUrl))
-                                    {
-                                        Images.Add(image);
-                                        _loadedUrls.Add(image.ImageUrl);
-                                    }
-                                }
-                            });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogError(ex, "Error fetching images from Backiee website");
-                        _logger?.LogInformation("Falling back to reading from JSON file");
-                        await LoadImagesFromJsonFile();
-                        return;
-                    }
-                });
+                // Directly load from JSON instead of web scraping
+                await LoadImagesFromJsonFile();
                 
                 _logger?.LogInformation("Successfully added {Count} initial images to the collection", Images.Count);
             }
@@ -217,7 +130,6 @@ namespace WallYouNeed.App.Pages
             {
                 _logger?.LogError(ex, "Error in FetchInitialImages");
                 System.Windows.MessageBox.Show($"Error fetching initial images: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                await LoadImagesFromJsonFile();
             }
         }
 
@@ -339,8 +251,8 @@ namespace WallYouNeed.App.Pages
                                 // Set resolution properties to display tags
                                 image.SetResolutionProperties();
                                 
-                                // Randomly set some images as AI for demonstration
-                                image.IsAI = Convert.ToBoolean(new Random().Next(0, 5) == 0);
+                                // Debug verification
+                                _logger?.LogInformation($"Creating image: ID={image.ImageId}, URL={image.ImageUrl}");
                                 
                                 batchImages.Add(image);
                                 
@@ -519,51 +431,187 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_wallpapers.json");
-                _logger?.LogInformation($"Loading images from JSON file: {jsonPath}");
-
-                if (!File.Exists(jsonPath))
+                // Try multiple possible locations for the JSON file, prioritizing the root directory
+                string[] possiblePaths = new string[]
                 {
-                    _logger?.LogError($"JSON file not found: {jsonPath}");
-                    return;
-                }
+                    // Check the project root directory first (2 levels up from bin/Debug)
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "backiee_wallpapers.json"),
+                    
+                    // Check the root of the solution (3 levels up from bin/Debug)
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "..", "backiee_wallpapers.json"),
+                    
+                    // Check the current directory
+                    "backiee_wallpapers.json",
+                    
+                    // Last resort: check the output directory 
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_wallpapers.json")
+                };
 
-                string jsonContent = await File.ReadAllTextAsync(jsonPath);
-                var wallpapers = JsonSerializer.Deserialize<List<Wallpaper>>(jsonContent);
-
-                if (wallpapers == null)
+                string jsonPath = null;
+                foreach (var path in possiblePaths)
                 {
-                    _logger?.LogError("Failed to deserialize wallpapers from JSON");
-                    return;
-                }
-
-                foreach (var wallpaper in wallpapers)
-                {
-                    if (!string.IsNullOrEmpty(wallpaper.ThumbnailUrl))
+                    var fullPath = Path.GetFullPath(path);
+                    _logger?.LogInformation($"Checking for JSON file at: {fullPath}");
+                    
+                    if (File.Exists(fullPath))
                     {
-                        var backieeImage = new BackieeImage
-                        {
-                            ImageUrl = wallpaper.ThumbnailUrl,
-                            ImageId = wallpaper.Id,
-                            Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
-                        };
-                        
-                        // Set resolution properties to display tags
-                        backieeImage.SetResolutionProperties();
-                        
-                        // Randomly set some images as AI for demonstration
-                        backieeImage.IsAI = Convert.ToBoolean(new Random().Next(0, 5) == 0);
-
-                        Images.Add(backieeImage);
+                        jsonPath = fullPath;
+                        _logger?.LogInformation($"Found JSON file at: {jsonPath}");
+                        break;
                     }
                 }
 
-                _logger?.LogInformation($"Successfully loaded {Images.Count} images from JSON");
+                if (jsonPath == null)
+                {
+                    _logger?.LogError("JSON file not found in any of the checked locations");
+                    
+                    // Show a message to the user
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        System.Windows.MessageBox.Show(
+                            "Could not find the wallpapers data file (backiee_wallpapers.json).\n\n" +
+                            "Please ensure the file exists in the project root directory.",
+                            "File Not Found",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    });
+                    
+                    return;
+                }
+
+                // Read the JSON content directly
+                string jsonContent = await File.ReadAllTextAsync(jsonPath);
+                
+                // Use the simplest direct approach for the list of wallpapers
+                var wallpapers = new List<SimpleWallpaper>();
+                
+                using (JsonDocument doc = JsonDocument.Parse(jsonContent))
+                {
+                    foreach (JsonElement item in doc.RootElement.EnumerateArray())
+                    {
+                        var wallpaper = new SimpleWallpaper();
+                        
+                        // Get the URL
+                        if (item.TryGetProperty("placeholder_url", out JsonElement urlElement) && 
+                            urlElement.ValueKind == JsonValueKind.String)
+                        {
+                            wallpaper.Url = urlElement.GetString() ?? "";
+                        }
+                        
+                        // Get the quality
+                        if (item.TryGetProperty("quality", out JsonElement qualityElement) && 
+                            qualityElement.ValueKind == JsonValueKind.String)
+                        {
+                            wallpaper.Quality = qualityElement.GetString() ?? "";
+                        }
+                        
+                        // Get the AI status - most important part
+                        if (item.TryGetProperty("ai_status", out JsonElement aiElement))
+                        {
+                            switch (aiElement.ValueKind)
+                            {
+                                case JsonValueKind.True:
+                                    wallpaper.IsAI = true;
+                                    break;
+                                case JsonValueKind.False:
+                                    wallpaper.IsAI = false;
+                                    break;
+                                case JsonValueKind.String:
+                                    var strValue = aiElement.GetString() ?? "";
+                                    wallpaper.IsAI = strValue.Equals("true", StringComparison.OrdinalIgnoreCase);
+                                    break;
+                                case JsonValueKind.Number:
+                                    wallpaper.IsAI = aiElement.GetInt32() != 0;
+                                    break;
+                            }
+                        }
+                        
+                        wallpapers.Add(wallpaper);
+                    }
+                }
+                
+                // Debug the first few
+                for (int i = 0; i < Math.Min(wallpapers.Count, 5); i++)
+                {
+                    _logger?.LogInformation($"Wallpaper[{i}]: URL={wallpapers[i].Url}, Quality={wallpapers[i].Quality}, IsAI={wallpapers[i].IsAI}");
+                }
+                
+                // Clear existing images
+                Images.Clear();
+                
+                // Add the wallpapers to the UI
+                foreach (var wallpaper in wallpapers)
+                {
+                    if (string.IsNullOrEmpty(wallpaper.Url))
+                        continue;
+                        
+                    // Extract image ID from URL
+                    string imageId = GetImageIdFromUrl(wallpaper.Url);
+                    
+                    // Create a BackieeImage object with properties set explicitly
+                    var image = new BackieeImage();
+                    
+                    // Set basic properties
+                    image.ImageUrl = wallpaper.Url;
+                    image.ImageId = imageId;
+                    image.IsLoading = false;
+                    
+                    // Explicitly set the AI status - this is critical
+                    image.IsAI = wallpaper.IsAI;
+                    
+                    // Debug verification
+                    _logger?.LogInformation($"Creating image: ID={imageId}, URL={wallpaper.Url}, AI={wallpaper.IsAI}, Image.IsAI={image.IsAI}");
+                    
+                    // Set resolution based on quality
+                    image.Resolution = "1920x1080"; // Default
+                    
+                    if (!string.IsNullOrEmpty(wallpaper.Quality))
+                    {
+                        image.HasHighResolution = true;
+                        image.ResolutionLabel = wallpaper.Quality;
+                        
+                        switch (wallpaper.Quality)
+                        {
+                            case "4K":
+                                image.Resolution = "3840x2160";
+                                break;
+                            case "5K":
+                                image.Resolution = "5120x2880";
+                                break;
+                            case "8K":
+                                image.Resolution = "7680x4320";
+                                break;
+                        }
+                    }
+                    
+                    // Add to collection
+                    Images.Add(image);
+                }
+                
+                _logger?.LogInformation($"Successfully loaded {Images.Count} images from JSON file at {jsonPath}");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error loading images from JSON file");
+                _logger?.LogError(ex, "Error loading images from JSON file: " + ex.Message);
+                
+                // Show a message to the user
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    System.Windows.MessageBox.Show(
+                        $"Error loading wallpapers: {ex.Message}",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                });
             }
+        }
+        
+        // Simple class to hold wallpaper data without any serialization complexities
+        private class SimpleWallpaper
+        {
+            public string Url { get; set; } = "";
+            public string Quality { get; set; } = "";
+            public bool IsAI { get; set; }
         }
         
         private void FilterButton_Click(object sender, RoutedEventArgs e)
@@ -601,6 +649,8 @@ namespace WallYouNeed.App.Pages
 
     public class BackieeImage
     {
+        private bool _isAI = false;
+        
         public string ImageUrl { get; set; }
         public string ImageId { get; set; }
         public bool IsLoading { get; set; }
@@ -609,7 +659,21 @@ namespace WallYouNeed.App.Pages
         // Properties for tags
         public bool HasHighResolution { get; set; }
         public string ResolutionLabel { get; set; }
-        public bool IsAI { get; set; }
+        
+        // Modified IsAI property with proper backing field and debug info
+        public bool IsAI 
+        { 
+            get 
+            { 
+                Debug.WriteLine($"IsAI getter called for image {ImageId}, returning {_isAI}");
+                return _isAI; 
+            }
+            set 
+            { 
+                Debug.WriteLine($"IsAI setter called for image {ImageId}, setting to {value}");
+                _isAI = value; 
+            }
+        }
 
         // Add constructor to handle nullability warnings
         public BackieeImage()
@@ -621,7 +685,7 @@ namespace WallYouNeed.App.Pages
             
             // Initialize tag properties
             HasHighResolution = false;
-            IsAI = false;
+            _isAI = false; // Ensure this is initialized
         }
         
         // Helper method to set resolution properties
@@ -661,25 +725,39 @@ namespace WallYouNeed.App.Pages
         }
     }
 
-    // Value converter for binding boolean values to visibility
+    // Modified converter with more detailed debugging
     public class BooleanToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
+            Debug.WriteLine($"BooleanToVisibilityConverter called with value: {value} (type: {(value?.GetType()?.Name ?? "null")})");
+            
             if (value is bool boolValue)
             {
+                Debug.WriteLine($"Converting boolean {boolValue} to {(boolValue ? "Visible" : "Collapsed")}");
                 return boolValue ? Visibility.Visible : Visibility.Collapsed;
             }
+            
+            Debug.WriteLine($"Value was not a boolean, returning Collapsed");
             return Visibility.Collapsed;
         }
         
         public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
-            if (value is Visibility visibility)
-            {
-                return visibility == Visibility.Visible;
-            }
-            return false;
+            return value is Visibility visibility && visibility == Visibility.Visible;
         }
+    }
+
+    internal class BackieeWallpaper
+    {
+        public string placeholder_url { get; set; } = string.Empty;
+        public string real_page_url { get; set; } = string.Empty;
+        public string quality { get; set; } = string.Empty;
+        
+        // Explicitly set the ai_status property to use plain bool
+        public bool ai_status { get; set; }
+        
+        public int likes { get; set; }
+        public int downloads { get; set; }
     }
 } 
