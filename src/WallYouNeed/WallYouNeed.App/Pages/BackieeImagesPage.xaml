@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:local="clr-namespace:WallYouNeed.App.Pages"
+    xmlns:converters="clr-namespace:WallYouNeed.App.Converters"
     mc:Ignorable="d"
     Title="Latest Wallpapers" 
     d:DesignHeight="650" 
@@ -13,6 +14,7 @@
     <Page.Resources>
         <local:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <local:StringCompareVisibilityConverter x:Key="StringCompareVisibilityConverter"/>
+        <converters:WidthToColumnsConverter x:Key="WidthToColumnsConverter"/>
     </Page.Resources>
 
     <Grid>
@@ -107,7 +109,10 @@
             <ItemsControl x:Name="ImagesItemsControl" Margin="10">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <UniformGrid Columns="4" />
+                        <UniformGrid Columns="{Binding ActualWidth, 
+                            RelativeSource={RelativeSource AncestorType=ScrollViewer}, 
+                            Converter={StaticResource WidthToColumnsConverter}, 
+                            ConverterParameter=250}" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -127,8 +132,8 @@
                                     <Grid>
                                         <!-- Background Image -->
                                         <Image Source="{Binding ImageUrl}" 
-                                               Width="auto"
-                                               Height="auto"
+                                               Width="Auto"
+                                               Height="Auto"
                                                Stretch="UniformToFill" 
                                                RenderOptions.BitmapScalingMode="HighQuality"/>
                                         
