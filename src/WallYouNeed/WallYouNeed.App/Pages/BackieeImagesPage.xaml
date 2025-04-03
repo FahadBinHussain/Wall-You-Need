@@ -112,7 +112,7 @@
                         <UniformGrid Columns="{Binding ActualWidth, 
                             RelativeSource={RelativeSource AncestorType=ScrollViewer}, 
                             Converter={StaticResource WidthToColumnsConverter}, 
-                            ConverterParameter=250}" />
+                            ConverterParameter=300}" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>

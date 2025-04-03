@@ -8,12 +8,16 @@ namespace WallYouNeed.App.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
+            const int maxColumns = 4;
+            const int defaultColumns = 3;
+
             if (value is double width && parameter is string minWidth)
             {
                 var minColumnWidth = double.Parse(minWidth);
-                return Math.Max(1, (int)(width / minColumnWidth));
+                var calculatedColumns = (int)Math.Floor((width - 20) / minColumnWidth); // Account for 10px margins on both sides
+                return Math.Clamp(calculatedColumns, 1, maxColumns);
             }
-            return 4; // Default fallback
+            return defaultColumns;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
