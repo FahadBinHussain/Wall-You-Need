@@ -207,7 +207,8 @@ namespace WallYouNeed.App.Pages
                             continue;
 
                         currentBatchIds.Add(imageId);
-                        string imageUrl = $"https://backiee.com/static/wallpapers/560x315/{imageId}.jpg";
+                        // Normalize URL format by ensuring consistent casing
+                        string imageUrl = $"https://backiee.com/static/wallpapers/560x315/{imageId}.jpg".ToLowerInvariant();
                         
                         // Skip if we already have this URL
                         if (_loadedUrls.Contains(imageUrl))
@@ -222,7 +223,7 @@ namespace WallYouNeed.App.Pages
                         var completedTasks = await Task.WhenAll(tasks);
 
                         // Process results in the order of IDs to maintain consistency
-                        foreach (var id in currentBatchIds)
+                        foreach (var id in currentBatchIds.OrderByDescending(x => x))
                         {
                             var result = completedTasks.FirstOrDefault(r => r?.Item1 == id);
                             if (result == null) continue;
@@ -234,7 +235,9 @@ namespace WallYouNeed.App.Pages
                             _attemptedIds.Add(id);
                             _totalRequests++;
 
-                            if (exists && !_loadedUrls.Contains(imageUrl))
+                            // Double-check to avoid duplicates (check by ID as well)
+                            if (exists && !_loadedUrls.Contains(imageUrl) && 
+                                !Images.Any(img => img.ImageId == id.ToString()))
                             {
                                 _successfulRequests++;
                                 imagesFound++;
@@ -276,7 +279,11 @@ namespace WallYouNeed.App.Pages
                         {
                             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                             {
-                                Images.Add(image);
+                                // Final check before adding to the collection
+                                if (!Images.Any(img => img.ImageUrl == image.ImageUrl || img.ImageId == image.ImageId))
+                                {
+                                    Images.Add(image);
+                                }
                             });
                         }
 
@@ -310,6 +317,9 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
+                // Ensure URL is normalized
+                imageUrl = imageUrl.ToLowerInvariant();
+                
                 // Make a HEAD request first to check if the image exists
                 var request = new HttpRequestMessage(HttpMethod.Head, imageUrl);
                 var response = await client.SendAsync(request, cancellationToken);
@@ -329,15 +339,40 @@ namespace WallYouNeed.App.Pages
             try
             {
                 // Extract the image ID from the URL (the number part)
-                string fileName = url.Split('/').Last();
-                string imageId = fileName.Split('.').First();
+                if (string.IsNullOrEmpty(url))
+                    return string.Empty;
+                
+                // Split the URL by '/'
+                string[] parts = url.Split('/');
+                if (parts.Length == 0)
+                    return string.Empty;
+                
+                // Get the last part which should be the filename
+                string fileName = parts[parts.Length - 1];
+                
+                // Split by '.' to remove extension
+                string[] fileNameParts = fileName.Split('.');
+                if (fileNameParts.Length == 0)
+                    return string.Empty;
+                
+                // First part should be the image ID
+                string imageId = fileNameParts[0];
+                
+                // Ensure it's a valid number
+                if (int.TryParse(imageId, out _))
+                {
+                    return imageId;
+                }
+                
+                // If we couldn't parse as integer, log and return whatever we have
+                _logger?.LogWarning("Could not parse imageId '{ImageId}' as integer from URL: {Url}", imageId, url);
                 return imageId;
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error extracting image ID from URL: {Url}", url);
-                // Return the URL if we can't extract the ID
-                return url;
+                // Return a fallback value if we can't extract the ID
+                return Path.GetFileNameWithoutExtension(url);
             }
         }
 
@@ -538,6 +573,7 @@ namespace WallYouNeed.App.Pages
                 
                 // Clear existing images
                 Images.Clear();
+                _loadedUrls.Clear();
                 
                 // Add the wallpapers to the UI
                 foreach (var wallpaper in wallpapers)
@@ -545,14 +581,25 @@ namespace WallYouNeed.App.Pages
                     if (string.IsNullOrEmpty(wallpaper.Url))
                         continue;
                         
+                    // Normalize the URL to lowercase for consistent comparison
+                    string normalizedUrl = wallpaper.Url.ToLowerInvariant();
+                    
+                    // Skip if we already have this URL
+                    if (_loadedUrls.Contains(normalizedUrl))
+                        continue;
+                        
                     // Extract image ID from URL
-                    string imageId = GetImageIdFromUrl(wallpaper.Url);
+                    string imageId = GetImageIdFromUrl(normalizedUrl);
+                    
+                    // Skip if we already have this imageId
+                    if (Images.Any(img => img.ImageId == imageId))
+                        continue;
                     
                     // Create a BackieeImage object with properties set explicitly
                     var image = new BackieeImage();
                     
                     // Set basic properties
-                    image.ImageUrl = wallpaper.Url;
+                    image.ImageUrl = normalizedUrl;
                     image.ImageId = imageId;
                     image.IsLoading = false;
                     
@@ -560,7 +607,7 @@ namespace WallYouNeed.App.Pages
                     image.IsAI = wallpaper.IsAI;
                     
                     // Debug verification
-                    _logger?.LogInformation($"Creating image: ID={imageId}, URL={wallpaper.Url}, AI={wallpaper.IsAI}, Image.IsAI={image.IsAI}");
+                    _logger?.LogInformation($"Creating image: ID={imageId}, URL={normalizedUrl}, AI={wallpaper.IsAI}, Image.IsAI={image.IsAI}");
                     
                     // Set resolution based on quality
                     image.Resolution = "1920x1080"; // Default
@@ -584,8 +631,28 @@ namespace WallYouNeed.App.Pages
                         }
                     }
                     
-                    // Add to collection
+                    // Add to collection and update tracking
                     Images.Add(image);
+                    _loadedUrls.Add(normalizedUrl);
+                    
+                    // Also track the ID to avoid re-attempting it
+                    if (int.TryParse(imageId, out int parsedId))
+                    {
+                        _attemptedIds.Add(parsedId);
+                    }
+                }
+                
+                // Set the current imageId for infinite scrolling based on our loaded images
+                if (Images.Count > 0)
+                {
+                    var minLoadedId = Images
+                        .Where(i => int.TryParse(i.ImageId, out _))
+                        .Select(i => int.Parse(i.ImageId))
+                        .DefaultIfEmpty(_currentImageId)
+                        .Min();
+                    
+                    _currentImageId = minLoadedId - 1;
+                    _logger?.LogInformation($"Set next imageId to {_currentImageId} based on loaded images");
                 }
                 
                 _logger?.LogInformation($"Successfully loaded {Images.Count} images from JSON file at {jsonPath}");
