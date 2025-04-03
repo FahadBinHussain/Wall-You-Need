@@ -54,8 +54,13 @@ namespace WallYouNeed.App.Pages
                 
                 InitializeComponent();
                 
-                // Create a value converter for boolean to visibility
-                Resources.Add("BooleanToVisibilityConverter", new BooleanToVisibilityConverter());
+                // The BooleanToVisibilityConverter is already defined in XAML
+                
+                // If it wasn't already defined in XAML, add it here
+                if (!Resources.Contains("BooleanToVisibilityConverter"))
+                {
+                    Resources.Add("BooleanToVisibilityConverter", new BooleanToVisibilityConverter());
+                }
                 
                 Images = new ObservableCollection<BackieeImage>();
                 ImagesItemsControl.ItemsSource = Images;
@@ -164,6 +169,12 @@ namespace WallYouNeed.App.Pages
                                         IsLoading = false,
                                         Resolution = "1920x1080"
                                     };
+                                    
+                                    // Set resolution properties to display tags
+                                    newImage.SetResolutionProperties();
+                                    
+                                    // Randomly set some images as AI for demonstration
+                                    newImage.IsAI = Convert.ToBoolean(new Random().Next(0, 5) == 0);
                                     
                                     _logger?.LogDebug($"Adding image: ID={imageId}, Resolution={newImage.Resolution}");
                                     orderedImages.Add(newImage);
@@ -317,13 +328,21 @@ namespace WallYouNeed.App.Pages
                                 imagesFound++;
                                 consecutiveMisses = 0;
 
-                                batchImages.Add(new BackieeImage
+                                var image = new BackieeImage
                                 {
                                     ImageUrl = imageUrl,
                                     ImageId = id.ToString(),
                                     IsLoading = false,
                                     Resolution = "1920x1080"
-                                });
+                                };
+                                
+                                // Set resolution properties to display tags
+                                image.SetResolutionProperties();
+                                
+                                // Randomly set some images as AI for demonstration
+                                image.IsAI = Convert.ToBoolean(new Random().Next(0, 5) == 0);
+                                
+                                batchImages.Add(image);
                                 
                                 _loadedUrls.Add(imageUrl);
                             }
@@ -528,6 +547,12 @@ namespace WallYouNeed.App.Pages
                             ImageId = wallpaper.Id,
                             Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
                         };
+                        
+                        // Set resolution properties to display tags
+                        backieeImage.SetResolutionProperties();
+                        
+                        // Randomly set some images as AI for demonstration
+                        backieeImage.IsAI = Convert.ToBoolean(new Random().Next(0, 5) == 0);
 
                         Images.Add(backieeImage);
                     }
@@ -580,6 +605,11 @@ namespace WallYouNeed.App.Pages
         public string ImageId { get; set; }
         public bool IsLoading { get; set; }
         public string Resolution { get; set; }
+        
+        // Properties for tags
+        public bool HasHighResolution { get; set; }
+        public string ResolutionLabel { get; set; }
+        public bool IsAI { get; set; }
 
         // Add constructor to handle nullability warnings
         public BackieeImage()
@@ -587,6 +617,47 @@ namespace WallYouNeed.App.Pages
             ImageUrl = string.Empty;
             ImageId = string.Empty;
             Resolution = string.Empty;
+            ResolutionLabel = string.Empty;
+            
+            // Initialize tag properties
+            HasHighResolution = false;
+            IsAI = false;
+        }
+        
+        // Helper method to set resolution properties
+        public void SetResolutionProperties()
+        {
+            if (string.IsNullOrEmpty(Resolution))
+                return;
+            
+            // Parse resolution and set appropriate tag
+            if (Resolution.Contains("x"))
+            {
+                var parts = Resolution.Split('x');
+                if (parts.Length == 2 && int.TryParse(parts[0], out int width) && int.TryParse(parts[1], out int height))
+                {
+                    // For 4K resolution (3840x2160 or higher)
+                    if (width >= 3840 && height >= 2160)
+                    {
+                        HasHighResolution = true;
+                        
+                        // For 8K resolution (7680x4320 or higher)
+                        if (width >= 7680 && height >= 4320)
+                        {
+                            ResolutionLabel = "8K";
+                        }
+                        // For 5K resolution (5120x2880 or higher)
+                        else if (width >= 5120 && height >= 2880)
+                        {
+                            ResolutionLabel = "5K";
+                        }
+                        else
+                        {
+                            ResolutionLabel = "4K";
+                        }
+                    }
+                }
+            }
         }
     }
 

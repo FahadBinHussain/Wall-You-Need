@@ -10,6 +10,10 @@
     d:DesignHeight="650" 
     d:DesignWidth="800">
 
+    <Page.Resources>
+        <local:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </Page.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -126,6 +130,36 @@
                                 <!-- Semi-transparent overlay for better badge visibility -->
                                 <Border Background="#20000000" 
                                         Panel.ZIndex="1"/>
+                                
+                                <!-- Tags/Badges -->
+                                <StackPanel Orientation="Horizontal" 
+                                            HorizontalAlignment="Left" 
+                                            VerticalAlignment="Top" 
+                                            Margin="8"
+                                            Panel.ZIndex="2">
+                                    <!-- Resolution badge (e.g. 5K) -->
+                                    <Border Background="#FF3366" 
+                                            CornerRadius="4" 
+                                            Padding="6,3"
+                                            Margin="0,0,4,0" 
+                                            Visibility="{Binding HasHighResolution, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                                        <TextBlock Text="{Binding ResolutionLabel}" 
+                                                   Foreground="White" 
+                                                   FontSize="12"
+                                                   FontWeight="Bold"/>
+                                    </Border>
+                                    
+                                    <!-- AI badge -->
+                                    <Border Background="#5577FF" 
+                                            CornerRadius="4" 
+                                            Padding="6,3"
+                                            Visibility="{Binding IsAI, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                                        <TextBlock Text="AI" 
+                                                   Foreground="White" 
+                                                   FontSize="12"
+                                                   FontWeight="Bold"/>
+                                    </Border>
+                                </StackPanel>
                                 
                                 <!-- Loading indicator overlay -->
                                 <ProgressBar x:Name="ImageLoadingProgress"
