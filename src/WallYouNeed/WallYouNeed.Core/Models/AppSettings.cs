@@ -118,5 +118,30 @@ namespace WallYouNeed.Core.Models
         /// Whether to enable detailed logging for troubleshooting
         /// </summary>
         public bool VerboseLogging { get; set; } = false;
+        
+        /// <summary>
+        /// Window width
+        /// </summary>
+        public double WindowWidth { get; set; } = 1200;
+        
+        /// <summary>
+        /// Window height
+        /// </summary>
+        public double WindowHeight { get; set; } = 800;
+        
+        /// <summary>
+        /// Window left position
+        /// </summary>
+        public double WindowLeft { get; set; } = 100;
+        
+        /// <summary>
+        /// Window top position
+        /// </summary>
+        public double WindowTop { get; set; } = 100;
+        
+        /// <summary>
+        /// Window state (e.g., normal, maximized, minimized)
+        /// </summary>
+        public string WindowState { get; set; } = "Normal";
     }
 } 

@@ -11,6 +11,9 @@ using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 using WallYouNeed.App.Pages;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.ComponentModel;
+using System.Windows.Forms;
 
 namespace WallYouNeed.App
 {
@@ -20,6 +23,7 @@ namespace WallYouNeed.App
         private readonly IWallpaperService _wallpaperService;
         private readonly ISettingsService _settingsService;
         private System.Windows.Controls.Button _currentActiveButton;
+        private bool _isWindowLoaded = false;
 
         public MainWindow(
             ILogger<MainWindow> logger,
@@ -46,11 +50,38 @@ namespace WallYouNeed.App
             // Setup search box behavior
             SetupSearchBox();
 
-            // Load settings
-            LoadSettingsQuietly();
+            // Register window events
+            this.Loaded += MainWindow_Loaded;
+            this.Closing += MainWindow_Closing;
+            this.SizeChanged += MainWindow_SizeChanged;
+            this.LocationChanged += MainWindow_LocationChanged;
             
             // Navigate to home page by default
             NavigateToPage("Home");
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Load settings and restore window position
+            LoadSettingsAndRestorePosition();
+        }
+        
+        private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (_isWindowLoaded && this.WindowState != WindowState.Minimized)
+            {
+                _logger.LogDebug("Window size changed: {Width}x{Height}", this.Width, this.Height);
+                SaveWindowPositionQuietly();
+            }
+        }
+        
+        private void MainWindow_LocationChanged(object sender, EventArgs e)
+        {
+            if (_isWindowLoaded && this.WindowState != WindowState.Minimized)
+            {
+                _logger.LogDebug("Window position changed: {Left},{Top}", this.Left, this.Top);
+                SaveWindowPositionQuietly();
+            }
         }
 
         private void SetupWindowControls()
@@ -61,16 +92,186 @@ namespace WallYouNeed.App
             // We no longer need to handle custom window buttons
         }
 
-        private async void LoadSettingsQuietly()
+        private async void LoadSettingsAndRestorePosition()
         {
             try
             {
+                _logger.LogInformation("Loading settings and restoring window position");
                 var settings = await _settingsService.LoadSettingsAsync();
                 _logger.LogInformation("Settings loaded successfully");
+                
+                _logger.LogInformation("Stored window settings: Left={Left}, Top={Top}, Width={Width}, Height={Height}, State={State}", 
+                    settings.WindowLeft, settings.WindowTop, settings.WindowWidth, settings.WindowHeight, settings.WindowState);
+                
+                // Restore window size and position
+                RestoreWindowPosition(settings);
+                
+                // Mark window as loaded after restoration
+                _isWindowLoaded = true;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to load settings");
+                _isWindowLoaded = true; // Still mark as loaded even if restoration failed
+            }
+        }
+        
+        private void RestoreWindowPosition(AppSettings settings)
+        {
+            try
+            {
+                _logger.LogInformation("Restoring window position");
+                
+                // Make sure the dimensions are valid
+                if (settings.WindowWidth <= 50) settings.WindowWidth = 1200;
+                if (settings.WindowHeight <= 50) settings.WindowHeight = 800;
+                
+                // Check if the saved position is visible on any available screen
+                bool isOnScreen = false;
+                
+                // If we're trying to restore to (0,0), likely the position was never saved,
+                // so use CenterScreen instead
+                if (settings.WindowLeft == 0 && settings.WindowTop == 0)
+                {
+                    this.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                    this.Width = settings.WindowWidth;
+                    this.Height = settings.WindowHeight;
+                    _logger.LogInformation("Using center screen position");
+                    isOnScreen = true;
+                }
+                else
+                {
+                    // Check if the window would be visible on any screen
+                    foreach (Screen screen in Screen.AllScreens)
+                    {
+                        var workingArea = screen.WorkingArea;
+                        if (settings.WindowLeft + 50 < workingArea.Right && 
+                            settings.WindowTop + 50 < workingArea.Bottom && 
+                            settings.WindowLeft + settings.WindowWidth - 50 > workingArea.Left && 
+                            settings.WindowTop + settings.WindowHeight - 50 > workingArea.Top)
+                        {
+                            isOnScreen = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (isOnScreen)
+                {
+                    // Set startup location to manual so we can position the window
+                    this.WindowStartupLocation = WindowStartupLocation.Manual;
+                    
+                    // Apply settings
+                    this.Width = settings.WindowWidth;
+                    this.Height = settings.WindowHeight;
+                    this.Left = settings.WindowLeft;
+                    this.Top = settings.WindowTop;
+                    
+                    // Restore window state
+                    if (Enum.TryParse<System.Windows.WindowState>(settings.WindowState, out var windowState) && 
+                        windowState != WindowState.Minimized)
+                    {
+                        this.WindowState = windowState;
+                    }
+                    
+                    _logger.LogInformation("Window position restored: Left={Left}, Top={Top}, Width={Width}, Height={Height}, State={State}", 
+                        this.Left, this.Top, this.Width, this.Height, this.WindowState);
+                }
+                else
+                {
+                    // Use default center screen position
+                    this.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                    this.Width = settings.WindowWidth;
+                    this.Height = settings.WindowHeight;
+                    _logger.LogWarning("Saved window position is off-screen, using center screen position");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error restoring window position");
+            }
+        }
+        
+        private async void MainWindow_Closing(object sender, CancelEventArgs e)
+        {
+            try
+            {
+                // Save window size and position
+                if (_isWindowLoaded)
+                {
+                    _logger.LogInformation("Window closing, saving position");
+                    await SaveWindowPosition();
+                    _logger.LogInformation("Window position saved on closing");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving window position on closing");
+            }
+        }
+        
+        private async void SaveWindowPositionQuietly()
+        {
+            try
+            {
+                await SaveWindowPosition();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error quietly saving window position");
+            }
+        }
+        
+        private async Task SaveWindowPosition()
+        {
+            // Only update if the window is loaded and not minimized
+            if (!_isWindowLoaded || this.WindowState == WindowState.Minimized)
+            {
+                return;
+            }
+
+            try
+            {
+                double width = this.Width;
+                double height = this.Height;
+                double left = this.Left;
+                double top = this.Top;
+                string windowState = this.WindowState.ToString();
+
+                // If window is maximized, we want to save the restored size
+                if (this.WindowState == WindowState.Maximized)
+                {
+                    width = this.RestoreBounds.Width;
+                    height = this.RestoreBounds.Height;
+                    left = this.RestoreBounds.Left;
+                    top = this.RestoreBounds.Top;
+                }
+
+                // Log the window state we're about to save
+                _logger.LogInformation("Saving window position: Left={Left}, Top={Top}, Width={Width}, Height={Height}, State={State}", 
+                    left, top, width, height, windowState);
+
+                // Use UpdateSettingsAsync to update the settings
+                await _settingsService.UpdateSettingsAsync(settings =>
+                {
+                    settings.WindowWidth = width;
+                    settings.WindowHeight = height;
+                    settings.WindowLeft = left;
+                    settings.WindowTop = top;
+                    settings.WindowState = windowState;
+                });
+                
+                // Verify the settings were updated
+                var currentSettings = await _settingsService.GetSettingsAsync();
+                _logger.LogDebug("Settings after save: Left={Left}, Top={Top}, Width={Width}, Height={Height}, State={State}", 
+                    currentSettings.WindowLeft, currentSettings.WindowTop, 
+                    currentSettings.WindowWidth, currentSettings.WindowHeight, 
+                    currentSettings.WindowState);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving window position to settings");
+                throw;
             }
         }
 
