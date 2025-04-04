@@ -526,12 +526,70 @@ namespace WallYouNeed.App.Pages
             var grid = new Grid();
             border.Child = grid;
 
-            // Create and add the image
+            // Create a dark placeholder background
+            var placeholderBackground = new Border
+            {
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30)), // Dark gray background
+                Opacity = 1
+            };
+            grid.Children.Add(placeholderBackground);
+            
+            // Create a loading indicator
+            var loadingIndicator = new System.Windows.Controls.ProgressBar
+            {
+                IsIndeterminate = true,
+                Width = 50,
+                Height = 5,
+                Foreground = new SolidColorBrush(Colors.White),
+                Background = new SolidColorBrush(Colors.Transparent),
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 0)
+            };
+            grid.Children.Add(loadingIndicator);
+
+            // Create and add the image (with placeholder until loaded)
             var image = new System.Windows.Controls.Image
             {
-                Source = new BitmapImage(new Uri(wallpaper.ImageUrl)),
-                Stretch = Stretch.Fill
+                Stretch = Stretch.Fill,
+                Opacity = 0 // Start with invisible image
             };
+            
+            // Use BitmapImage with events for loading
+            var bitmapImage = new BitmapImage();
+            bitmapImage.BeginInit();
+            bitmapImage.CacheOption = BitmapCacheOption.OnLoad; // Fully load in memory
+            bitmapImage.UriSource = new Uri(wallpaper.ImageUrl);
+            bitmapImage.EndInit();
+            
+            // Handle the image loading events
+            bitmapImage.DownloadCompleted += (s, e) => 
+            {
+                // When the image is loaded, fade it in and hide the placeholder
+                image.Opacity = 1;
+                placeholderBackground.Opacity = 0;
+                loadingIndicator.Visibility = Visibility.Collapsed;
+            };
+            
+            bitmapImage.DownloadFailed += (s, e) => 
+            {
+                // If download fails, show a error placeholder
+                placeholderBackground.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(50, 30, 30)); // Dark red background
+                loadingIndicator.Visibility = Visibility.Collapsed;
+                
+                // Add an error icon or text
+                var errorText = new TextBlock
+                {
+                    Text = "!",
+                    FontSize = 24,
+                    Foreground = new SolidColorBrush(Colors.White),
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center
+                };
+                grid.Children.Add(errorText);
+            };
+            
+            image.Source = bitmapImage;
             RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
             grid.Children.Add(image);
 
