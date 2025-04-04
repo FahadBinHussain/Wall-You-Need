@@ -48,7 +48,7 @@
                                        x:Name="ButtonText" 
                                        Text="{TemplateBinding Tag}" 
                                        FontSize="10" 
-                                       Foreground="#999999"
+                                       Foreground="#efefef"
                                        HorizontalAlignment="Center" 
                                        Margin="0,4,0,0"/>
                         </Grid>
