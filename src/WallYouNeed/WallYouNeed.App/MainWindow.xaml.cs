@@ -296,6 +296,15 @@ namespace WallYouNeed.App
 
         private void TestGridButton_Click(object sender, RoutedEventArgs e)
         {
+            // Check if we're already on the TestGridPage to prevent reloading
+            if (ContentFrame.Content is TestGridPage)
+            {
+                // Already on TestGridPage, do nothing
+                _logger?.LogDebug("Already on TestGridPage, ignoring navigation request");
+                return;
+            }
+            
+            // Otherwise, navigate as usual
             NavigateToPage("Test Grid");
             SetActiveButton(TestGridButton);
         }
