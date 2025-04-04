@@ -28,18 +28,25 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid>
-                            <Border x:Name="MainBorder" Background="Transparent">
-                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                    <ContentPresenter x:Name="ButtonContent" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="ButtonText" 
-                                               Text="{TemplateBinding Tag}" 
-                                               FontSize="10" 
-                                               Foreground="#999999"
-                                               HorizontalAlignment="Center" 
-                                               Margin="0,4,0,0"/>
-                                </StackPanel>
-                        </Border>
+                        <Grid Width="52" Height="60">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="32"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Icon Container - Fixed position -->
+                            <Grid Grid.Row="0" Width="24" Height="24" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ContentPresenter x:Name="ButtonContent" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            
+                            <!-- Text Label - Fixed position -->
+                            <TextBlock Grid.Row="1" 
+                                       x:Name="ButtonText" 
+                                       Text="{TemplateBinding Tag}" 
+                                       FontSize="10" 
+                                       Foreground="#999999"
+                                       HorizontalAlignment="Center" 
+                                       Margin="0,4,0,0"/>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -52,24 +59,38 @@
         </Style>
 
         <!-- Active nav button style -->
-        <Style x:Key="ActiveNavButton" TargetType="Button" BasedOn="{StaticResource NavButton}">
+        <Style x:Key="ActiveNavButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="52"/>
+            <Setter Property="Height" Value="60"/>
+            <Setter Property="Margin" Value="0,4"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid>
-                            <Border x:Name="MainBorder" Background="Transparent">
-                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                    <Border Width="4" Height="20" Background="#FF0000" HorizontalAlignment="Left" Margin="-24,0,0,0" CornerRadius="0,2,2,0"/>
-                                    <ContentPresenter x:Name="ButtonContent" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="ButtonText" 
-                                               Text="{TemplateBinding Tag}" 
-                                               FontSize="10" 
-                                               Foreground="#FF0000"
-                                               HorizontalAlignment="Center" 
-                                               Margin="0,4,0,0"
-                                               FontWeight="SemiBold"/>
-                                </StackPanel>
-                        </Border>
+                        <Grid Width="52" Height="60">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="32"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Selection Indicator -->
+                            <Border Grid.Row="0" Width="4" Height="20" Background="#FF0000" HorizontalAlignment="Left" Margin="-24,0,0,0" CornerRadius="0,2,2,0" VerticalAlignment="Center"/>
+                            
+                            <!-- Icon Container - Fixed position - exactly the same as in NavButton -->
+                            <Grid Grid.Row="0" Width="24" Height="24" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ContentPresenter x:Name="ButtonContent" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            
+                            <!-- Text Label - Fixed position -->
+                            <TextBlock Grid.Row="1" 
+                                       x:Name="ButtonText" 
+                                       Text="{TemplateBinding Tag}" 
+                                       FontSize="10" 
+                                       Foreground="#FF0000"
+                                       HorizontalAlignment="Center" 
+                                       FontWeight="SemiBold"
+                                       Margin="0,4,0,0"/>
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>
