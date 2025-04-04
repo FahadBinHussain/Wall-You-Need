@@ -474,6 +474,13 @@ namespace WallYouNeed.App
                 // Wire up search text changed event to show/hide clear button
                 searchBox.TextChanged += (s, e) => 
                 {
+                    // If this is the first character being typed and the text was the placeholder
+                    if (searchBox.Text != "Search..." && searchBox.Text.Length == 1)
+                    {
+                        // User started typing, so we want proper text color
+                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFF"));
+                    }
+
                     // Show clear button only when there's text and it's not the placeholder
                     if (!string.IsNullOrWhiteSpace(searchBox.Text) && searchBox.Text != "Search...")
                     {
@@ -487,13 +494,15 @@ namespace WallYouNeed.App
                     }
                 };
                 
-                // Set placeholder text behavior - focus
+                // Set focus behavior - don't clear placeholder text on focus
                 searchBox.GotFocus += (s, e) => 
                 {
+                    // Only change the foreground color to show it's focused
                     if (searchBox.Text == "Search...")
                     {
-                        searchBox.Text = "";
-                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFF"));
+                        // Don't clear the placeholder text, just change the caret position
+                        searchBox.SelectionStart = 0;
+                        searchBox.SelectionLength = 0;
                     }
                 };
                 
@@ -505,6 +514,38 @@ namespace WallYouNeed.App
                         searchBox.Text = "Search...";
                         searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#999999"));
                         clearButtonBorder.Visibility = System.Windows.Visibility.Collapsed;
+                    }
+                };
+                
+                // Handle key press to clear placeholder when typing starts
+                searchBox.PreviewKeyDown += (s, e) => 
+                {
+                    if (searchBox.Text == "Search..." && 
+                        (e.Key >= Key.A && e.Key <= Key.Z || // Letters
+                         e.Key >= Key.D0 && e.Key <= Key.D9 || // Numbers
+                         e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9 || // Numpad
+                         e.Key == Key.Space ||
+                         e.Key == Key.OemMinus ||
+                         e.Key == Key.OemPeriod))
+                    {
+                        // Clear placeholder text before the character is typed
+                        searchBox.Text = "";
+                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFF"));
+                        
+                        // Don't handle special keys like Enter or Tab
+                        if (e.Key == Key.Tab || e.Key == Key.Enter)
+                        {
+                            return;
+                        }
+                    }
+                };
+                
+                // Handle search submission with Enter key
+                searchBox.KeyDown += (s, e) =>
+                {
+                    if (e.Key == Key.Enter && !string.IsNullOrWhiteSpace(searchBox.Text) && searchBox.Text != "Search...")
+                    {
+                        PerformSearch(searchBox.Text);
                     }
                 };
                 
@@ -525,15 +566,6 @@ namespace WallYouNeed.App
                     searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFF"));
                     clearButtonBorder.Visibility = System.Windows.Visibility.Collapsed;
                     searchBox.Focus();
-                };
-                
-                // Handle search submission with Enter key
-                searchBox.KeyDown += (s, e) =>
-                {
-                    if (e.Key == Key.Enter && !string.IsNullOrWhiteSpace(searchBox.Text) && searchBox.Text != "Search...")
-                    {
-                        PerformSearch(searchBox.Text);
-                    }
                 };
                 
                 // Initialize the clear button (hidden by default)
