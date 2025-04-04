@@ -143,5 +143,20 @@ namespace WallYouNeed.Core.Models
         /// Window state (e.g., normal, maximized, minimized)
         /// </summary>
         public string WindowState { get; set; } = "Normal";
+        
+        /// <summary>
+        /// TestGridPage scroll position
+        /// </summary>
+        public double TestGridScrollPosition { get; set; } = 0;
+        
+        /// <summary>
+        /// TestGridPage item width
+        /// </summary>
+        public double TestGridItemWidth { get; set; } = 300;
+        
+        /// <summary>
+        /// TestGridPage item height
+        /// </summary>
+        public double TestGridItemHeight { get; set; } = 180;
     }
 } 

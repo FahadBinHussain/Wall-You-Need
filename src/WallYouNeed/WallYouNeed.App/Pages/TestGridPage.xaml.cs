@@ -14,6 +14,8 @@ using System.Windows.Media.Imaging;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using WallYouNeed.Core.Models;
+using WallYouNeed.Core.Services.Interfaces;
+using System.Net.Http;
 
 namespace WallYouNeed.App.Pages
 {
@@ -23,6 +25,7 @@ namespace WallYouNeed.App.Pages
     public partial class TestGridPage : Page
     {
         private readonly ILogger<TestGridPage> _logger;
+        private readonly ISettingsService _settingsService;
         private ObservableCollection<WallpaperItem> _wallpapers;
         private double _itemWidth = 300; // Default width for each wallpaper item
         private double _itemHeight = 180; // Default height for each wallpaper item
@@ -31,20 +34,29 @@ namespace WallYouNeed.App.Pages
         // Variables for JSON loading and infinite scrolling
         private HashSet<string> _loadedUrls = new HashSet<string>();
         private HashSet<int> _attemptedIds = new HashSet<int>();
-        private int _currentImageId = 200000; // Starting ID for infinite scrolling
+        private int _currentImageId = -1; // Will be initialized properly after loading JSON
         private DateTime _lastScrollCheck = DateTime.MinValue;
         private TimeSpan _scrollDebounceTime = TimeSpan.FromMilliseconds(500);
         private SemaphoreSlim _loadingSemaphore = new SemaphoreSlim(1, 1);
         private bool _isLoadingMore = false;
         private CancellationTokenSource _cts;
+        private bool _isPageLoaded = false;
+        private bool _shouldRestoreScrollPosition = true;
 
         // Simulated test data for wallpapers (as fallback)
         private readonly List<string> _resolutions = new List<string> { "4K", "5K", "8K" };
         private readonly Random _random = new Random();
 
-        public TestGridPage(ILogger<TestGridPage> logger = null)
+        // Stats counters for tracking HTTP requests
+        private int _totalRequests = 0;
+        private int _successfulRequests = 0;
+        private int _failedRequests = 0;
+        private readonly int _batchSize = 20; // Number of images to check at once
+
+        public TestGridPage(ILogger<TestGridPage> logger = null, ISettingsService settingsService = null)
         {
             _logger = logger;
+            _settingsService = settingsService;
             _logger?.LogInformation("TestGridPage constructor called");
 
             InitializeComponent();
@@ -56,6 +68,7 @@ namespace WallYouNeed.App.Pages
             // Register events
             Loaded += TestGridPage_Loaded;
             SizeChanged += TestGridPage_SizeChanged;
+            Unloaded += TestGridPage_Unloaded;
         }
 
         private async void TestGridPage_Loaded(object sender, RoutedEventArgs e)
@@ -66,8 +79,14 @@ namespace WallYouNeed.App.Pages
             StatusTextBlock.Visibility = Visibility.Visible;
             LoadingProgressBar.Visibility = Visibility.Visible;
 
+            // Load settings
+            await LoadSettingsAsync();
+
             // Initialize with JSON data
             await LoadInitialWallpapers();
+            
+            // Set flag to indicate page is loaded
+            _isPageLoaded = true;
         }
 
         private void TestGridPage_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -76,6 +95,106 @@ namespace WallYouNeed.App.Pages
             
             // Update the layout when the window size changes
             AdjustItemSizes();
+            
+            // Save settings when page is fully loaded
+            if (_isPageLoaded)
+            {
+                SaveSettingsQuietly();
+            }
+        }
+        
+        private void TestGridPage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            _logger?.LogInformation("TestGridPage unloaded, saving settings");
+            
+            // Save settings when page is unloaded
+            SaveSettings();
+            
+            // Cancel any ongoing operations
+            _cts?.Cancel();
+        }
+
+        private async Task LoadSettingsAsync()
+        {
+            try
+            {
+                if (_settingsService == null)
+                {
+                    _logger?.LogWarning("SettingsService is null, using default settings");
+                    return;
+                }
+                
+                _logger?.LogInformation("Loading TestGridPage settings");
+                var settings = await _settingsService.LoadSettingsAsync();
+                
+                // Set item sizes from settings
+                if (settings.TestGridItemWidth > 50)
+                {
+                    _itemWidth = settings.TestGridItemWidth;
+                }
+                
+                if (settings.TestGridItemHeight > 30)
+                {
+                    _itemHeight = settings.TestGridItemHeight;
+                }
+                
+                _logger?.LogInformation($"Loaded settings - Item size: {_itemWidth}x{_itemHeight}, Scroll: {settings.TestGridScrollPosition}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error loading TestGridPage settings");
+            }
+        }
+        
+        private async void SaveSettingsQuietly()
+        {
+            try
+            {
+                await SaveSettingsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error quietly saving TestGridPage settings");
+            }
+        }
+        
+        private void SaveSettings()
+        {
+            try
+            {
+                SaveSettingsQuietly();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error saving TestGridPage settings on unload");
+            }
+        }
+        
+        private async Task SaveSettingsAsync()
+        {
+            try
+            {
+                if (_settingsService == null || !_isPageLoaded)
+                {
+                    return;
+                }
+                
+                double scrollPosition = MainScrollViewer.VerticalOffset;
+                
+                _logger?.LogInformation($"Saving TestGridPage settings - Item size: {_itemWidth}x{_itemHeight}, Scroll: {scrollPosition}");
+                
+                // Update settings with TestGridPage values
+                await _settingsService.UpdateSettingsAsync(settings => 
+                {
+                    settings.TestGridItemWidth = _itemWidth;
+                    settings.TestGridItemHeight = _itemHeight;
+                    settings.TestGridScrollPosition = scrollPosition;
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error saving TestGridPage settings");
+            }
         }
 
         private async Task LoadInitialWallpapers()
@@ -279,14 +398,30 @@ namespace WallYouNeed.App.Pages
                 // Set the current imageId for infinite scrolling based on our loaded images
                 if (_wallpapers.Count > 0)
                 {
-                    var minLoadedId = _wallpapers
+                    // Find all valid numeric IDs
+                    var numericIds = _wallpapers
                         .Where(i => int.TryParse(i.ImageId, out _))
                         .Select(i => int.Parse(i.ImageId))
-                        .DefaultIfEmpty(_currentImageId)
-                        .Min();
+                        .ToList();
                     
-                    _currentImageId = minLoadedId - 1;
-                    _logger?.LogInformation($"Set next imageId to {_currentImageId} based on loaded images");
+                    if (numericIds.Any())
+                    {
+                        // Set the starting point to one less than the minimum ID already loaded
+                        // This ensures we start loading the next sequential images
+                        _currentImageId = numericIds.Min() - 1;
+                        _logger?.LogInformation($"Set next imageId to {_currentImageId} - will load in sequential order from here");
+                    }
+                    else
+                    {
+                        // If no numeric IDs, start from a reasonable default
+                        _currentImageId = 200000;
+                        _logger?.LogInformation($"No numeric IDs found in JSON, set next imageId to default: {_currentImageId}");
+                    }
+                }
+                else
+                {
+                    _currentImageId = 200000;
+                    _logger?.LogInformation($"No wallpapers loaded from JSON, set next imageId to default: {_currentImageId}");
                 }
                 
                 _logger?.LogInformation($"Successfully loaded {_wallpapers.Count} images from JSON file");
@@ -295,6 +430,7 @@ namespace WallYouNeed.App.Pages
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error loading images from JSON file: " + ex.Message);
+                _currentImageId = 200000; // Default to a high value if JSON loading failed
                 return false;
             }
         }
@@ -630,13 +766,46 @@ namespace WallYouNeed.App.Pages
             // Store new sizes for new items
             _itemWidth = newItemWidth;
             _itemHeight = newItemHeight;
+            
+            // Save settings when page is fully loaded and items have been adjusted
+            if (_isPageLoaded)
+            {
+                SaveSettingsQuietly();
+            }
         }
 
         private async void MainScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
             try
             {
-                // Debounce scroll events
+                // Restore scroll position once if needed (after initial load)
+                if (_shouldRestoreScrollPosition && _isPageLoaded && e.ExtentHeight > 0)
+                {
+                    _shouldRestoreScrollPosition = false;
+                    
+                    if (_settingsService != null)
+                    {
+                        var settings = await _settingsService.GetSettingsAsync();
+                        if (settings.TestGridScrollPosition > 0)
+                        {
+                            _logger?.LogInformation($"Restoring scroll position to {settings.TestGridScrollPosition}");
+                            MainScrollViewer.ScrollToVerticalOffset(settings.TestGridScrollPosition);
+                            return;
+                        }
+                    }
+                }
+                
+                // Save settings when user scrolls (debounced)
+                if (_isPageLoaded && e.VerticalChange != 0)
+                {
+                    if ((DateTime.Now - _lastScrollCheck) > TimeSpan.FromSeconds(2))
+                    {
+                        _lastScrollCheck = DateTime.Now;
+                        SaveSettingsQuietly();
+                    }
+                }
+                
+                // Debounce scroll events for infinite scrolling
                 if ((DateTime.Now - _lastScrollCheck) < _scrollDebounceTime)
                 {
                     return;
@@ -659,15 +828,14 @@ namespace WallYouNeed.App.Pages
                             StatusTextBlock.Visibility = Visibility.Visible;
                             LoadingProgressBar.Visibility = Visibility.Visible;
                             
-                            // Load more wallpapers - just add test data for now
-                            for (int i = 0; i < 10; i++)
-                            {
-                                await AddTestWallpaperItem();
-                            }
+                            // Load more wallpapers - using HTTP check method
+                            await LoadMoreImagesAsync(_cts.Token);
                             
-                            // Hide loading indicators
-                            StatusTextBlock.Visibility = Visibility.Collapsed;
-                            LoadingProgressBar.Visibility = Visibility.Collapsed;
+                            // Save settings after loading more items
+                            if (_isPageLoaded)
+                            {
+                                SaveSettingsQuietly();
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -677,6 +845,10 @@ namespace WallYouNeed.App.Pages
                         {
                             _isLoadingMore = false;
                             _loadingSemaphore.Release();
+                            
+                            // Hide loading indicators
+                            StatusTextBlock.Visibility = Visibility.Collapsed;
+                            LoadingProgressBar.Visibility = Visibility.Collapsed;
                         }
                     }
                 }
@@ -684,6 +856,194 @@ namespace WallYouNeed.App.Pages
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error in scroll changed handler");
+            }
+        }
+        
+        private async Task LoadMoreImagesAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                _logger?.LogInformation("LoadMoreImagesAsync called, current imageId: {ImageId}", _currentImageId);
+                
+                // Show status to indicate loading is in progress
+                StatusTextBlock.Text = $"Loading wallpapers... (ID: {_currentImageId})";
+                
+                // Create a list to hold the successful images in this batch
+                List<WallpaperItem> batchImages = new List<WallpaperItem>();
+                int imagesFound = 0;
+                int consecutiveFailures = 0;
+                const int maxConsecutiveFailures = 50; // Threshold to jump back if too many failures in a row
+
+                // Use HttpClient for parallel requests
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(10);
+
+                    var tasks = new List<Task<Tuple<int, bool, string>>>();
+                    var currentBatchIds = new List<int>();
+
+                    // Prepare batch of IDs to check - strictly decreasing from _currentImageId
+                    for (int i = 0; i < _batchSize; i++)
+                    {
+                        int imageId = _currentImageId - i;
+                        if (imageId <= 0) // Don't check negative or zero IDs
+                            continue;
+                            
+                        if (_attemptedIds.Contains(imageId)) // Skip IDs we've already tried
+                            continue;
+
+                        currentBatchIds.Add(imageId);
+                        // Normalize URL format by ensuring consistent casing
+                        string imageUrl = $"https://backiee.com/static/wallpapers/560x315/{imageId}.jpg".ToLowerInvariant();
+                        
+                        // Skip if we already have this URL
+                        if (_loadedUrls.Contains(imageUrl))
+                            continue;
+                            
+                        tasks.Add(CheckImageExistsAsync(client, imageId, imageUrl, cancellationToken));
+                    }
+
+                    // Wait for all tasks to complete
+                    if (tasks.Any())
+                    {
+                        var completedTasks = await Task.WhenAll(tasks);
+
+                        // Process results in the order of IDs to maintain consistency (highest to lowest)
+                        foreach (var id in currentBatchIds.OrderByDescending(x => x))
+                        {
+                            var result = completedTasks.FirstOrDefault(r => r?.Item1 == id);
+                            if (result == null) continue;
+
+                            bool exists = result.Item2;
+                            string imageUrl = result.Item3;
+
+                            // Add to attempted IDs before checking existence
+                            _attemptedIds.Add(id);
+                            _totalRequests++;
+
+                            // Double-check to avoid duplicates (check by ID as well)
+                            if (exists && !_loadedUrls.Contains(imageUrl) && 
+                                !_wallpapers.Any(img => img.ImageId == id.ToString()))
+                            {
+                                _successfulRequests++;
+                                imagesFound++;
+                                consecutiveFailures = 0; // Reset consecutive failures counter
+
+                                var wallpaper = new WallpaperItem
+                                {
+                                    ImageUrl = imageUrl,
+                                    ImageId = id.ToString(),
+                                    Resolution = "1920x1080",
+                                    // Randomly assign a resolution label (since we don't know the real quality)
+                                    ResolutionLabel = _resolutions[_random.Next(_resolutions.Count)],
+                                    IsAI = _random.Next(2) == 1, // Randomly assign AI status
+                                    Likes = _random.Next(1, 100),
+                                    Downloads = _random.Next(1, 500)
+                                };
+                                
+                                _logger?.LogInformation($"Creating image: ID={wallpaper.ImageId}, URL={wallpaper.ImageUrl}");
+                                
+                                // Update resolution based on label
+                                switch (wallpaper.ResolutionLabel)
+                                {
+                                    case "4K":
+                                        wallpaper.Resolution = "3840x2160";
+                                        break;
+                                    case "5K":
+                                        wallpaper.Resolution = "5120x2880";
+                                        break;
+                                    case "8K":
+                                        wallpaper.Resolution = "7680x4320";
+                                        break;
+                                }
+                                
+                                batchImages.Add(wallpaper);
+                                _loadedUrls.Add(imageUrl);
+                            }
+                            else
+                            {
+                                _failedRequests++;
+                                consecutiveFailures++;
+                            }
+                        }
+
+                        // Update the current ID to continue from - strictly sequentially
+                        // Find the minimum ID we just checked and continue from one below that
+                        if (currentBatchIds.Any())
+                        {
+                            _currentImageId = currentBatchIds.Min() - 1;
+                            _logger?.LogInformation($"Updated next imageId to {_currentImageId} for sequential loading");
+                        }
+
+                        // Add images to the UI
+                        foreach (var wallpaper in batchImages)
+                        {
+                            _wallpapers.Add(wallpaper);
+                            
+                            // Create and add UI element
+                            var wallpaperElement = CreateWallpaperElement(wallpaper);
+                            WallpaperContainer.Children.Add(wallpaperElement);
+                        }
+
+                        // Update the status
+                        StatusTextBlock.Text = $"Loaded {imagesFound} new wallpapers (Total: {_wallpapers.Count})";
+                        _logger?.LogInformation("Added {Count} images to collection. Total: {Total}", 
+                            imagesFound, _wallpapers.Count);
+
+                        StatusTextBlock.Text += $" | Success: {_successfulRequests}/{_totalRequests} ({_failedRequests} failed)";
+                        
+                        // If we got too many consecutive failures, jump back by a significant amount
+                        // This helps skip large gaps in the ID sequence while still loading in order
+                        if (imagesFound == 0 && consecutiveFailures > maxConsecutiveFailures)
+                        {
+                            int jumpAmount = 5000;
+                            int oldId = _currentImageId;
+                            _currentImageId -= jumpAmount;
+                            if (_currentImageId < 0) _currentImageId = 200000; // Reset if we hit zero
+                            
+                            _logger?.LogInformation($"Too many consecutive failures, jumping from {oldId} to {_currentImageId}");
+                            StatusTextBlock.Text += $" | Jumping to ID: {_currentImageId}";
+                        }
+                    }
+                    else
+                    {
+                        // If no tasks were created (all IDs are already attempted)
+                        // Jump back to find a new range of IDs
+                        int jumpAmount = 10000;
+                        int oldId = _currentImageId;
+                        _currentImageId -= jumpAmount;
+                        if (_currentImageId < 0) _currentImageId = 200000; // Reset if we hit zero
+                        
+                        _logger?.LogInformation($"No new IDs to check, jumping from {oldId} to {_currentImageId}");
+                        StatusTextBlock.Text = $"Searching for more wallpapers... (ID: {_currentImageId})";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error in LoadMoreImagesAsync");
+                StatusTextBlock.Text = $"Error loading images: {ex.Message}";
+            }
+        }
+        
+        private async Task<Tuple<int, bool, string>> CheckImageExistsAsync(HttpClient client, int imageId, string imageUrl, CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Ensure URL is normalized
+                imageUrl = imageUrl.ToLowerInvariant();
+                
+                // Make a HEAD request first to check if the image exists
+                var request = new HttpRequestMessage(HttpMethod.Head, imageUrl);
+                var response = await client.SendAsync(request, cancellationToken);
+                
+                // Return the result - true if the image exists, false otherwise
+                return new Tuple<int, bool, string>(imageId, response.IsSuccessStatusCode, imageUrl);
+            }
+            catch (Exception)
+            {
+                // If there's an error, assume the image doesn't exist
+                return new Tuple<int, bool, string>(imageId, false, imageUrl);
             }
         }
 
