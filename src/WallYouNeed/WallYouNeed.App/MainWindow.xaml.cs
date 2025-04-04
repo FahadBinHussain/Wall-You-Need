@@ -465,25 +465,66 @@ namespace WallYouNeed.App
         private void SetupSearchBox()
         {
             var searchBox = this.FindName("SearchBox") as System.Windows.Controls.TextBox;
-            if (searchBox != null)
+            var clearButton = this.FindName("ClearSearchButton") as System.Windows.Controls.Button;
+            var searchButton = this.FindName("SearchButton") as System.Windows.Controls.Button;
+            var clearButtonBorder = this.FindName("ClearButtonBorder") as System.Windows.Controls.Border;
+            
+            if (searchBox != null && clearButton != null && searchButton != null)
             {
-                // Set placeholder text behavior
+                // Wire up search text changed event to show/hide clear button
+                searchBox.TextChanged += (s, e) => 
+                {
+                    // Show clear button only when there's text and it's not the placeholder
+                    if (!string.IsNullOrWhiteSpace(searchBox.Text) && searchBox.Text != "Search...")
+                    {
+                        clearButtonBorder.Visibility = System.Windows.Visibility.Visible;
+                        _logger.LogDebug("Clear button shown - text: {Text}", searchBox.Text);
+                    }
+                    else
+                    {
+                        clearButtonBorder.Visibility = System.Windows.Visibility.Collapsed;
+                        _logger.LogDebug("Clear button hidden - text: {Text}", searchBox.Text);
+                    }
+                };
+                
+                // Set placeholder text behavior - focus
                 searchBox.GotFocus += (s, e) => 
                 {
                     if (searchBox.Text == "Search...")
                     {
                         searchBox.Text = "";
-                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#333333"));
+                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFF"));
                     }
                 };
                 
+                // Lost focus behavior
                 searchBox.LostFocus += (s, e) => 
                 {
                     if (string.IsNullOrWhiteSpace(searchBox.Text))
                     {
                         searchBox.Text = "Search...";
                         searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#999999"));
+                        clearButtonBorder.Visibility = System.Windows.Visibility.Collapsed;
                     }
+                };
+                
+                // Search button click
+                searchButton.Click += (s, e) => 
+                {
+                    if (!string.IsNullOrWhiteSpace(searchBox.Text) && searchBox.Text != "Search...")
+                    {
+                        PerformSearch(searchBox.Text);
+                    }
+                };
+                
+                // Clear button click
+                clearButton.Click += (s, e) => 
+                {
+                    _logger.LogDebug("Clear button clicked");
+                    searchBox.Text = "";
+                    searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFF"));
+                    clearButtonBorder.Visibility = System.Windows.Visibility.Collapsed;
+                    searchBox.Focus();
                 };
                 
                 // Handle search submission with Enter key
@@ -495,16 +536,13 @@ namespace WallYouNeed.App
                     }
                 };
                 
-                // Setup clear button
-                var clearButton = this.FindName("SearchClearButton") as System.Windows.Controls.Button;
-                if (clearButton != null)
-                {
-                    clearButton.Click += (s, e) =>
-                    {
-                        searchBox.Text = "Search...";
-                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#999999"));
-                    };
-                }
+                // Initialize the clear button (hidden by default)
+                clearButtonBorder.Visibility = System.Windows.Visibility.Collapsed;
+                _logger.LogDebug("Search box controls initialized");
+            }
+            else
+            {
+                _logger.LogWarning("Search box setup failed - one or more controls not found");
             }
         }
         
