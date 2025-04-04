@@ -12,6 +12,9 @@ namespace WallYouNeed.BackieeScraper
 {
     public class Program
     {
+        // Output directory for generated files
+        private const string OutputDirectory = @"src\WallYouNeed\WallYouNeed.App\Data\";
+
         public static async Task Main(string[] args)
         {
             Console.WriteLine("Backiee Wallpaper Scraper");
@@ -19,6 +22,9 @@ namespace WallYouNeed.BackieeScraper
 
             try
             {
+                // Ensure the output directory exists
+                EnsureOutputDirectoryExists();
+                
                 await ScrapeBackieeWallpapers();
             }
             catch (Exception ex)
@@ -29,6 +35,15 @@ namespace WallYouNeed.BackieeScraper
 
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey();
+        }
+
+        static void EnsureOutputDirectoryExists()
+        {
+            if (!Directory.Exists(OutputDirectory))
+            {
+                Console.WriteLine($"Creating output directory: {OutputDirectory}");
+                Directory.CreateDirectory(OutputDirectory);
+            }
         }
 
         static async Task ScrapeBackieeWallpapers()
@@ -54,8 +69,9 @@ namespace WallYouNeed.BackieeScraper
                 Console.WriteLine($"Content fetched successfully. Length: {html.Length} characters");
 
                 // Save HTML for debugging purposes (optional)
-                File.WriteAllText("backiee_latest.html", html);
-                Console.WriteLine("Saved raw HTML to backiee_latest.html for debugging");
+                string htmlFilePath = Path.Combine(OutputDirectory, "backiee_latest.html");
+                File.WriteAllText(htmlFilePath, html);
+                Console.WriteLine($"Saved raw HTML to {htmlFilePath} for debugging");
 
                 // Extract wallpaper links from the first page
                 var wallpapers = ExtractWallpaperLinks(html);
@@ -88,15 +104,9 @@ namespace WallYouNeed.BackieeScraper
                 // Save wallpapers as JSON
                 var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
                 string jsonContent = JsonSerializer.Serialize(wallpapers, jsonOptions);
-                File.WriteAllText("backiee_wallpapers.json", jsonContent);
-                Console.WriteLine("Successfully saved wallpapers to backiee_wallpapers.json");
-
-                // Keep existing markdown file generation
-                // SaveStaticImageUrls(wallpapers, "backiee_static_images.md");
-                // Console.WriteLine("Successfully saved static image URLs to backiee_static_images.md");
-
-                // SaveWallpaperPageUrls(wallpapers, "backiee_wallpaper_pages.md");
-                // Console.WriteLine("Successfully saved wallpaper page URLs to backiee_wallpaper_pages.md");
+                string jsonFilePath = Path.Combine(OutputDirectory, "backiee_wallpapers.json");
+                File.WriteAllText(jsonFilePath, jsonContent);
+                Console.WriteLine($"Successfully saved wallpapers to {jsonFilePath}");
             }
         }
 
@@ -200,53 +210,6 @@ namespace WallYouNeed.BackieeScraper
                 likes = likes,
                 downloads = downloads
             };
-        }
-
-        static void SaveStaticImageUrls(List<Wallpaper> wallpapers, string filePath)
-        {
-            StringBuilder markdown = new StringBuilder();
-            
-            if (wallpapers.Count == 0)
-            {
-                // Just output an empty file if no wallpapers found
-            }
-            else
-            {
-                // Make sure we have exactly 20 wallpapers (or the max available)
-                int count = Math.Min(20, wallpapers.Count);
-                
-                for (int i = 0; i < count; i++)
-                {
-                    if (!string.IsNullOrEmpty(wallpapers[i].placeholder_url))
-                    {
-                        markdown.AppendLine($"{wallpapers[i].placeholder_url}");
-                    }
-                }
-            }
-            
-            File.WriteAllText(filePath, markdown.ToString());
-        }
-
-        static void SaveWallpaperPageUrls(List<Wallpaper> wallpapers, string filePath)
-        {
-            StringBuilder markdown = new StringBuilder();
-            
-            if (wallpapers.Count == 0)
-            {
-                // Just output an empty file if no wallpapers found
-            }
-            else
-            {
-                // Make sure we have exactly 20 wallpapers (or the max available)
-                int count = Math.Min(20, wallpapers.Count);
-                
-                for (int i = 0; i < count; i++)
-                {
-                    markdown.AppendLine($"{wallpapers[i].real_page_url}");
-                }
-            }
-            
-            File.WriteAllText(filePath, markdown.ToString());
         }
     }
 

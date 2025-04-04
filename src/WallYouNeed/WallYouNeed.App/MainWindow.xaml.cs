@@ -56,8 +56,9 @@ namespace WallYouNeed.App
             this.SizeChanged += MainWindow_SizeChanged;
             this.LocationChanged += MainWindow_LocationChanged;
             
-            // Navigate to home page by default
-            NavigateToPage("Home");
+            // Navigate to TestGrid page by default instead of Home
+            NavigateToPage("Test Grid");
+            SetActiveButton(TestGridButton);
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)

@@ -1,12 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using WallYouNeed.Core.Models;
 
@@ -22,8 +27,18 @@ namespace WallYouNeed.App.Pages
         private double _itemWidth = 300; // Default width for each wallpaper item
         private double _itemHeight = 180; // Default height for each wallpaper item
         private const int ScrollThreshold = 200; // Threshold for infinite scrolling
+        
+        // Variables for JSON loading and infinite scrolling
+        private HashSet<string> _loadedUrls = new HashSet<string>();
+        private HashSet<int> _attemptedIds = new HashSet<int>();
+        private int _currentImageId = 200000; // Starting ID for infinite scrolling
+        private DateTime _lastScrollCheck = DateTime.MinValue;
+        private TimeSpan _scrollDebounceTime = TimeSpan.FromMilliseconds(500);
+        private SemaphoreSlim _loadingSemaphore = new SemaphoreSlim(1, 1);
+        private bool _isLoadingMore = false;
+        private CancellationTokenSource _cts;
 
-        // Simulated test data for wallpapers
+        // Simulated test data for wallpapers (as fallback)
         private readonly List<string> _resolutions = new List<string> { "4K", "5K", "8K" };
         private readonly Random _random = new Random();
 
@@ -35,12 +50,15 @@ namespace WallYouNeed.App.Pages
             InitializeComponent();
             _wallpapers = new ObservableCollection<WallpaperItem>();
 
+            // Create a new cancellation token source for infinite scrolling
+            _cts = new CancellationTokenSource();
+
             // Register events
             Loaded += TestGridPage_Loaded;
             SizeChanged += TestGridPage_SizeChanged;
         }
 
-        private void TestGridPage_Loaded(object sender, RoutedEventArgs e)
+        private async void TestGridPage_Loaded(object sender, RoutedEventArgs e)
         {
             _logger?.LogInformation("TestGridPage loaded");
             
@@ -48,8 +66,8 @@ namespace WallYouNeed.App.Pages
             StatusTextBlock.Visibility = Visibility.Visible;
             LoadingProgressBar.Visibility = Visibility.Visible;
 
-            // Initialize the grid with test data
-            InitializeTestGrid();
+            // Initialize with JSON data
+            await LoadInitialWallpapers();
         }
 
         private void TestGridPage_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -60,20 +78,34 @@ namespace WallYouNeed.App.Pages
             AdjustItemSizes();
         }
 
-        private async void InitializeTestGrid()
+        private async Task LoadInitialWallpapers()
         {
-            _logger?.LogInformation("Initializing test grid");
-            
             try
             {
+                _logger?.LogInformation("Loading initial wallpapers");
+                
                 // Clear existing items
                 WallpaperContainer.Children.Clear();
                 _wallpapers.Clear();
-
-                // Generate test data
-                for (int i = 0; i < 20; i++)
+                _loadedUrls.Clear();
+                
+                StatusTextBlock.Text = "Loading wallpapers from data file...";
+                
+                // Try to load from JSON file first
+                bool jsonLoaded = await LoadImagesFromJsonFile();
+                
+                // If JSON loading failed, use test data as fallback
+                if (!jsonLoaded)
                 {
-                    await AddWallpaperItem();
+                    _logger?.LogWarning("Failed to load from JSON, falling back to test data");
+                    StatusTextBlock.Text = "Using sample data (JSON file not found)";
+                    await Task.Delay(1000); // Show message briefly
+                    
+                    // Generate test data
+                    for (int i = 0; i < 20; i++)
+                    {
+                        await AddTestWallpaperItem();
+                    }
                 }
 
                 // Hide loading indicators
@@ -85,19 +117,209 @@ namespace WallYouNeed.App.Pages
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error initializing test grid");
+                _logger?.LogError(ex, "Error initializing wallpaper grid");
                 StatusTextBlock.Text = "Error loading wallpapers";
                 StatusTextBlock.Visibility = Visibility.Visible;
                 LoadingProgressBar.Visibility = Visibility.Collapsed;
             }
         }
 
-        private async Task AddWallpaperItem()
+        private async Task<bool> LoadImagesFromJsonFile()
+        {
+            try
+            {
+                // Look for the JSON file in the Data directory
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "backiee_wallpapers.json");
+                var fullPath = Path.GetFullPath(jsonPath);
+                _logger?.LogInformation($"Looking for JSON file at: {fullPath}");
+                
+                if (!File.Exists(fullPath))
+                {
+                    _logger?.LogError("JSON file not found in Data directory");
+                    return false;
+                }
+
+                _logger?.LogInformation($"Found JSON file at: {fullPath}");
+
+                // Read the JSON content
+                string jsonContent = await File.ReadAllTextAsync(fullPath);
+                
+                // Use a simple approach for parsing the wallpapers
+                var wallpapers = new List<SimpleWallpaper>();
+                
+                using (JsonDocument doc = JsonDocument.Parse(jsonContent))
+                {
+                    foreach (JsonElement item in doc.RootElement.EnumerateArray())
+                    {
+                        var wallpaper = new SimpleWallpaper();
+                        
+                        // Get the URL
+                        if (item.TryGetProperty("placeholder_url", out JsonElement urlElement) && 
+                            urlElement.ValueKind == JsonValueKind.String)
+                        {
+                            wallpaper.Url = urlElement.GetString() ?? "";
+                        }
+                        
+                        // Get the quality
+                        if (item.TryGetProperty("quality", out JsonElement qualityElement) && 
+                            qualityElement.ValueKind == JsonValueKind.String)
+                        {
+                            wallpaper.Quality = qualityElement.GetString() ?? "";
+                        }
+                        
+                        // Get the AI status
+                        if (item.TryGetProperty("ai_status", out JsonElement aiElement))
+                        {
+                            switch (aiElement.ValueKind)
+                            {
+                                case JsonValueKind.True:
+                                    wallpaper.IsAI = true;
+                                    break;
+                                case JsonValueKind.False:
+                                    wallpaper.IsAI = false;
+                                    break;
+                                case JsonValueKind.String:
+                                    var strValue = aiElement.GetString() ?? "";
+                                    wallpaper.IsAI = strValue.Equals("true", StringComparison.OrdinalIgnoreCase);
+                                    break;
+                                case JsonValueKind.Number:
+                                    wallpaper.IsAI = aiElement.GetInt32() != 0;
+                                    break;
+                            }
+                        }
+                        
+                        // Get likes and downloads if available
+                        if (item.TryGetProperty("likes", out JsonElement likesElement) && 
+                            likesElement.ValueKind == JsonValueKind.Number)
+                        {
+                            wallpaper.Likes = likesElement.GetInt32();
+                        }
+                        
+                        if (item.TryGetProperty("downloads", out JsonElement downloadsElement) && 
+                            downloadsElement.ValueKind == JsonValueKind.Number)
+                        {
+                            wallpaper.Downloads = downloadsElement.GetInt32();
+                        }
+                        
+                        wallpapers.Add(wallpaper);
+                    }
+                }
+                
+                // Log the first few for debugging
+                for (int i = 0; i < Math.Min(wallpapers.Count, 5); i++)
+                {
+                    _logger?.LogInformation($"Wallpaper[{i}]: URL={wallpapers[i].Url}, Quality={wallpapers[i].Quality}, IsAI={wallpapers[i].IsAI}");
+                }
+                
+                // Add the wallpapers to the UI
+                foreach (var wallpaper in wallpapers)
+                {
+                    if (string.IsNullOrEmpty(wallpaper.Url))
+                        continue;
+                        
+                    // Normalize the URL to lowercase for consistent comparison
+                    string normalizedUrl = wallpaper.Url.ToLowerInvariant();
+                    
+                    // Skip if we already have this URL
+                    if (_loadedUrls.Contains(normalizedUrl))
+                        continue;
+                        
+                    // Extract image ID from URL
+                    string imageId = GetImageIdFromUrl(normalizedUrl);
+                    
+                    // Skip if we already have this imageId
+                    if (_wallpapers.Any(img => img.ImageId == imageId))
+                        continue;
+                    
+                    // Create a wallpaper item
+                    var image = new WallpaperItem
+                    {
+                        ImageUrl = normalizedUrl,
+                        ImageId = imageId,
+                        IsAI = wallpaper.IsAI,
+                        Likes = wallpaper.Likes,
+                        Downloads = wallpaper.Downloads
+                    };
+                    
+                    // Set resolution based on quality
+                    image.Resolution = "1920x1080"; // Default
+                    
+                    if (!string.IsNullOrEmpty(wallpaper.Quality))
+                    {
+                        image.ResolutionLabel = wallpaper.Quality;
+                        
+                        switch (wallpaper.Quality)
+                        {
+                            case "4K":
+                                image.Resolution = "3840x2160";
+                                break;
+                            case "5K":
+                                image.Resolution = "5120x2880";
+                                break;
+                            case "8K":
+                                image.Resolution = "7680x4320";
+                                break;
+                        }
+                    }
+                    
+                    _wallpapers.Add(image);
+                    _loadedUrls.Add(normalizedUrl);
+                    
+                    // Create and add UI element
+                    var wallpaperElement = CreateWallpaperElement(image);
+                    WallpaperContainer.Children.Add(wallpaperElement);
+                    
+                    // Also track the ID to avoid re-attempting it
+                    if (int.TryParse(imageId, out int parsedId))
+                    {
+                        _attemptedIds.Add(parsedId);
+                    }
+                }
+                
+                // Set the current imageId for infinite scrolling based on our loaded images
+                if (_wallpapers.Count > 0)
+                {
+                    var minLoadedId = _wallpapers
+                        .Where(i => int.TryParse(i.ImageId, out _))
+                        .Select(i => int.Parse(i.ImageId))
+                        .DefaultIfEmpty(_currentImageId)
+                        .Min();
+                    
+                    _currentImageId = minLoadedId - 1;
+                    _logger?.LogInformation($"Set next imageId to {_currentImageId} based on loaded images");
+                }
+                
+                _logger?.LogInformation($"Successfully loaded {_wallpapers.Count} images from JSON file");
+                return _wallpapers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error loading images from JSON file: " + ex.Message);
+                return false;
+            }
+        }
+        
+        private string GetImageIdFromUrl(string url)
+        {
+            try
+            {
+                // Extract ID from URL like https://backiee.com/static/wallpapers/560x315/123456.jpg
+                string filename = Path.GetFileNameWithoutExtension(url);
+                return filename;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private async Task AddTestWallpaperItem()
         {
             // Create a new wallpaper item with random properties
             var wallpaper = new WallpaperItem
             {
                 ImageUrl = GetRandomImageUrl(),
+                ImageId = _random.Next(100000, 999999).ToString(),
                 Resolution = $"{_random.Next(1920, 7680)}x{_random.Next(1080, 4320)}",
                 ResolutionLabel = _resolutions[_random.Next(_resolutions.Count)],
                 IsAI = _random.Next(2) == 1,
@@ -316,44 +538,58 @@ namespace WallYouNeed.App.Pages
             _itemHeight = newItemHeight;
         }
 
-        private void MainScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        private async void MainScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
-            // Implement infinite scrolling logic
-            if (e.VerticalOffset + e.ViewportHeight + ScrollThreshold >= e.ExtentHeight)
-            {
-                LoadMoreWallpapers();
-            }
-        }
-
-        private async void LoadMoreWallpapers()
-        {
-            _logger?.LogInformation("Loading more wallpapers");
-            
-            // Show loading status
-            StatusTextBlock.Text = "Loading more wallpapers...";
-            StatusTextBlock.Visibility = Visibility.Visible;
-            LoadingProgressBar.Visibility = Visibility.Visible;
-
             try
             {
-                // Simulate loading delay
-                await Task.Delay(500);
-
-                // Add more wallpapers
-                for (int i = 0; i < 10; i++)
+                // Debounce scroll events
+                if ((DateTime.Now - _lastScrollCheck) < _scrollDebounceTime)
                 {
-                    await AddWallpaperItem();
+                    return;
+                }
+                _lastScrollCheck = DateTime.Now;
+
+                // Check if we're near the bottom of the scroll viewer
+                if (e.VerticalOffset + e.ViewportHeight + ScrollThreshold >= e.ExtentHeight)
+                {
+                    // Try to acquire the semaphore without blocking
+                    if (!_isLoadingMore && await _loadingSemaphore.WaitAsync(0))
+                    {
+                        try
+                        {
+                            _isLoadingMore = true;
+                            _logger?.LogInformation("Loading more wallpapers at scroll position");
+                            
+                            // Show loading status
+                            StatusTextBlock.Text = "Loading more wallpapers...";
+                            StatusTextBlock.Visibility = Visibility.Visible;
+                            LoadingProgressBar.Visibility = Visibility.Visible;
+                            
+                            // Load more wallpapers - just add test data for now
+                            for (int i = 0; i < 10; i++)
+                            {
+                                await AddTestWallpaperItem();
+                            }
+                            
+                            // Hide loading indicators
+                            StatusTextBlock.Visibility = Visibility.Collapsed;
+                            LoadingProgressBar.Visibility = Visibility.Collapsed;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogError(ex, "Error loading more wallpapers in scroll handler");
+                        }
+                        finally
+                        {
+                            _isLoadingMore = false;
+                            _loadingSemaphore.Release();
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error loading more wallpapers");
-            }
-            finally
-            {
-                // Hide loading indicators
-                StatusTextBlock.Visibility = Visibility.Collapsed;
-                LoadingProgressBar.Visibility = Visibility.Collapsed;
+                _logger?.LogError(ex, "Error in scroll changed handler");
             }
         }
 
@@ -361,11 +597,13 @@ namespace WallYouNeed.App.Pages
         {
             if (sender is Border border && border.Tag is WallpaperItem wallpaper)
             {
-                _logger?.LogInformation($"Wallpaper clicked: {wallpaper.ResolutionLabel}");
+                _logger?.LogInformation($"Wallpaper clicked: {wallpaper.ResolutionLabel} (ID: {wallpaper.ImageId})");
                 
                 // Show a popup with wallpaper details
-                System.Windows.MessageBox.Show($"Clicked on {wallpaper.ResolutionLabel} wallpaper\nResolution: {wallpaper.Resolution}\nAI Generated: {wallpaper.IsAI}", 
+                System.Windows.MessageBox.Show($"Clicked on {wallpaper.ResolutionLabel} wallpaper\nResolution: {wallpaper.Resolution}\nAI Generated: {wallpaper.IsAI}\nImage ID: {wallpaper.ImageId}", 
                     "Wallpaper Details", MessageBoxButton.OK, MessageBoxImage.Information);
+                
+                // TODO: Implement setting wallpaper functionality here
             }
         }
 
@@ -383,13 +621,24 @@ namespace WallYouNeed.App.Pages
     }
 
     /// <summary>
-    /// Model class for wallpaper items in the test grid
+    /// Model class for wallpaper items in the grid
     /// </summary>
     public class WallpaperItem
     {
         public string ImageUrl { get; set; } = string.Empty;
+        public string ImageId { get; set; } = string.Empty;
         public string Resolution { get; set; } = string.Empty;
         public string ResolutionLabel { get; set; } = string.Empty;
+        public bool IsAI { get; set; }
+        public int Likes { get; set; }
+        public int Downloads { get; set; }
+    }
+    
+    // Simple class to hold wallpaper data without any serialization complexities
+    internal class SimpleWallpaper
+    {
+        public string Url { get; set; } = "";
+        public string Quality { get; set; } = "";
         public bool IsAI { get; set; }
         public int Likes { get; set; }
         public int Downloads { get; set; }
