@@ -293,6 +293,12 @@ namespace WallYouNeed.App
             SetActiveButton(SettingsButton);
         }
 
+        private void TestGridButton_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateToPage("Test Grid");
+            SetActiveButton(TestGridButton);
+        }
+
         private void BackieeContentButton_Click(object sender, RoutedEventArgs e)
         {
             NavigateToPage("Backiee Content");
@@ -355,6 +361,9 @@ namespace WallYouNeed.App
                         break;
                     case "Infinite Wallpapers":
                         page = app.Services.GetRequiredService<BackieeImagesPage>();
+                        break;
+                    case "Test Grid":
+                        page = app.Services.GetRequiredService<TestGridPage>();
                         break;
                 }
                 
