@@ -31,6 +31,7 @@
     <Resource Include="Assets\5k_logo.png" />
     <Resource Include="Assets\8k_logo.png" />
     <Resource Include="Assets\aigenerated-icon.png" />
+    <Resource Include="Assets\logo.png" />
   </ItemGroup>
 
   <!-- Data files -->

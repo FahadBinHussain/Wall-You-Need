@@ -14,6 +14,7 @@
         ResizeMode="CanResizeWithGrip"
         Background="#212121"
         BorderThickness="1"
+        Icon="/Assets/logo.png"
         BorderBrush="#333333">
 
     <Window.Resources>
