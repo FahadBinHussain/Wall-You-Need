@@ -425,7 +425,7 @@ namespace WallYouNeed.App.Pages
                     Height = 36,
                     HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
                     VerticalAlignment = System.Windows.VerticalAlignment.Top,
-                    Margin = new Thickness(0, 30, 20, 0)
+                    Margin = new Thickness(0, 5, 20, 0)
                 };
                 grid.Children.Add(aiPanel);
             }
@@ -434,59 +434,153 @@ namespace WallYouNeed.App.Pages
             var statsPanel = new StackPanel
             {
                 Orientation = System.Windows.Controls.Orientation.Horizontal,
-                HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
                 VerticalAlignment = System.Windows.VerticalAlignment.Bottom,
-                Margin = new Thickness(8)
+                Margin = new Thickness(0, 0, 0, 0)
             };
             
-            // Add likes counter
+            // Add likes counter with Apple-style heart icon
             var likesPanel = new StackPanel 
             { 
                 Orientation = System.Windows.Controls.Orientation.Horizontal, 
-                Margin = new Thickness(0, 0, 10, 0) 
+                Margin = new Thickness(0, 0, 12, 0),
+                VerticalAlignment = System.Windows.VerticalAlignment.Center
             };
-            var likesIcon = new System.Windows.Shapes.Path
+            
+            // Use a simpler heart icon that resembles Apple's style
+            var likesIcon = new System.Windows.Controls.Image
             {
-                Data = Geometry.Parse("M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"),
-                Fill = new SolidColorBrush(Colors.White),
-                Width = 14,
-                Height = 14,
+                Source = new BitmapImage(new Uri("/Assets/heart_icon.png", UriKind.Relative)),
+                Width = 16,
+                Height = 16,
                 Margin = new Thickness(0, 0, 4, 0)
             };
-            var likesText = new TextBlock { Text = wallpaper.Likes.ToString(), Foreground = new SolidColorBrush(Colors.White) };
-            likesPanel.Children.Add(likesIcon);
+            
+            // If the heart icon image isn't available, fall back to a Path
+            if (likesIcon.Source.ToString().Contains("heart_icon.png"))
+            {
+                try
+                {
+                    likesIcon = null;
+                    var heartPath = new System.Windows.Shapes.Path
+                    {
+                        Data = Geometry.Parse("M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"),
+                        Fill = new SolidColorBrush(System.Windows.Media.Colors.White),
+                        Width = 16,
+                        Height = 16,
+                        Margin = new Thickness(0, 0, 4, 0),
+                        Stretch = Stretch.Uniform
+                    };
+                    likesPanel.Children.Add(heartPath);
+                }
+                catch
+                {
+                    // Just in case the path geometry is invalid
+                    var textHeart = new TextBlock
+                    {
+                        Text = "♥",
+                        Foreground = new SolidColorBrush(System.Windows.Media.Colors.White),
+                        FontSize = 14,
+                        Margin = new Thickness(0, 0, 4, 0)
+                    };
+                    likesPanel.Children.Add(textHeart);
+                }
+            }
+            else
+            {
+                likesPanel.Children.Add(likesIcon);
+            }
+            
+            // Add text for likes count
+            var likesText = new TextBlock 
+            { 
+                Text = wallpaper.Likes.ToString(), 
+                Foreground = new SolidColorBrush(System.Windows.Media.Colors.White),
+                FontSize = 14,
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center
+            };
             likesPanel.Children.Add(likesText);
             statsPanel.Children.Add(likesPanel);
             
             // Add downloads counter
             var downloadsPanel = new StackPanel 
             { 
-                Orientation = System.Windows.Controls.Orientation.Horizontal 
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
             };
-            var downloadsIcon = new System.Windows.Shapes.Path
+            
+            // Use a simpler download icon that resembles Apple's style
+            var downloadsIcon = new System.Windows.Controls.Image
             {
-                Data = Geometry.Parse("M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"),
-                Fill = new SolidColorBrush(Colors.White),
-                Width = 14,
-                Height = 14,
+                Source = new BitmapImage(new Uri("/Assets/download_icon.png", UriKind.Relative)),
+                Width = 16,
+                Height = 16,
                 Margin = new Thickness(0, 0, 4, 0)
             };
-            var downloadsText = new TextBlock { Text = wallpaper.Downloads.ToString(), Foreground = new SolidColorBrush(Colors.White) };
-            downloadsPanel.Children.Add(downloadsIcon);
+            
+            // If the download icon image isn't available, fall back to a Path
+            if (downloadsIcon.Source.ToString().Contains("download_icon.png"))
+            {
+                try
+                {
+                    downloadsIcon = null;
+                    var downloadPath = new System.Windows.Shapes.Path
+                    {
+                        Data = Geometry.Parse("M12,15L7,10H10V6H14V10H17L12,15M19.35,10.03C18.67,6.59 15.64,4 12,4C9.11,4 6.6,5.64 5.35,8.03C2.34,8.36 0,10.9 0,14A6,6 0 0,0 6,20H19A5,5 0 0,0 24,15C24,12.36 21.95,10.22 19.35,10.03Z"),
+                        Fill = new SolidColorBrush(System.Windows.Media.Colors.White),
+                        Width = 16,
+                        Height = 16,
+                        Margin = new Thickness(0, 0, 4, 0),
+                        Stretch = System.Windows.Media.Stretch.Uniform
+                    };
+                    downloadsPanel.Children.Add(downloadPath);
+                }
+                catch
+                {
+                    // Just in case the path geometry is invalid, use a simple arrow
+                    var downloadPath = new System.Windows.Shapes.Path
+                    {
+                        Data = Geometry.Parse("M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"),
+                        Fill = new SolidColorBrush(System.Windows.Media.Colors.White),
+                        Width = 16,
+                        Height = 16,
+                        Margin = new Thickness(0, 0, 4, 0),
+                        Stretch = System.Windows.Media.Stretch.Uniform
+                    };
+                    downloadsPanel.Children.Add(downloadPath);
+                }
+            }
+            else
+            {
+                downloadsPanel.Children.Add(downloadsIcon);
+            }
+            
+            // Add text for download count
+            var downloadsText = new TextBlock 
+            { 
+                Text = wallpaper.Downloads.ToString(), 
+                Foreground = new SolidColorBrush(System.Windows.Media.Colors.White),
+                FontSize = 14,
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center
+            };
             downloadsPanel.Children.Add(downloadsText);
             statsPanel.Children.Add(downloadsPanel);
             
-            // Add a semi-transparent overlay for the stats
+            // Add a semi-transparent background to ensure visibility
             var statsBg = new Border
             {
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(128, 0, 0, 0)),
-                CornerRadius = new CornerRadius(4),
-                HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
-                VerticalAlignment = System.Windows.VerticalAlignment.Bottom,
-                Margin = new Thickness(0),
+                Background = null,
+                CornerRadius = new CornerRadius(10),
                 Padding = new Thickness(8, 4, 8, 4),
-                Child = statsPanel
+                Child = statsPanel,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                VerticalAlignment = System.Windows.VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 10, 10)
             };
+            
+            // Add the stats to the grid
             grid.Children.Add(statsBg);
 
             // Handle click event
