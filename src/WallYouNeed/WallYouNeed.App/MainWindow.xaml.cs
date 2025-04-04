@@ -506,6 +506,33 @@ namespace WallYouNeed.App
                     }
                 };
                 
+                // Prevent selecting placeholder text
+                searchBox.PreviewMouseLeftButtonDown += (s, e) =>
+                {
+                    if (searchBox.Text == "Search...")
+                    {
+                        // Set focus without allowing selection
+                        searchBox.Focus();
+                        searchBox.SelectionStart = 0;
+                        searchBox.SelectionLength = 0;
+                        
+                        // Mark the event as handled to prevent default selection behavior
+                        e.Handled = true;
+                    }
+                };
+                
+                // Reset selection if placeholder text
+                searchBox.SelectionChanged += (s, e) =>
+                {
+                    if (searchBox.Text == "Search..." && 
+                        (searchBox.SelectionStart > 0 || searchBox.SelectionLength > 0))
+                    {
+                        // Reset cursor to beginning, prevent selection
+                        searchBox.SelectionStart = 0;
+                        searchBox.SelectionLength = 0;
+                    }
+                };
+                
                 // Lost focus behavior
                 searchBox.LostFocus += (s, e) => 
                 {
