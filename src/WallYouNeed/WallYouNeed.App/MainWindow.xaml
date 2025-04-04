@@ -47,14 +47,118 @@
                             <TextBlock Grid.Row="1" 
                                        x:Name="ButtonText" 
                                        Text="{TemplateBinding Tag}" 
-                                       FontSize="10" 
+                                       FontSize="9" 
                                        Foreground="#efefef"
                                        HorizontalAlignment="Center" 
-                                       Margin="0,4,0,0"/>
+                                       TextAlignment="Center"
+                                       Width="60"
+                                       Height="24"
+                                       Margin="0,0,0,0"/>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ButtonText" Property="Foreground" Value="#FFFFFF"/>
+                                <Setter TargetName="BackgroundRect" Property="Fill" Value="#2a2e30"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Two-line nav button style -->
+        <Style x:Key="TwoLineNavButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="52"/>
+            <Setter Property="Height" Value="60"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Width="52" Height="60">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="32"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Background rectangle that spans entire button -->
+                            <Rectangle x:Name="BackgroundRect" Grid.RowSpan="2" Fill="Transparent" RadiusX="6" RadiusY="6" 
+                                     Width="60" Height="64" Margin="-4,-2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            
+                            <!-- Icon Container - Fixed position -->
+                            <Grid Grid.Row="0" Width="24" Height="24" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ContentPresenter x:Name="ButtonContent" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            
+                            <!-- Text Label - Two Lines -->
+                            <TextBlock Grid.Row="1" 
+                                       x:Name="ButtonText" 
+                                       Text="{TemplateBinding Tag}" 
+                                       FontSize="8" 
+                                       Foreground="#efefef"
+                                       HorizontalAlignment="Center" 
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Width="60"
+                                       Height="24"
+                                       Margin="0,0,0,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonText" Property="Foreground" Value="#FFFFFF"/>
+                                <Setter TargetName="BackgroundRect" Property="Fill" Value="#2a2e30"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Active two-line nav button style -->
+        <Style x:Key="ActiveTwoLineNavButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="52"/>
+            <Setter Property="Height" Value="60"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Width="52" Height="60">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="32"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Background rectangle that spans entire button -->
+                            <Rectangle x:Name="BackgroundRect" Grid.RowSpan="2" Fill="Transparent" RadiusX="6" RadiusY="6"
+                                     Width="60" Height="64" Margin="-4,-2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            
+                            <!-- Selection Indicator -->
+                            <Border Grid.Row="0" Width="4" Height="20" Background="#FF0000" HorizontalAlignment="Left" Margin="-24,0,0,0" CornerRadius="0,2,2,0" VerticalAlignment="Center"/>
+                            
+                            <!-- Icon Container - Fixed position -->
+                            <Grid Grid.Row="0" Width="24" Height="24" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ContentPresenter x:Name="ButtonContent" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            
+                            <!-- Text Label - Two Lines -->
+                            <TextBlock Grid.Row="1" 
+                                       x:Name="ButtonText" 
+                                       Text="{TemplateBinding Tag}" 
+                                       FontSize="8" 
+                                       Foreground="#FF0000"
+                                       HorizontalAlignment="Center" 
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Width="60"
+                                       Height="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="BackgroundRect" Property="Fill" Value="#2a2e30"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -86,7 +190,7 @@
                             <!-- Selection Indicator -->
                             <Border Grid.Row="0" Width="4" Height="20" Background="#FF0000" HorizontalAlignment="Left" Margin="-24,0,0,0" CornerRadius="0,2,2,0" VerticalAlignment="Center"/>
                             
-                            <!-- Icon Container - Fixed position - exactly the same as in NavButton -->
+                            <!-- Icon Container - Fixed position -->
                             <Grid Grid.Row="0" Width="24" Height="24" VerticalAlignment="Center" HorizontalAlignment="Center">
                                 <ContentPresenter x:Name="ButtonContent" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Grid>
@@ -95,11 +199,14 @@
                             <TextBlock Grid.Row="1" 
                                        x:Name="ButtonText" 
                                        Text="{TemplateBinding Tag}" 
-                                       FontSize="10" 
+                                       FontSize="9" 
                                        Foreground="#FF0000"
                                        HorizontalAlignment="Center" 
+                                       TextAlignment="Center"
+                                       Width="60"
+                                       Height="24"
                                        FontWeight="SemiBold"
-                                       Margin="0,4,0,0"/>
+                                       Margin="0,0,0,0"/>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -311,7 +418,7 @@
                                 </Button>
 
                                 <!-- AI Generated -->
-                                <Button Style="{StaticResource NavButton}" Tag="AI generated">
+                                <Button Style="{StaticResource TwoLineNavButton}" Tag="AI generated">
                                     <Image Source="pack://application:,,,/Assets/aigenerated.png" Width="24" Height="24"/>
                                 </Button>
                                 
@@ -326,7 +433,7 @@
                                 </Button>
                                 
                                 <!-- Interactive Slideshow -->
-                                <Button Style="{StaticResource NavButton}" Tag="Interactive slideshow">
+                                <Button Style="{StaticResource TwoLineNavButton}" Tag="Interactive slideshow">
                                     <Image Source="pack://application:,,,/Assets/interactive.png" Width="24" Height="24"/>
                                 </Button>
                                 
@@ -336,7 +443,7 @@
                                 </Button>
                                 
                                 <!-- Upload Wallpaper -->
-                                <Button Style="{StaticResource NavButton}" Tag="Upload wallpaper">
+                                <Button Style="{StaticResource TwoLineNavButton}" Tag="Upload wallpaper">
                                     <Image Source="pack://application:,,,/Assets/upload.png" Width="24" Height="24"/>
                                 </Button>
                             </StackPanel>
