@@ -520,5 +520,51 @@ namespace WallYouNeed.App
                     Wpf.Ui.Controls.ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
             }
         }
+
+        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Allow dragging the window when clicking and dragging the title bar
+            if (e.ClickCount == 1)
+            {
+                this.DragMove();
+            }
+            else if (e.ClickCount == 2)
+            {
+                // Double-click to maximize/restore
+                MaximizeButton_Click(sender, e);
+            }
+        }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            this.WindowState = WindowState.Minimized;
+        }
+
+        private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (this.WindowState == WindowState.Maximized)
+            {
+                this.WindowState = WindowState.Normal;
+                // Use Content Property directly without referencing by name
+                if (sender is System.Windows.Controls.Button button)
+                {
+                    button.Content = "□";
+                }
+            }
+            else
+            {
+                this.WindowState = WindowState.Maximized;
+                // Use Content Property directly without referencing by name
+                if (sender is System.Windows.Controls.Button button)
+                {
+                    button.Content = "❐";
+                }
+            }
+        }
     }
 } 
