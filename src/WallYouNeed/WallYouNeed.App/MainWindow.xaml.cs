@@ -56,9 +56,9 @@ namespace WallYouNeed.App
             this.SizeChanged += MainWindow_SizeChanged;
             this.LocationChanged += MainWindow_LocationChanged;
             
-            // Navigate to Latest Wallpapers page by default instead of Home
-            NavigateToPage("Latest Wallpapers");
-            SetActiveButton(TestGridButton);
+            // Navigate to Home page by default
+            NavigateToPage("Home");
+            SetActiveButton(HomeButton);
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -296,29 +296,17 @@ namespace WallYouNeed.App
 
         private void TestGridButton_Click(object sender, RoutedEventArgs e)
         {
-            // Check if we're already on the LatestWallpapersPage to prevent reloading
-            if (ContentFrame.Content is LatestWallpapersPage)
-            {
-                // Already on LatestWallpapersPage, do nothing
-                _logger?.LogDebug("Already on LatestWallpapersPage, ignoring navigation request");
-                return;
-            }
-            
-            // Otherwise, navigate as usual
-            NavigateToPage("Latest Wallpapers");
-            SetActiveButton(TestGridButton);
+            // This method is now unused - the button has been removed
         }
 
         private void BackieeContentButton_Click(object sender, RoutedEventArgs e)
         {
-            NavigateToPage("Backiee Content");
-            SetActiveButton(sender as System.Windows.Controls.Button);
+            // This method is now unused - the button has been removed
         }
 
         private void InfiniteWallpaperButton_Click(object sender, RoutedEventArgs e)
         {
-            NavigateToPage("Infinite Wallpapers");
-            SetActiveButton(sender as System.Windows.Controls.Button);
+            // This method is now unused - the button has been removed
         }
 
         private void SetActiveButton(System.Windows.Controls.Button button)

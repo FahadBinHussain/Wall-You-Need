@@ -31,7 +31,20 @@
     <Resource Include="Assets\5k_logo.png" />
     <Resource Include="Assets\8k_logo.png" />
     <Resource Include="Assets\aigenerated-icon.png" />
+    <Resource Include="Assets\aigenerated.png" />
+    <Resource Include="Assets\account.png" />
+    <Resource Include="Assets\collections.png" />
+    <Resource Include="Assets\home.png" />
+    <Resource Include="Assets\interactive.png" />
+    <Resource Include="Assets\personal.png" />
+    <Resource Include="Assets\settings.png" />
+    <Resource Include="Assets\slideshow.png" />
+    <Resource Include="Assets\upload.png" />
+    <Resource Include="Assets\widget.png" />
+    <Resource Include="Assets\world.png" />
     <Resource Include="Assets\logo.png" />
+    <Resource Include="Assets\noad.png" />
+    <Resource Include="Assets\placeholder-dark.png" />
   </ItemGroup>
 
   <!-- Data files -->
