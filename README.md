@@ -1,56 +1,110 @@
-# Backiee Wallpaper Scraper
+# Wall-You-Need
 
 <img src="https://wakapi-qt1b.onrender.com/api/badge/fahad/interval:any/project:Wall-You-Need" 
      alt="Wakapi Time Tracking" 
      title="Minimum amount of time spent on this project">
 
-This is a C# application that scrapes the Backiee website to extract wallpaper links. It saves the links in a markdown file.
+A comprehensive wallpaper management solution featuring both a WPF desktop application and Python utilities for automating wallpaper downloads and rotation from multiple sources.
 
-## Prerequisites
+## Project Overview
 
-- .NET SDK 7.0 or higher
-- Internet connection
+Wall-You-Need is a multi-platform solution for wallpaper enthusiasts with the following components:
 
-## How to Build and Run
-
-### Building
-
-Open a command prompt/terminal in the project directory and run:
-
-```bash
-dotnet build
-```
-
-### Running
-
-After building, you can run the application with:
-
-```bash
-dotnet run
-```
+1. **.NET/WPF Application**: A modern desktop app for browsing, managing, and applying wallpapers
+2. **Python Backend**: Utilities for fetching wallpapers from various sources
+3. **Backiee Scraper**: A specialized component for scraping wallpapers from Backiee
 
 ## Features
 
-- Fetches the latest wallpapers from backiee.com
-- Extracts up to 20 wallpaper links
-- Saves links to a markdown file (backiee_wallpapers.md)
-- Includes fallback mechanisms if the main extraction method fails
-- Saves raw HTML for debugging purposes
+- **Multiple Wallpaper Sources**:
+  - Unsplash
+  - Pexels
+  - Wallpaper Engine
+  - Backiee
+- **Automated Wallpaper Rotation**
+- **Customizable Time Intervals**
+- **Desktop & Lock Screen Wallpaper Management**
+- **Modern WPF UI with Theme Support**
+- **Collections Management**
+- **Local Wallpaper Storage**
+- **Auto-startup Option**
+- **Wallpaper Search Functionality**
 
-## Output
+## Project Structure
 
-The program will create:
-1. `backiee_latest.html` - The raw HTML from the website
-2. `backiee_wallpapers.md` - Markdown file with wallpaper links
+The project is organized into several components:
+
+- **`src/WallYouNeed`**: Main .NET solution
+  - **`WallYouNeed.App`**: WPF application with UI
+  - **`WallYouNeed.Core`**: Core business logic and services
+  - **`BackieeScraper`**: Component for scraping Backiee website
+
+- **`python/`**: Python utilities
+  - **`gui.py`**: Python-based GUI for wallpaper management
+  - **`unsplash.py`**: Unsplash API integration
+  - **`pexels.py`**: Pexels API integration
+  - **`wallpaper_engine.py`**: Steam Wallpaper Engine integration
+  - **`wallpaper_utils.py`**: Helper utilities for wallpaper operations
+  - **`registry_utils.py`**: Windows registry utilities
+  - **`startup_gui.py`**: Auto-startup functionality
+
+## Prerequisites
+
+### For .NET Application
+- .NET 7.0 SDK or higher
+- Windows operating system
+
+### For Python Utilities
+- Python 3.8+
+- Required Python packages (listed in `python/requirements.txt`)
+
+## Installation
+
+### .NET Application
+1. Clone the repository
+2. Open the solution in Visual Studio or JetBrains Rider
+3. Build the solution:
+   ```bash
+   dotnet build
+   ```
+4. Run the application:
+   ```bash
+   dotnet run --project src/WallYouNeed/WallYouNeed.App/WallYouNeed.App.csproj
+   ```
+
+### Python Utilities
+1. Install required packages:
+   ```bash
+   pip install -r python/requirements.txt
+   ```
+2. Run the Python GUI:
+   ```bash
+   python python/gui.py
+   ```
+
+## Configuration
+
+Configuration settings are managed through the application's settings page or by directly editing configuration files.
+
+### Key Settings:
+- Wallpaper sources (Unsplash, Pexels, Wallpaper Engine, Backiee)
+- Update interval
+- Maximum wallpaper count
+- Save location
+- Auto-startup options
 
 ## Error Handling
 
-The application includes error handling to catch and display any exceptions that occur during execution.
+The application includes robust error handling for:
+- Network connectivity issues
+- API rate limiting
+- Image file download problems
+- File system errors
 
-## How It Works
+## License
 
-1. The application sends an HTTP GET request to backiee.com
-2. It extracts the HTML content
-3. Using regular expressions, it finds wallpaper links and titles
-4. If no wallpapers are found in the fresh content, it tries to use the existing backiee_content.html file
-5. The links are saved to a markdown file
+This project is licensed under the terms included in the LICENSE file.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
