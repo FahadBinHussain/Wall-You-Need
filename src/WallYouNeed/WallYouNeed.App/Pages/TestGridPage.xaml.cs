@@ -519,7 +519,16 @@ namespace WallYouNeed.App.Pages
                 Tag = wallpaper,
                 Cursor = System.Windows.Input.Cursors.Hand,
                 Width = _itemWidth,
-                Height = _itemHeight
+                Height = _itemHeight,
+                ClipToBounds = true
+            };
+            
+            // Add clipping with rounded corners
+            border.Clip = new RectangleGeometry
+            {
+                Rect = new Rect(0, 0, _itemWidth, _itemHeight),
+                RadiusX = 15,
+                RadiusY = 15
             };
 
             // Create a grid to hold the content
