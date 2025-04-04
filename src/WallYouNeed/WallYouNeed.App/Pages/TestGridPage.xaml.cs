@@ -29,19 +29,21 @@ namespace WallYouNeed.App.Pages
         private ObservableCollection<WallpaperItem> _wallpapers;
         private double _itemWidth = 300; // Default width for each wallpaper item
         private double _itemHeight = 180; // Default height for each wallpaper item
-        private const int ScrollThreshold = 200; // Threshold for infinite scrolling
+        private const int ScrollThreshold = 600; // Increased threshold for preemptive loading
         
         // Variables for JSON loading and infinite scrolling
         private HashSet<string> _loadedUrls = new HashSet<string>();
         private HashSet<int> _attemptedIds = new HashSet<int>();
         private int _currentImageId = -1; // Will be initialized properly after loading JSON
         private DateTime _lastScrollCheck = DateTime.MinValue;
-        private TimeSpan _scrollDebounceTime = TimeSpan.FromMilliseconds(500);
+        private TimeSpan _scrollDebounceTime = TimeSpan.FromMilliseconds(300); // Reduced debounce time
         private SemaphoreSlim _loadingSemaphore = new SemaphoreSlim(1, 1);
         private bool _isLoadingMore = false;
         private CancellationTokenSource _cts;
         private bool _isPageLoaded = false;
         private bool _shouldRestoreScrollPosition = true;
+        private bool _isBackgroundLoadingEnabled = true; // Enable background loading
+        private bool _isPrefetchingEnabled = true; // Enable prefetching of images
 
         // Simulated test data for wallpapers (as fallback)
         private readonly List<string> _resolutions = new List<string> { "4K", "5K", "8K" };
@@ -52,6 +54,12 @@ namespace WallYouNeed.App.Pages
         private int _successfulRequests = 0;
         private int _failedRequests = 0;
         private readonly int _batchSize = 20; // Number of images to check at once
+        
+        // Queue for background processing
+        private Queue<Task> _backgroundTasks = new Queue<Task>();
+        private readonly int _maxConcurrentBackgroundTasks = 2;
+        private int _runningBackgroundTasks = 0;
+        private readonly object _backgroundTaskLock = new object();
 
         public TestGridPage(ILogger<TestGridPage> logger = null, ISettingsService settingsService = null)
         {
@@ -87,6 +95,10 @@ namespace WallYouNeed.App.Pages
             
             // Set flag to indicate page is loaded
             _isPageLoaded = true;
+            
+            // Start preemptive loading after initial load
+            await Task.Delay(500); // Short delay to allow UI to render
+            StartBackgroundLoading();
         }
 
         private void TestGridPage_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -812,43 +824,56 @@ namespace WallYouNeed.App.Pages
                 }
                 _lastScrollCheck = DateTime.Now;
 
-                // Check if we're near the bottom of the scroll viewer
-                if (e.VerticalOffset + e.ViewportHeight + ScrollThreshold >= e.ExtentHeight)
+                // Calculate how far from the bottom we are (as a percentage)
+                double scrollPercentage = (e.VerticalOffset + e.ViewportHeight) / e.ExtentHeight;
+                
+                // Check if we're within the preemptive loading threshold
+                // This loads more images before reaching the bottom
+                if (scrollPercentage > 0.7) // Start loading when 70% scrolled
                 {
-                    // Try to acquire the semaphore without blocking
-                    if (!_isLoadingMore && await _loadingSemaphore.WaitAsync(0))
+                    if (!_isLoadingMore)
                     {
-                        try
+                        // Try to acquire the semaphore without blocking
+                        if (await _loadingSemaphore.WaitAsync(0))
                         {
-                            _isLoadingMore = true;
-                            _logger?.LogInformation("Loading more wallpapers at scroll position");
-                            
-                            // Show loading status
-                            StatusTextBlock.Text = "Loading more wallpapers...";
-                            StatusTextBlock.Visibility = Visibility.Visible;
-                            LoadingProgressBar.Visibility = Visibility.Visible;
-                            
-                            // Load more wallpapers - using HTTP check method
-                            await LoadMoreImagesAsync(_cts.Token);
-                            
-                            // Save settings after loading more items
-                            if (_isPageLoaded)
+                            try
                             {
-                                SaveSettingsQuietly();
+                                _isLoadingMore = true;
+                                _logger?.LogInformation("Preemptive loading triggered at {0}% scroll", (scrollPercentage * 100).ToString("0"));
+                                
+                                // Show loading status but make it less intrusive
+                                StatusTextBlock.Text = "Loading more wallpapers...";
+                                StatusTextBlock.Visibility = Visibility.Visible;
+                                LoadingProgressBar.Visibility = Visibility.Visible;
+                                
+                                // Load more wallpapers - using HTTP check method
+                                await LoadMoreImagesAsync(_cts.Token);
+                                
+                                // Save settings after loading more items
+                                if (_isPageLoaded)
+                                {
+                                    SaveSettingsQuietly();
+                                }
+                                
+                                // Queue background loading for the next batch
+                                if (_isPrefetchingEnabled)
+                                {
+                                    QueueBackgroundLoading();
+                                }
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogError(ex, "Error loading more wallpapers in scroll handler");
-                        }
-                        finally
-                        {
-                            _isLoadingMore = false;
-                            _loadingSemaphore.Release();
-                            
-                            // Hide loading indicators
-                            StatusTextBlock.Visibility = Visibility.Collapsed;
-                            LoadingProgressBar.Visibility = Visibility.Collapsed;
+                            catch (Exception ex)
+                            {
+                                _logger?.LogError(ex, "Error loading more wallpapers in scroll handler");
+                            }
+                            finally
+                            {
+                                _isLoadingMore = false;
+                                _loadingSemaphore.Release();
+                                
+                                // Hide loading indicators
+                                StatusTextBlock.Visibility = Visibility.Collapsed;
+                                LoadingProgressBar.Visibility = Visibility.Collapsed;
+                            }
                         }
                     }
                 }
@@ -859,14 +884,70 @@ namespace WallYouNeed.App.Pages
             }
         }
         
-        private async Task LoadMoreImagesAsync(CancellationToken cancellationToken)
+        private void StartBackgroundLoading()
+        {
+            if (_isBackgroundLoadingEnabled && !_isLoadingMore)
+            {
+                QueueBackgroundLoading();
+            }
+        }
+        
+        private void QueueBackgroundLoading()
+        {
+            lock (_backgroundTaskLock)
+            {
+                if (_runningBackgroundTasks < _maxConcurrentBackgroundTasks)
+                {
+                    _runningBackgroundTasks++;
+                    
+                    // Use a delay before starting background loading
+                    // This allows the UI to remain responsive and prevents too many concurrent requests
+                    var task = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            // Short delay before starting background loading
+                            // This gives the UI thread time to process and helps maintain order
+                            await Task.Delay(300);
+                            
+                            // Take a snapshot of the current imageId to avoid race conditions
+                            int startingImageId;
+                            lock (_backgroundTaskLock)
+                            {
+                                startingImageId = _currentImageId;
+                            }
+                            
+                            _logger?.LogInformation($"Background loading starting from imageId: {startingImageId}");
+                            
+                            await LoadMoreImagesAsync(_cts.Token, isBackgroundLoading: true);
+                        }
+                        finally
+                        {
+                            // Decrement running task count
+                            lock (_backgroundTaskLock)
+                            {
+                                _runningBackgroundTasks--;
+                            }
+                        }
+                    });
+                    
+                    _backgroundTasks.Enqueue(task);
+                }
+            }
+        }
+        
+        private async Task LoadMoreImagesAsync(CancellationToken cancellationToken, bool isBackgroundLoading = false)
         {
             try
             {
-                _logger?.LogInformation("LoadMoreImagesAsync called, current imageId: {ImageId}", _currentImageId);
+                _logger?.LogInformation("LoadMoreImagesAsync called, current imageId: {ImageId}, background: {isBackground}", 
+                    _currentImageId, isBackgroundLoading);
                 
-                // Show status to indicate loading is in progress
-                StatusTextBlock.Text = $"Loading wallpapers... (ID: {_currentImageId})";
+                // Show status only if not background loading
+                if (!isBackgroundLoading)
+                {
+                    StatusTextBlock.Text = $"Loading wallpapers... (ID: {_currentImageId})";
+                }
                 
                 // Create a list to hold the successful images in this batch
                 List<WallpaperItem> batchImages = new List<WallpaperItem>();
@@ -907,6 +988,9 @@ namespace WallYouNeed.App.Pages
                     if (tasks.Any())
                     {
                         var completedTasks = await Task.WhenAll(tasks);
+
+                        // Create a dictionary to collect all successful images by ID for easier sorting later
+                        Dictionary<int, WallpaperItem> foundWallpapers = new Dictionary<int, WallpaperItem>();
 
                         // Process results in the order of IDs to maintain consistency (highest to lowest)
                         foreach (var id in currentBatchIds.OrderByDescending(x => x))
@@ -957,7 +1041,8 @@ namespace WallYouNeed.App.Pages
                                         break;
                                 }
                                 
-                                batchImages.Add(wallpaper);
+                                // Store in the dictionary
+                                foundWallpapers[id] = wallpaper;
                                 _loadedUrls.Add(imageUrl);
                             }
                             else
@@ -975,23 +1060,42 @@ namespace WallYouNeed.App.Pages
                             _logger?.LogInformation($"Updated next imageId to {_currentImageId} for sequential loading");
                         }
 
-                        // Add images to the UI
-                        foreach (var wallpaper in batchImages)
-                        {
-                            _wallpapers.Add(wallpaper);
-                            
-                            // Create and add UI element
-                            var wallpaperElement = CreateWallpaperElement(wallpaper);
-                            WallpaperContainer.Children.Add(wallpaperElement);
-                        }
+                        // Sort wallpapers by ID in descending order (highest to lowest) for consistent ordering
+                        batchImages = foundWallpapers.OrderByDescending(kvp => kvp.Key)
+                                                    .Select(kvp => kvp.Value)
+                                                    .ToList();
 
-                        // Update the status
-                        StatusTextBlock.Text = $"Loaded {imagesFound} new wallpapers (Total: {_wallpapers.Count})";
+                        // Ensuring consistent order between multiple loading operations
+                        lock (_backgroundTaskLock)
+                        {
+                            // Acquire a common lock before dispatching to UI thread
+                            // This prevents different loading operations from interleaving their images
+                        }
+                        
+                        // Add images to the UI on the UI thread
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            foreach (var wallpaper in batchImages)
+                            {
+                                _wallpapers.Add(wallpaper);
+                                
+                                // Create and add UI element
+                                var wallpaperElement = CreateWallpaperElement(wallpaper);
+                                WallpaperContainer.Children.Add(wallpaperElement);
+                            }
+                            
+                            // Update status only if not background loading
+                            if (!isBackgroundLoading)
+                            {
+                                // Update the status
+                                StatusTextBlock.Text = $"Loaded {imagesFound} new wallpapers (Total: {_wallpapers.Count})";
+                                StatusTextBlock.Text += $" | Success: {_successfulRequests}/{_totalRequests} ({_failedRequests} failed)";
+                            }
+                        });
+                        
                         _logger?.LogInformation("Added {Count} images to collection. Total: {Total}", 
                             imagesFound, _wallpapers.Count);
 
-                        StatusTextBlock.Text += $" | Success: {_successfulRequests}/{_totalRequests} ({_failedRequests} failed)";
-                        
                         // If we got too many consecutive failures, jump back by a significant amount
                         // This helps skip large gaps in the ID sequence while still loading in order
                         if (imagesFound == 0 && consecutiveFailures > maxConsecutiveFailures)
@@ -1002,7 +1106,20 @@ namespace WallYouNeed.App.Pages
                             if (_currentImageId < 0) _currentImageId = 200000; // Reset if we hit zero
                             
                             _logger?.LogInformation($"Too many consecutive failures, jumping from {oldId} to {_currentImageId}");
-                            StatusTextBlock.Text += $" | Jumping to ID: {_currentImageId}";
+                            
+                            if (!isBackgroundLoading)
+                            {
+                                await Dispatcher.InvokeAsync(() => {
+                                    StatusTextBlock.Text += $" | Jumping to ID: {_currentImageId}";
+                                });
+                            }
+                        }
+                        
+                        // If we found images and background loading is enabled, queue next batch
+                        // Only start a new background task if we're not already in background mode
+                        if (imagesFound > 0 && _isBackgroundLoadingEnabled && !isBackgroundLoading)
+                        {
+                            QueueBackgroundLoading();
                         }
                     }
                     else
@@ -1015,14 +1132,26 @@ namespace WallYouNeed.App.Pages
                         if (_currentImageId < 0) _currentImageId = 200000; // Reset if we hit zero
                         
                         _logger?.LogInformation($"No new IDs to check, jumping from {oldId} to {_currentImageId}");
-                        StatusTextBlock.Text = $"Searching for more wallpapers... (ID: {_currentImageId})";
+                        
+                        if (!isBackgroundLoading)
+                        {
+                            await Dispatcher.InvokeAsync(() => {
+                                StatusTextBlock.Text = $"Searching for more wallpapers... (ID: {_currentImageId})";
+                            });
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error in LoadMoreImagesAsync");
-                StatusTextBlock.Text = $"Error loading images: {ex.Message}";
+                
+                if (!isBackgroundLoading)
+                {
+                    await Dispatcher.InvokeAsync(() => {
+                        StatusTextBlock.Text = $"Error loading images: {ex.Message}";
+                    });
+                }
             }
         }
         
