@@ -528,39 +528,33 @@ namespace WallYouNeed.App.Pages
 
         private FrameworkElement CreateWallpaperElement(WallpaperItem wallpaper)
         {
-            // Create the main border
-            var border = new Border
+            // Create a Grid as the container
+            var containerGrid = new Grid
             {
-                BorderBrush = new SolidColorBrush(Colors.LightGray),
-                BorderThickness = new Thickness(1),
-                Margin = new Thickness(4),
-                Padding = new Thickness(0),
-                Tag = wallpaper,
-                Cursor = System.Windows.Input.Cursors.Hand,
                 Width = _itemWidth,
                 Height = _itemHeight,
-                ClipToBounds = true
+                Margin = new Thickness(4),
+                Tag = wallpaper,
+                Cursor = System.Windows.Input.Cursors.Hand
             };
             
-            // Add clipping with rounded corners
-            border.Clip = new RectangleGeometry
+            // Create a Rectangle with rounded corners
+            var roundedRectangle = new System.Windows.Shapes.Rectangle
             {
-                Rect = new Rect(0, 0, _itemWidth, _itemHeight),
-                RadiusX = 15,
-                RadiusY = 15
+                RadiusX = 20,
+                RadiusY = 20,
+                Fill = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30)),
+                Stroke = new SolidColorBrush(Colors.LightGray),
+                StrokeThickness = 1
             };
-
-            // Create a grid to hold the content
-            var grid = new Grid();
-            border.Child = grid;
-
-            // Create a dark placeholder background
-            var placeholderBackground = new Border
+            containerGrid.Children.Add(roundedRectangle);
+            
+            // Create a Grid for the content
+            var contentGrid = new Grid
             {
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30)), // Dark gray background
-                Opacity = 1
+                ClipToBounds = true
             };
-            grid.Children.Add(placeholderBackground);
+            containerGrid.Children.Add(contentGrid);
             
             // Create a loading indicator
             var loadingIndicator = new System.Windows.Controls.ProgressBar
@@ -574,7 +568,7 @@ namespace WallYouNeed.App.Pages
                 VerticalAlignment = System.Windows.VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 0, 0)
             };
-            grid.Children.Add(loadingIndicator);
+            contentGrid.Children.Add(loadingIndicator);
 
             // Create and add the image (with placeholder until loaded)
             var image = new System.Windows.Controls.Image
@@ -590,19 +584,27 @@ namespace WallYouNeed.App.Pages
             bitmapImage.UriSource = new Uri(wallpaper.ImageUrl);
             bitmapImage.EndInit();
             
+            // Clip the image to match the rounded rectangle
+            image.Clip = new RectangleGeometry
+            {
+                Rect = new Rect(0, 0, _itemWidth, _itemHeight),
+                RadiusX = 20,
+                RadiusY = 20
+            };
+            
             // Handle the image loading events
             bitmapImage.DownloadCompleted += (s, e) => 
             {
                 // When the image is loaded, fade it in and hide the placeholder
                 image.Opacity = 1;
-                placeholderBackground.Opacity = 0;
+                roundedRectangle.Opacity = 0;
                 loadingIndicator.Visibility = Visibility.Collapsed;
             };
             
             bitmapImage.DownloadFailed += (s, e) => 
             {
                 // If download fails, show a error placeholder
-                placeholderBackground.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(50, 30, 30)); // Dark red background
+                roundedRectangle.Fill = new SolidColorBrush(System.Windows.Media.Color.FromRgb(50, 30, 30)); // Dark red background
                 loadingIndicator.Visibility = Visibility.Collapsed;
                 
                 // Add an error icon or text
@@ -614,12 +616,12 @@ namespace WallYouNeed.App.Pages
                     HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
                     VerticalAlignment = System.Windows.VerticalAlignment.Center
                 };
-                grid.Children.Add(errorText);
+                contentGrid.Children.Add(errorText);
             };
             
             image.Source = bitmapImage;
             RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
-            grid.Children.Add(image);
+            contentGrid.Children.Add(image);
 
             // Create a panel for resolution badges
             var badgesPanel = new StackPanel
@@ -629,7 +631,7 @@ namespace WallYouNeed.App.Pages
                 VerticalAlignment = System.Windows.VerticalAlignment.Top,
                 Margin = new Thickness(0)
             };
-            grid.Children.Add(badgesPanel);
+            contentGrid.Children.Add(badgesPanel);
 
             // Add appropriate resolution badge
             string badgeSource = wallpaper.ResolutionLabel switch
@@ -661,7 +663,7 @@ namespace WallYouNeed.App.Pages
                     VerticalAlignment = System.Windows.VerticalAlignment.Top,
                     Margin = new Thickness(0, 5, 20, 0)
                 };
-                grid.Children.Add(aiPanel);
+                contentGrid.Children.Add(aiPanel);
             }
 
             // Add stats
@@ -815,12 +817,12 @@ namespace WallYouNeed.App.Pages
             };
             
             // Add the stats to the grid
-            grid.Children.Add(statsBg);
+            contentGrid.Children.Add(statsBg);
 
             // Handle click event
-            border.MouseLeftButtonUp += ImageBorder_MouseLeftButtonUp;
+            containerGrid.MouseLeftButtonUp += ImageBorder_MouseLeftButtonUp;
 
-            return border;
+            return containerGrid;
         }
 
         private void AdjustItemSizes()
@@ -854,10 +856,41 @@ namespace WallYouNeed.App.Pages
             // Update all wallpaper items with new size
             foreach (FrameworkElement child in WallpaperContainer.Children)
             {
+                // Handle both Border (old implementation) and Grid (new implementation)
                 if (child is Border border)
                 {
                     border.Width = newItemWidth;
                     border.Height = newItemHeight;
+                }
+                else if (child is Grid grid && grid.Tag is WallpaperItem)
+                {
+                    // Update grid size
+                    grid.Width = newItemWidth;
+                    grid.Height = newItemHeight;
+                    
+                    // Update clip on the image if present
+                    foreach (var gridChild in grid.Children)
+                    {
+                        // Look for the content grid
+                        if (gridChild is Grid contentGrid)
+                        {
+                            foreach (var contentItem in contentGrid.Children)
+                            {
+                                // Find the Image element and update its clip
+                                if (contentItem is System.Windows.Controls.Image image && image.Clip is RectangleGeometry clipGeometry)
+                                {
+                                    clipGeometry.Rect = new Rect(0, 0, newItemWidth, newItemHeight);
+                                }
+                            }
+                        }
+                        // Update the rectangle dimensions
+                        else if (gridChild is System.Windows.Shapes.Rectangle rectangle)
+                        {
+                            // Rectangle should auto-size, but ensure properties are maintained
+                            rectangle.Width = double.NaN; // Auto width
+                            rectangle.Height = double.NaN; // Auto height
+                        }
+                    }
                 }
             }
 
