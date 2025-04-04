@@ -17,6 +17,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Collections.Concurrent;
+using WallYouNeed.App.Pages;
 
 namespace WallYouNeed.App.Pages
 {
@@ -39,7 +40,7 @@ namespace WallYouNeed.App.Pages
         private HashSet<string> _loadedUrls = new HashSet<string>();
         
         public ObservableCollection<Core.Models.Wallpaper> Wallpapers { get; } = new();
-        public ObservableCollection<BackieeImage> Images { get; set; }
+        public ObservableCollection<WallpaperItem> Images { get; set; }
         
         public string CategoryTitle { get; private set; } = "Category";
         public string CategoryDescription { get; private set; } = "Browse wallpapers by category.";
@@ -60,7 +61,7 @@ namespace WallYouNeed.App.Pages
             _settingsService = settingsService;
             
             InitializeComponent();
-            Images = new ObservableCollection<BackieeImage>();
+            Images = new ObservableCollection<WallpaperItem>();
             DataContext = this;
         }
         
@@ -877,14 +878,14 @@ namespace WallYouNeed.App.Pages
         {
             if (wallpaper == null) return;
 
-            var backieeImage = new BackieeImage
+            var wallpaperItem = new WallpaperItem
             {
                 ImageUrl = wallpaper.ThumbnailUrl,
                 ImageId = wallpaper.Id,
                 Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
             };
 
-            Images.Add(backieeImage);
+            Images.Add(wallpaperItem);
         }
 
         private async Task LoadWallpapersAsync()

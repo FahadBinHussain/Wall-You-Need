@@ -145,18 +145,18 @@ namespace WallYouNeed.Core.Models
         public string WindowState { get; set; } = "Normal";
         
         /// <summary>
-        /// TestGridPage scroll position
+        /// LatestWallpapersPage scroll position
         /// </summary>
-        public double TestGridScrollPosition { get; set; } = 0;
+        public double LatestWallpapersScrollPosition { get; set; } = 0;
         
         /// <summary>
-        /// TestGridPage item width
+        /// LatestWallpapersPage item width
         /// </summary>
-        public double TestGridItemWidth { get; set; } = 300;
+        public double LatestWallpapersItemWidth { get; set; } = 300;
         
         /// <summary>
-        /// TestGridPage item height
+        /// LatestWallpapersPage item height
         /// </summary>
-        public double TestGridItemHeight { get; set; } = 180;
+        public double LatestWallpapersItemHeight { get; set; } = 180;
     }
 } 

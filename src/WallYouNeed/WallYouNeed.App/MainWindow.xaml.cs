@@ -56,8 +56,8 @@ namespace WallYouNeed.App
             this.SizeChanged += MainWindow_SizeChanged;
             this.LocationChanged += MainWindow_LocationChanged;
             
-            // Navigate to TestGrid page by default instead of Home
-            NavigateToPage("Test Grid");
+            // Navigate to Latest Wallpapers page by default instead of Home
+            NavigateToPage("Latest Wallpapers");
             SetActiveButton(TestGridButton);
         }
 
@@ -296,16 +296,16 @@ namespace WallYouNeed.App
 
         private void TestGridButton_Click(object sender, RoutedEventArgs e)
         {
-            // Check if we're already on the TestGridPage to prevent reloading
-            if (ContentFrame.Content is TestGridPage)
+            // Check if we're already on the LatestWallpapersPage to prevent reloading
+            if (ContentFrame.Content is LatestWallpapersPage)
             {
-                // Already on TestGridPage, do nothing
-                _logger?.LogDebug("Already on TestGridPage, ignoring navigation request");
+                // Already on LatestWallpapersPage, do nothing
+                _logger?.LogDebug("Already on LatestWallpapersPage, ignoring navigation request");
                 return;
             }
             
             // Otherwise, navigate as usual
-            NavigateToPage("Test Grid");
+            NavigateToPage("Latest Wallpapers");
             SetActiveButton(TestGridButton);
         }
 
@@ -366,14 +366,11 @@ namespace WallYouNeed.App
                         page = app.Services.GetRequiredService<CategoryPage>();
                         (page as CategoryPage)?.SetCategory("Backiee Content");
                         break;
-                    case "Backiee Images":
-                        page = app.Services.GetRequiredService<BackieeImagesPage>();
-                        break;
                     case "Infinite Wallpapers":
-                        page = app.Services.GetRequiredService<BackieeImagesPage>();
+                        page = app.Services.GetRequiredService<LatestWallpapersPage>();
                         break;
-                    case "Test Grid":
-                        page = app.Services.GetRequiredService<TestGridPage>();
+                    case "Latest Wallpapers":
+                        page = app.Services.GetRequiredService<LatestWallpapersPage>();
                         break;
                 }
                 

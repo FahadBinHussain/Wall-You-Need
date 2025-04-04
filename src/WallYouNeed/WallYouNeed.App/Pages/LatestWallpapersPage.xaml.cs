@@ -16,15 +16,18 @@ using Microsoft.Extensions.Logging;
 using WallYouNeed.Core.Models;
 using WallYouNeed.Core.Services.Interfaces;
 using System.Net.Http;
+using Microsoft.Win32;
+using Wpf.Ui;
+using Wpf.Ui.Controls;
 
 namespace WallYouNeed.App.Pages
 {
     /// <summary>
-    /// Interaction logic for TestGridPage.xaml
+    /// Interaction logic for LatestWallpapersPage.xaml
     /// </summary>
-    public partial class TestGridPage : Page
+    public partial class LatestWallpapersPage : Page
     {
-        private readonly ILogger<TestGridPage> _logger;
+        private readonly ILogger<LatestWallpapersPage> _logger;
         private readonly ISettingsService _settingsService;
         private ObservableCollection<WallpaperItem> _wallpapers;
         private double _itemWidth = 300; // Default width for each wallpaper item
@@ -61,11 +64,11 @@ namespace WallYouNeed.App.Pages
         private int _runningBackgroundTasks = 0;
         private readonly object _backgroundTaskLock = new object();
 
-        public TestGridPage(ILogger<TestGridPage> logger = null, ISettingsService settingsService = null)
+        public LatestWallpapersPage(ILogger<LatestWallpapersPage> logger = null, ISettingsService settingsService = null)
         {
             _logger = logger;
             _settingsService = settingsService;
-            _logger?.LogInformation("TestGridPage constructor called");
+            _logger?.LogInformation("LatestWallpapersPage constructor called");
 
             InitializeComponent();
             _wallpapers = new ObservableCollection<WallpaperItem>();
@@ -74,14 +77,14 @@ namespace WallYouNeed.App.Pages
             _cts = new CancellationTokenSource();
 
             // Register events
-            Loaded += TestGridPage_Loaded;
-            SizeChanged += TestGridPage_SizeChanged;
-            Unloaded += TestGridPage_Unloaded;
+            Loaded += LatestWallpapersPage_Loaded;
+            SizeChanged += LatestWallpapersPage_SizeChanged;
+            Unloaded += LatestWallpapersPage_Unloaded;
         }
 
-        private async void TestGridPage_Loaded(object sender, RoutedEventArgs e)
+        private async void LatestWallpapersPage_Loaded(object sender, RoutedEventArgs e)
         {
-            _logger?.LogInformation("TestGridPage loaded");
+            _logger?.LogInformation("LatestWallpapersPage loaded");
             
             // Show loading indicators
             StatusTextBlock.Visibility = Visibility.Visible;
@@ -101,7 +104,7 @@ namespace WallYouNeed.App.Pages
             StartBackgroundLoading();
         }
 
-        private void TestGridPage_SizeChanged(object sender, SizeChangedEventArgs e)
+        private void LatestWallpapersPage_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             _logger?.LogInformation($"Window size changed to: {e.NewSize.Width}x{e.NewSize.Height}");
             
@@ -115,9 +118,9 @@ namespace WallYouNeed.App.Pages
             }
         }
         
-        private void TestGridPage_Unloaded(object sender, RoutedEventArgs e)
+        private void LatestWallpapersPage_Unloaded(object sender, RoutedEventArgs e)
         {
-            _logger?.LogInformation("TestGridPage unloaded, saving settings");
+            _logger?.LogInformation("LatestWallpapersPage unloaded, saving settings");
             
             // Save settings when page is unloaded
             SaveSettings();
@@ -136,25 +139,41 @@ namespace WallYouNeed.App.Pages
                     return;
                 }
                 
-                _logger?.LogInformation("Loading TestGridPage settings");
+                _logger?.LogInformation("Loading LatestWallpapersPage settings");
                 var settings = await _settingsService.LoadSettingsAsync();
                 
                 // Set item sizes from settings
-                if (settings.TestGridItemWidth > 50)
+                if (settings.LatestWallpapersItemWidth > 50)
                 {
-                    _itemWidth = settings.TestGridItemWidth;
+                    _itemWidth = settings.LatestWallpapersItemWidth;
                 }
                 
-                if (settings.TestGridItemHeight > 30)
+                if (settings.LatestWallpapersItemHeight > 30)
                 {
-                    _itemHeight = settings.TestGridItemHeight;
+                    _itemHeight = settings.LatestWallpapersItemHeight;
                 }
                 
-                _logger?.LogInformation($"Loaded settings - Item size: {_itemWidth}x{_itemHeight}, Scroll: {settings.TestGridScrollPosition}");
+                _logger?.LogInformation($"Loaded settings - Item size: {_itemWidth}x{_itemHeight}, Scroll: {settings.LatestWallpapersScrollPosition}");
+
+                // Restore scroll position if needed
+                if (settings.LatestWallpapersScrollPosition > 0)
+                {
+                    MainScrollViewer.ScrollToVerticalOffset(settings.LatestWallpapersScrollPosition);
+                }
+                
+                // Restore item size if specified
+                if (settings.LatestWallpapersItemWidth > 0 && settings.LatestWallpapersItemHeight > 0)
+                {
+                    _itemWidth = settings.LatestWallpapersItemWidth;
+                    _itemHeight = settings.LatestWallpapersItemHeight;
+                    
+                    // Adjust all existing items
+                    AdjustItemSizes();
+                }
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error loading TestGridPage settings");
+                _logger?.LogError(ex, "Error loading LatestWallpapersPage settings");
             }
         }
         
@@ -166,7 +185,7 @@ namespace WallYouNeed.App.Pages
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error quietly saving TestGridPage settings");
+                _logger?.LogError(ex, "Error quietly saving LatestWallpapersPage settings");
             }
         }
         
@@ -178,7 +197,7 @@ namespace WallYouNeed.App.Pages
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error saving TestGridPage settings on unload");
+                _logger?.LogError(ex, "Error saving LatestWallpapersPage settings on unload");
             }
         }
         
@@ -193,19 +212,19 @@ namespace WallYouNeed.App.Pages
                 
                 double scrollPosition = MainScrollViewer.VerticalOffset;
                 
-                _logger?.LogInformation($"Saving TestGridPage settings - Item size: {_itemWidth}x{_itemHeight}, Scroll: {scrollPosition}");
+                _logger?.LogInformation($"Saving LatestWallpapersPage settings - Item size: {_itemWidth}x{_itemHeight}, Scroll: {scrollPosition}");
                 
-                // Update settings with TestGridPage values
+                // Update settings with LatestWallpapersPage values
                 await _settingsService.UpdateSettingsAsync(settings => 
                 {
-                    settings.TestGridItemWidth = _itemWidth;
-                    settings.TestGridItemHeight = _itemHeight;
-                    settings.TestGridScrollPosition = scrollPosition;
+                    settings.LatestWallpapersItemWidth = _itemWidth;
+                    settings.LatestWallpapersItemHeight = _itemHeight;
+                    settings.LatestWallpapersScrollPosition = scrollPosition;
                 });
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error saving TestGridPage settings");
+                _logger?.LogError(ex, "Error saving LatestWallpapersPage settings");
             }
         }
 
@@ -587,7 +606,7 @@ namespace WallYouNeed.App.Pages
                 loadingIndicator.Visibility = Visibility.Collapsed;
                 
                 // Add an error icon or text
-                var errorText = new TextBlock
+                var errorText = new System.Windows.Controls.TextBlock
                 {
                     Text = "!",
                     FontSize = 24,
@@ -691,7 +710,7 @@ namespace WallYouNeed.App.Pages
                 catch
                 {
                     // Just in case the path geometry is invalid
-                    var textHeart = new TextBlock
+                    var textHeart = new System.Windows.Controls.TextBlock
                     {
                         Text = "♥",
                         Foreground = new SolidColorBrush(System.Windows.Media.Colors.White),
@@ -707,7 +726,7 @@ namespace WallYouNeed.App.Pages
             }
             
             // Add text for likes count
-            var likesText = new TextBlock 
+            var likesText = new System.Windows.Controls.TextBlock 
             { 
                 Text = wallpaper.Likes.ToString(), 
                 Foreground = new SolidColorBrush(System.Windows.Media.Colors.White),
@@ -772,7 +791,7 @@ namespace WallYouNeed.App.Pages
             }
             
             // Add text for download count
-            var downloadsText = new TextBlock 
+            var downloadsText = new System.Windows.Controls.TextBlock 
             { 
                 Text = wallpaper.Downloads.ToString(), 
                 Foreground = new SolidColorBrush(System.Windows.Media.Colors.White),
@@ -865,10 +884,10 @@ namespace WallYouNeed.App.Pages
                     if (_settingsService != null)
                     {
                         var settings = await _settingsService.GetSettingsAsync();
-                        if (settings.TestGridScrollPosition > 0)
+                        if (settings.LatestWallpapersScrollPosition > 0)
                         {
-                            _logger?.LogInformation($"Restoring scroll position to {settings.TestGridScrollPosition}");
-                            MainScrollViewer.ScrollToVerticalOffset(settings.TestGridScrollPosition);
+                            _logger?.LogInformation($"Restoring scroll position to {settings.LatestWallpapersScrollPosition}");
+                            MainScrollViewer.ScrollToVerticalOffset(settings.LatestWallpapersScrollPosition);
                             return;
                         }
                     }
@@ -1251,7 +1270,7 @@ namespace WallYouNeed.App.Pages
                 
                 // Show a popup with wallpaper details
                 System.Windows.MessageBox.Show($"Clicked on {wallpaper.ResolutionLabel} wallpaper\nResolution: {wallpaper.Resolution}\nAI Generated: {wallpaper.IsAI}\nImage ID: {wallpaper.ImageId}", 
-                    "Wallpaper Details", MessageBoxButton.OK, MessageBoxImage.Information);
+                    "Wallpaper Details", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 
                 // TODO: Implement setting wallpaper functionality here
             }
@@ -1260,13 +1279,13 @@ namespace WallYouNeed.App.Pages
         private void FilterButton_Click(object sender, RoutedEventArgs e)
         {
             _logger?.LogInformation("Filter button clicked");
-            System.Windows.MessageBox.Show("Filter functionality would be implemented here.", "Filter", MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show("Filter functionality would be implemented here.", "Filter", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
 
         private void SetAsSlideshowButton_Click(object sender, RoutedEventArgs e)
         {
             _logger?.LogInformation("Slideshow button clicked");
-            System.Windows.MessageBox.Show("Slideshow functionality would be implemented here.", "Slideshow", MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show("Slideshow functionality would be implemented here.", "Slideshow", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
     }
 

@@ -169,11 +169,11 @@
                                     <Path Data="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z" Fill="#FF0000" Width="24" Height="24"/>
                                 </Button>
 
-                                <!-- Test Grid Button -->
+                                <!-- Latest Wallpapers Button -->
                                 <Button x:Name="TestGridButton" 
                                         Style="{StaticResource NavButton}" 
                                         Click="TestGridButton_Click"
-                                        Tag="Test Grid">
+                                        Tag="Latest Wallpapers">
                                     <Path Data="M3,3H21V5H3V3M3,7H21V9H3V7M3,11H21V13H3V11M3,15H21V17H3V15M3,19H21V21H3V19Z" 
                                           Fill="#666666"
                                           Width="24" 

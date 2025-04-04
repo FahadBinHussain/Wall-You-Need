@@ -31,7 +31,7 @@ namespace WallYouNeed.App.Pages
         private readonly ICollectionService _collectionService;
         private readonly ISettingsService _settingsService;
         private readonly IBackieeScraperService _backieeScraperService;
-        private ObservableCollection<BackieeImage> Images { get; set; }
+        private ObservableCollection<WallpaperItem> Images { get; set; }
 
         public ObservableCollection<Core.Models.Wallpaper> RecentWallpapers { get; } = new();
         public ObservableCollection<Core.Models.Wallpaper> FavoriteWallpapers { get; } = new();
@@ -56,7 +56,7 @@ namespace WallYouNeed.App.Pages
 
             InitializeComponent();
             DataContext = this;
-            Images = new ObservableCollection<BackieeImage>();
+            Images = new ObservableCollection<WallpaperItem>();
 
             Loaded += HomePage_Loaded;
             
@@ -267,21 +267,21 @@ namespace WallYouNeed.App.Pages
             
             try
             {
-                // For "Latest" category, navigate to BackieeImagesPage instead
+                // For "Latest" category, navigate to LatestWallpapersPage instead
                 if (categoryName.Equals("Latest", StringComparison.OrdinalIgnoreCase))
                 {
-                    _logger.LogInformation("Latest category detected - attempting to navigate to BackieeImagesPage");
+                    _logger.LogInformation("Latest category detected - attempting to navigate to LatestWallpapersPage");
                     
                     try
                     {
-                        // Create an instance of BackieeImagesPage
-                        _logger.LogDebug("Resolving BackieeImagesPage from services");
-                        var backieeImagesPage = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<BackieeImagesPage>((App.Current as App).Services);
-                        _logger.LogDebug("BackieeImagesPage resolved successfully");
+                        // Create an instance of LatestWallpapersPage
+                        _logger.LogDebug("Resolving LatestWallpapersPage from services");
+                        var latestWallpapersPage = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<LatestWallpapersPage>((App.Current as App).Services);
+                        _logger.LogDebug("LatestWallpapersPage resolved successfully");
                         
-                        // Navigate to the BackieeImagesPage using the frame
-                        var backieeWindow = Window.GetWindow(this) as MainWindow;
-                        if (backieeWindow == null)
+                        // Navigate to the LatestWallpapersPage using the frame
+                        var latestWindow = Window.GetWindow(this) as MainWindow;
+                        if (latestWindow == null)
                         {
                             _logger.LogError("Failed to get MainWindow from current window");
                             _snackbarService.Show("Error", "Failed to navigate: MainWindow not found", 
@@ -290,8 +290,8 @@ namespace WallYouNeed.App.Pages
                         }
                         
                         // Get the ContentFrame directly through its name
-                        var backieeFrame = backieeWindow.FindName("ContentFrame") as Frame;
-                        if (backieeFrame == null)
+                        var latestFrame = latestWindow.FindName("ContentFrame") as Frame;
+                        if (latestFrame == null)
                         {
                             _logger.LogError("Failed to get ContentFrame from MainWindow");
                             _snackbarService.Show("Error", "Failed to navigate: ContentFrame not found", 
@@ -299,14 +299,14 @@ namespace WallYouNeed.App.Pages
                             return;
                         }
                         
-                        _logger.LogDebug("Navigating to BackieeImagesPage");
-                        backieeFrame.Navigate(backieeImagesPage);
-                        _logger.LogInformation("Successfully navigated to BackieeImagesPage");
+                        _logger.LogDebug("Navigating to LatestWallpapersPage");
+                        latestFrame.Navigate(latestWallpapersPage);
+                        _logger.LogInformation("Successfully navigated to LatestWallpapersPage");
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error navigating to BackieeImagesPage");
-                        _snackbarService.Show("Error", $"Failed to navigate to BackieeImagesPage: {ex.Message}", 
+                        _logger.LogError(ex, "Error navigating to LatestWallpapersPage");
+                        _snackbarService.Show("Error", $"Failed to navigate to LatestWallpapersPage: {ex.Message}", 
                             ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
                     }
                     
@@ -425,14 +425,14 @@ namespace WallYouNeed.App.Pages
         {
             if (wallpaper == null) return;
 
-            var backieeImage = new BackieeImage
+            var wallpaperItem = new WallpaperItem
             {
                 ImageUrl = wallpaper.ThumbnailUrl,
                 ImageId = wallpaper.Id,
                 Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
             };
 
-            Images.Add(backieeImage);
+            Images.Add(wallpaperItem);
         }
 
         private async Task LoadWallpapersAsync()
