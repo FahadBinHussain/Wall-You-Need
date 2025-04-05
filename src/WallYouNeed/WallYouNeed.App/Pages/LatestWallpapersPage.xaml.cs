@@ -2026,12 +2026,25 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                // Reset the current page to 1 for initial load
-                _currentApiPage = 1;
-                
                 // Build the API URL with parameters
                 string apiUrl = BuildApiUrl();
                 _logger?.LogInformation($"Fetching wallpapers from API: {apiUrl}");
+
+                // Create debug directory in Documents folder for easy access
+                string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                string debugDir = Path.Combine(documentsPath, "WallYouNeed", "Debug");
+                try
+                {
+                    if (!Directory.Exists(debugDir))
+                    {
+                        Directory.CreateDirectory(debugDir);
+                        _logger?.LogInformation($"Created debug directory at: {debugDir}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to create debug directory");
+                }
                 
                 using (HttpClient client = new HttpClient())
                 {
@@ -2039,7 +2052,9 @@ namespace WallYouNeed.App.Pages
                     client.DefaultRequestHeaders.Add("User-Agent", "WallYouNeed/1.0");
                     
                     // Send GET request to the API
+                    _logger?.LogInformation("Sending API request...");
                     HttpResponseMessage response = await client.GetAsync(apiUrl);
+                    _logger?.LogInformation($"API response status: {response.StatusCode}");
                     
                     // Check if the request was successful
                     if (!response.IsSuccessStatusCode)
@@ -2050,6 +2065,19 @@ namespace WallYouNeed.App.Pages
                     
                     // Read the response content
                     string jsonContent = await response.Content.ReadAsStringAsync();
+                    _logger?.LogInformation($"Received API response, length: {jsonContent.Length} characters");
+
+                    try
+                    {
+                        // Save raw response
+                        string debugFile = Path.Combine(debugDir, $"api_response_{DateTime.Now:yyyyMMdd_HHmmss}.json");
+                        await File.WriteAllTextAsync(debugFile, jsonContent);
+                        _logger?.LogInformation($"Saved API response to: {debugFile}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to save API response debug file");
+                    }
                     
                     // Deserialize JSON into list of BackieeApiWallpaper objects
                     var options = new JsonSerializerOptions
@@ -2058,6 +2086,7 @@ namespace WallYouNeed.App.Pages
                         AllowTrailingCommas = true
                     };
 
+                    _logger?.LogInformation("Deserializing API response...");
                     List<BackieeApiWallpaper> apiWallpapers = JsonSerializer.Deserialize<List<BackieeApiWallpaper>>(
                         jsonContent,
                         options
@@ -2071,7 +2100,37 @@ namespace WallYouNeed.App.Pages
 
                     _logger?.LogInformation($"Successfully loaded {apiWallpapers.Count} wallpapers from API");
                     
-                    // Convert API wallpapers to our WallpaperItem model and add to the UI
+                    try
+                    {
+                        // Save parsed data
+                        string debugDataFile = Path.Combine(debugDir, $"api_parsed_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+                        using (var writer = new StreamWriter(debugDataFile))
+                        {
+                            await writer.WriteLineAsync($"API URL: {apiUrl}");
+                            await writer.WriteLineAsync($"Total wallpapers: {apiWallpapers.Count}");
+                            await writer.WriteLineAsync("-------------------");
+                            
+                            foreach (var wallpaper in apiWallpapers)
+                            {
+                                await writer.WriteLineAsync($"ID: {wallpaper.ID}");
+                                await writer.WriteLineAsync($"Title: {wallpaper.Title}");
+                                await writer.WriteLineAsync($"MiniPhotoUrl: {wallpaper.MiniPhotoUrl}");
+                                await writer.WriteLineAsync($"FullPhotoUrl: {wallpaper.FullPhotoUrl}");
+                                await writer.WriteLineAsync($"Resolution: {wallpaper.Resolution}");
+                                await writer.WriteLineAsync($"UltraHD: {wallpaper.UltraHD}");
+                                await writer.WriteLineAsync($"UltraHDType: {wallpaper.UltraHDType}");
+                                await writer.WriteLineAsync($"AIGenerated: {wallpaper.AIGenerated}");
+                                await writer.WriteLineAsync("-------------------");
+                            }
+                        }
+                        _logger?.LogInformation($"Saved parsed data to: {debugDataFile}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to save parsed data debug file");
+                    }
+                    
+                    // Convert API wallpapers to our model and add to the UI
                     foreach (var apiWallpaper in apiWallpapers)
                     {
                         if (string.IsNullOrEmpty(apiWallpaper.MiniPhotoUrl))
