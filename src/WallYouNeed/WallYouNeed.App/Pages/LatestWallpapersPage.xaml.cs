@@ -279,7 +279,7 @@ namespace WallYouNeed.App.Pages
             try
             {
                 // Look for the JSON file in the Data directory
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "backiee_wallpapers.json");
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "wallpapers_pretty.json");
                 var fullPath = Path.GetFullPath(jsonPath);
                 _logger?.LogInformation($"Looking for JSON file at: {fullPath}");
                 
@@ -303,34 +303,28 @@ namespace WallYouNeed.App.Pages
                     {
                         var wallpaper = new SimpleWallpaper();
                         
-                        // Get the URL
-                        if (item.TryGetProperty("placeholder_url", out JsonElement urlElement) && 
+                        // Get the image URL - using MediumPhotoUrl
+                        if (item.TryGetProperty("MediumPhotoUrl", out JsonElement urlElement) && 
                             urlElement.ValueKind == JsonValueKind.String)
                         {
                             wallpaper.Url = urlElement.GetString() ?? "";
                         }
                         
-                        // Get the quality
-                        if (item.TryGetProperty("quality", out JsonElement qualityElement) && 
+                        // Get the quality (resolution info)
+                        if (item.TryGetProperty("UltraHDType", out JsonElement qualityElement) && 
                             qualityElement.ValueKind == JsonValueKind.String)
                         {
                             wallpaper.Quality = qualityElement.GetString() ?? "";
                         }
                         
                         // Get the AI status
-                        if (item.TryGetProperty("ai_status", out JsonElement aiElement))
+                        if (item.TryGetProperty("AIGenerated", out JsonElement aiElement))
                         {
                             switch (aiElement.ValueKind)
                             {
-                                case JsonValueKind.True:
-                                    wallpaper.IsAI = true;
-                                    break;
-                                case JsonValueKind.False:
-                                    wallpaper.IsAI = false;
-                                    break;
                                 case JsonValueKind.String:
                                     var strValue = aiElement.GetString() ?? "";
-                                    wallpaper.IsAI = strValue.Equals("true", StringComparison.OrdinalIgnoreCase);
+                                    wallpaper.IsAI = strValue.Equals("1", StringComparison.OrdinalIgnoreCase);
                                     break;
                                 case JsonValueKind.Number:
                                     wallpaper.IsAI = aiElement.GetInt32() != 0;
@@ -338,17 +332,38 @@ namespace WallYouNeed.App.Pages
                             }
                         }
                         
-                        // Get likes and downloads if available
-                        if (item.TryGetProperty("likes", out JsonElement likesElement) && 
-                            likesElement.ValueKind == JsonValueKind.Number)
+                        // Get likes (Rating in the new structure)
+                        if (item.TryGetProperty("Rating", out JsonElement likesElement))
                         {
-                            wallpaper.Likes = likesElement.GetInt32();
+                            switch (likesElement.ValueKind)
+                            {
+                                case JsonValueKind.String:
+                                    if (int.TryParse(likesElement.GetString(), out int likesValue))
+                                    {
+                                        wallpaper.Likes = likesValue;
+                                    }
+                                    break;
+                                case JsonValueKind.Number:
+                                    wallpaper.Likes = likesElement.GetInt32();
+                                    break;
+                            }
                         }
                         
-                        if (item.TryGetProperty("downloads", out JsonElement downloadsElement) && 
-                            downloadsElement.ValueKind == JsonValueKind.Number)
+                        // Get downloads
+                        if (item.TryGetProperty("Downloads", out JsonElement downloadsElement))
                         {
-                            wallpaper.Downloads = downloadsElement.GetInt32();
+                            switch (downloadsElement.ValueKind)
+                            {
+                                case JsonValueKind.String:
+                                    if (int.TryParse(downloadsElement.GetString(), out int downloadsValue))
+                                    {
+                                        wallpaper.Downloads = downloadsValue;
+                                    }
+                                    break;
+                                case JsonValueKind.Number:
+                                    wallpaper.Downloads = downloadsElement.GetInt32();
+                                    break;
+                            }
                         }
                         
                         wallpapers.Add(wallpaper);

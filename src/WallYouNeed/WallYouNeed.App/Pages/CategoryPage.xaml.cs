@@ -892,7 +892,7 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_wallpapers.json");
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "wallpapers_pretty.json");
                 _logger?.LogInformation($"Loading wallpapers from JSON file: {jsonPath}");
 
                 if (!File.Exists(jsonPath))
@@ -902,16 +902,66 @@ namespace WallYouNeed.App.Pages
                 }
 
                 string jsonContent = await File.ReadAllTextAsync(jsonPath);
-                var wallpapers = JsonSerializer.Deserialize<List<Core.Models.Wallpaper>>(jsonContent);
+                var wallpaperItems = JsonSerializer.Deserialize<List<dynamic>>(jsonContent);
 
-                if (wallpapers == null)
+                if (wallpaperItems == null)
                 {
                     _logger?.LogError("Failed to deserialize wallpapers from JSON");
                     return;
                 }
 
-                foreach (var wallpaper in wallpapers)
+                foreach (var item in wallpaperItems)
                 {
+                    // Create a wallpaper object from the JSON structure
+                    var wallpaper = new Core.Models.Wallpaper
+                    {
+                        Id = item.GetProperty("ID").GetString() ?? "",
+                        Title = item.GetProperty("Title").GetString() ?? "",
+                        Description = item.GetProperty("Description").GetString() ?? "",
+                        SourceUrl = item.GetProperty("WallpaperUrl").GetString() ?? "",
+                        ThumbnailUrl = item.GetProperty("MediumPhotoUrl").GetString() ?? "",
+                        // Extract tags - assuming we collect specific fields as tags
+                        Tags = new List<string>(),
+                        Width = 0,
+                        Height = 0,
+                        Likes = int.TryParse(item.GetProperty("Rating").GetString(), out int likes) ? likes : 0,
+                        Downloads = int.TryParse(item.GetProperty("Downloads").GetString(), out int downloads) ? downloads : 0,
+                    };
+
+                    // Add tags based on properties
+                    if (item.GetProperty("UltraHD").GetString() == "1")
+                    {
+                        var uhdType = item.GetProperty("UltraHDType").GetString();
+                        if (!string.IsNullOrEmpty(uhdType))
+                        {
+                            wallpaper.Tags.Add(uhdType);
+                        }
+                    }
+
+                    // Add AI tag if appropriate
+                    if (item.GetProperty("AIGenerated").GetString() == "1")
+                    {
+                        wallpaper.Tags.Add("ai");
+                    }
+
+                    // Add likes tag
+                    wallpaper.Tags.Add($"likes:{wallpaper.Likes}");
+
+                    // Add downloads tag
+                    wallpaper.Tags.Add($"downloads:{wallpaper.Downloads}");
+
+                    // Extract resolution
+                    string resolution = item.GetProperty("Resolution").GetString() ?? "";
+                    if (!string.IsNullOrEmpty(resolution) && resolution.Contains('x'))
+                    {
+                        var parts = resolution.Split('x');
+                        if (parts.Length == 2 && int.TryParse(parts[0], out int width) && int.TryParse(parts[1], out int height))
+                        {
+                            wallpaper.Width = width;
+                            wallpaper.Height = height;
+                        }
+                    }
+
                     ConvertAndAddWallpaper(wallpaper);
                 }
 

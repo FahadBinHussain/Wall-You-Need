@@ -439,7 +439,7 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backiee_wallpapers.json");
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "wallpapers_pretty.json");
                 _logger?.LogInformation($"Loading wallpapers from JSON file: {jsonPath}");
 
                 if (!File.Exists(jsonPath))
@@ -449,16 +449,66 @@ namespace WallYouNeed.App.Pages
                 }
 
                 string jsonContent = await File.ReadAllTextAsync(jsonPath);
-                var wallpapers = JsonSerializer.Deserialize<List<Wallpaper>>(jsonContent);
+                var wallpaperItems = JsonSerializer.Deserialize<List<JsonElement>>(jsonContent);
 
-                if (wallpapers == null)
+                if (wallpaperItems == null)
                 {
                     _logger?.LogError("Failed to deserialize wallpapers from JSON");
                     return;
                 }
 
-                foreach (var wallpaper in wallpapers)
+                foreach (var item in wallpaperItems)
                 {
+                    // Create a wallpaper object from the JSON structure
+                    var wallpaper = new Wallpaper
+                    {
+                        Id = GetStringProperty(item, "ID"),
+                        Title = GetStringProperty(item, "Title"),
+                        Description = GetStringProperty(item, "Description"),
+                        SourceUrl = GetStringProperty(item, "WallpaperUrl"),
+                        ThumbnailUrl = GetStringProperty(item, "MediumPhotoUrl"),
+                        // Extract tags - assuming we collect specific fields as tags
+                        Tags = new List<string>(),
+                        Width = 0,
+                        Height = 0,
+                        Likes = GetIntProperty(item, "Rating"),
+                        Downloads = GetIntProperty(item, "Downloads"),
+                    };
+
+                    // Add tags based on properties
+                    if (GetStringProperty(item, "UltraHD") == "1")
+                    {
+                        var uhdType = GetStringProperty(item, "UltraHDType");
+                        if (!string.IsNullOrEmpty(uhdType))
+                        {
+                            wallpaper.Tags.Add(uhdType);
+                        }
+                    }
+
+                    // Add AI tag if appropriate
+                    if (GetStringProperty(item, "AIGenerated") == "1")
+                    {
+                        wallpaper.Tags.Add("ai");
+                    }
+
+                    // Add likes tag
+                    wallpaper.Tags.Add($"likes:{wallpaper.Likes}");
+
+                    // Add downloads tag
+                    wallpaper.Tags.Add($"downloads:{wallpaper.Downloads}");
+
+                    // Extract resolution
+                    string resolution = GetStringProperty(item, "Resolution");
+                    if (!string.IsNullOrEmpty(resolution) && resolution.Contains('x'))
+                    {
+                        var parts = resolution.Split('x');
+                        if (parts.Length == 2 && int.TryParse(parts[0], out int width) && int.TryParse(parts[1], out int height))
+                        {
+                            wallpaper.Width = width;
+                            wallpaper.Height = height;
+                        }
+                    }
+
                     ConvertAndAddWallpaper(wallpaper);
                 }
 
@@ -468,6 +518,32 @@ namespace WallYouNeed.App.Pages
             {
                 _logger?.LogError(ex, "Error loading wallpapers from JSON file");
             }
+        }
+
+        // Helper methods to safely extract properties from JsonElement
+        private string GetStringProperty(JsonElement element, string propertyName)
+        {
+            if (element.TryGetProperty(propertyName, out JsonElement property) && property.ValueKind == JsonValueKind.String)
+            {
+                return property.GetString() ?? string.Empty;
+            }
+            return string.Empty;
+        }
+
+        private int GetIntProperty(JsonElement element, string propertyName)
+        {
+            if (element.TryGetProperty(propertyName, out JsonElement property))
+            {
+                if (property.ValueKind == JsonValueKind.Number)
+                {
+                    return property.GetInt32();
+                }
+                else if (property.ValueKind == JsonValueKind.String && int.TryParse(property.GetString(), out int value))
+                {
+                    return value;
+                }
+            }
+            return 0;
         }
     }
 } 
