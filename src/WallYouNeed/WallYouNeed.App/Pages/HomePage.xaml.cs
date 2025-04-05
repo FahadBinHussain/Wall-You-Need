@@ -30,7 +30,6 @@ namespace WallYouNeed.App.Pages
         private readonly IWallpaperService _wallpaperService;
         private readonly ICollectionService _collectionService;
         private readonly ISettingsService _settingsService;
-        private readonly IBackieeScraperService _backieeScraperService;
         private ObservableCollection<WallpaperItem> Images { get; set; }
 
         public ObservableCollection<Core.Models.Wallpaper> RecentWallpapers { get; } = new();
@@ -44,15 +43,13 @@ namespace WallYouNeed.App.Pages
             ISnackbarService snackbarService,
             IWallpaperService wallpaperService,
             ICollectionService collectionService,
-            ISettingsService settingsService,
-            IBackieeScraperService backieeScraperService)
+            ISettingsService settingsService)
         {
             _logger = logger;
             _snackbarService = snackbarService;
             _wallpaperService = wallpaperService;
             _collectionService = collectionService;
             _settingsService = settingsService;
-            _backieeScraperService = backieeScraperService;
 
             InitializeComponent();
             DataContext = this;
@@ -321,7 +318,6 @@ namespace WallYouNeed.App.Pages
                     Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<CategoryPage>>((App.Current as App).Services),
                     _wallpaperService,
                     _snackbarService,
-                    _backieeScraperService,
                     _settingsService);
                 
                 // Set the category

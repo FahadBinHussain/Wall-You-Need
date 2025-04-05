@@ -23,7 +23,7 @@ namespace WallYouNeed.Core
                 new WallpaperRepository(
                     Path.Combine(dataPath, "wallpapers.json"),
                     provider.GetRequiredService<ILogger<WallpaperRepository>>()));
-                    
+                
             services.AddSingleton<ICollectionRepository>(provider => 
                 new CollectionRepository(
                     Path.Combine(dataPath, "collections.json"),
@@ -54,9 +54,6 @@ namespace WallYouNeed.Core
                 // You would add your API key here in a real application
                 client.DefaultRequestHeaders.Add("Authorization", "YOUR_PEXELS_API_KEY");
             });
-            
-            // Register BackieeScraperService
-            services.AddSingleton<IBackieeScraperService, BackieeScraperService>();
             
             // Register utility services
             services.AddTransient<HtmlDownloader>();

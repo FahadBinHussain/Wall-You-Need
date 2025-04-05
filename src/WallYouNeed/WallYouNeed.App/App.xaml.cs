@@ -139,9 +139,6 @@ namespace WallYouNeed.App
                 return new WallYouNeed.Core.Utils.HtmlDownloader(httpClient, logger);
             });
             
-            // Register Backiee service
-            services.AddSingleton<WallYouNeed.Core.Services.Interfaces.IBackieeScraperService, WallYouNeed.Core.Services.BackieeScraperService>();
-            
             // Register core services
             services.AddSingleton<IWallpaperService, WallpaperService>();
             services.AddSingleton<ISettingsService, SettingsService>();

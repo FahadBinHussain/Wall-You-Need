@@ -26,7 +26,6 @@ namespace WallYouNeed.App.Pages
         private readonly ILogger<CategoryPage> _logger;
         private readonly IWallpaperService _wallpaperService;
         private readonly ISnackbarService _snackbarService;
-        private readonly IBackieeScraperService _backieeScraperService;
         private readonly ISettingsService _settingsService;
         
         private string _currentCategory = string.Empty;
@@ -51,13 +50,11 @@ namespace WallYouNeed.App.Pages
             ILogger<CategoryPage> logger,
             IWallpaperService wallpaperService,
             ISnackbarService snackbarService,
-            IBackieeScraperService backieeScraperService,
             ISettingsService settingsService)
         {
             _logger = logger;
             _wallpaperService = wallpaperService;
             _snackbarService = snackbarService;
-            _backieeScraperService = backieeScraperService;
             _settingsService = settingsService;
             
             InitializeComponent();
@@ -72,7 +69,6 @@ namespace WallYouNeed.App.Pages
             // Update the UI with the selected category
             switch (category.ToLowerInvariant())
             {
-                // We've removed the "latest" case
                 case "weekly":
                     CategoryTitle = "Weekly Picks";
                     CategoryDescription = "Our picks for this week's best wallpapers.";
@@ -131,8 +127,7 @@ namespace WallYouNeed.App.Pages
                 switch (category.ToLowerInvariant())
                 {
                     case "latest":
-                        // Special handling for Latest category
-                        await LoadLatestWallpapers();
+                        await LoadWallpapersAsync();
                         break;
                     case "weekly":
                     case "monthly":
@@ -192,316 +187,105 @@ namespace WallYouNeed.App.Pages
             }
         }
         
-        // New method for loading latest wallpapers
-        private async Task LoadLatestWallpapers()
-        {
-            _logger.LogInformation("Loading latest wallpapers using static Backiee images");
-            
-            try
-            {
-                // Get static placeholder wallpapers from the BackieeScraperService
-                var placeholderWallpapers = _backieeScraperService.GeneratePlaceholderWallpapers(20);
-                _logger.LogInformation("Generated {Count} static placeholder wallpapers", placeholderWallpapers.Count);
-                
-                // For Latest, create the UI cards directly without adding to collection or repository
-                foreach (var model in placeholderWallpapers)
-                {
-                    _logger.LogDebug("Processing wallpaper ID: {Id}, URL: {Url}", model.Id, model.ThumbnailUrl);
-                    
-                    // Create a card directly in the UI
-                    CreateDirectWallpaperCard(model);
-                }
-                
-                // Show success message
-                _snackbarService.Show(
-                    "Success",
-                    "Latest wallpapers loaded successfully",
-                    ControlAppearance.Success,
-                    null,
-                    TimeSpan.FromSeconds(2));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading latest wallpapers");
-                throw;
-            }
-        }
-        
-        // Create a wallpaper card directly from the model without using the repository
-        private void CreateDirectWallpaperCard(WallpaperModel model)
+        private async Task LoadWallpapersAsync()
         {
             try
             {
-                if (WallpapersPanel == null)
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "wallpapers_pretty.json");
+                _logger?.LogInformation($"Loading wallpapers from JSON file: {jsonPath}");
+
+                if (!File.Exists(jsonPath))
                 {
-                    _logger.LogWarning("WallpapersPanel is null, cannot add wallpaper card to UI");
+                    _logger?.LogError($"JSON file not found: {jsonPath}");
                     return;
                 }
-                
-                _logger.LogInformation("Creating direct wallpaper card for ID: {Id}, Thumbnail: {Url}", 
-                    model.Id, model.ThumbnailUrl);
-                
-                // Create the card
-                var card = new Wpf.Ui.Controls.Card
+
+                string jsonContent = await File.ReadAllTextAsync(jsonPath);
+                var wallpaperItems = JsonSerializer.Deserialize<List<dynamic>>(jsonContent);
+
+                if (wallpaperItems == null)
                 {
-                    Margin = new Thickness(8),
-                    Width = 280,
-                    Height = 200
-                };
-                
-                // Create the grid to hold the image and info
-                var grid = new Grid();
-                
-                // Create the image
-                var image = new System.Windows.Controls.Image
+                    _logger?.LogError("Failed to deserialize wallpapers from JSON");
+                    return;
+                }
+
+                foreach (var item in wallpaperItems)
                 {
-                    Stretch = Stretch.UniformToFill
-                };
-                
-                bool imageLoaded = false;
-                
-                // Load the image from URL using BitmapImage
-                try
-                {
-                    _logger.LogDebug("Attempting to load image from thumbnail URL: {Url}", model.ThumbnailUrl);
-                    
-                    // Create a bitmap image
-                    var bitmap = new BitmapImage();
-                    
-                    // Important: Set CacheOption before BeginInit
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.BeginInit();
-                    
-                    // Add download failed event handler
-                    bitmap.DownloadFailed += (s, e) => {
-                        _logger.LogError("Image download failed: {Error}", e.ErrorException?.Message ?? "Unknown error");
+                    // Create a wallpaper object from the JSON structure
+                    var wallpaper = new Core.Models.Wallpaper
+                    {
+                        Id = item.GetProperty("ID").GetString() ?? "",
+                        Title = item.GetProperty("Title").GetString() ?? "",
+                        Description = item.GetProperty("Description").GetString() ?? "",
+                        SourceUrl = item.GetProperty("WallpaperUrl").GetString() ?? "",
+                        ThumbnailUrl = item.GetProperty("MiniPhotoUrl").GetString() ?? "",
+                        // Extract tags - assuming we collect specific fields as tags
+                        Tags = new List<string>(),
+                        Width = 0,
+                        Height = 0,
+                        Likes = int.TryParse(item.GetProperty("Rating").GetString(), out int likes) ? likes : 0,
+                        Downloads = int.TryParse(item.GetProperty("Downloads").GetString(), out int downloads) ? downloads : 0,
                     };
-                    
-                    // Create an absolute URI
-                    bitmap.UriSource = new Uri(model.ThumbnailUrl, UriKind.Absolute);
-                    
-                    // End initialization
-                    bitmap.EndInit();
-                    
-                    // Set the image source
-                    image.Source = bitmap;
-                    imageLoaded = true;
-                    
-                    _logger.LogInformation("Successfully loaded image from URL: {Url}", model.ThumbnailUrl);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to load thumbnail URL: {Url}", model.ThumbnailUrl);
-                    
-                    try
+
+                    // Add tags based on properties
+                    if (item.GetProperty("UltraHD").GetString() == "1")
                     {
-                        // Try the full image URL as a fallback
-                        _logger.LogDebug("Trying full image URL instead: {Url}", model.ImageUrl);
-                        
-                        var bitmap = new BitmapImage();
-                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                        bitmap.BeginInit();
-                        bitmap.UriSource = new Uri(model.ImageUrl, UriKind.Absolute);
-                        bitmap.DownloadFailed += (s, e) => {
-                            _logger.LogError("Image download failed: {Error}", e.ErrorException?.Message ?? "Unknown error");
-                        };
-                        bitmap.EndInit();
-                        
-                        image.Source = bitmap;
-                        imageLoaded = true;
-                        
-                        _logger.LogInformation("Successfully loaded image from full URL: {Url}", model.ImageUrl);
+                        var uhdType = item.GetProperty("UltraHDType").GetString();
+                        if (!string.IsNullOrEmpty(uhdType))
+                        {
+                            wallpaper.Tags.Add(uhdType);
+                        }
                     }
-                    catch (Exception innerEx)
+
+                    // Add AI tag if appropriate
+                    if (item.GetProperty("AIGenerated").GetString() == "1")
                     {
-                        _logger.LogError(innerEx, "Failed to load image from full URL: {Url}", model.ImageUrl);
-                        
-                        // Use fallback color with text if both image loads fail
-                        var fallbackBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(96, 125, 139));
-                        
-                        // Create fallback rectangle (use Border instead of Rectangle for WPF)
-                        var fallbackBorder = new Border
-                        {
-                            Background = fallbackBrush,
-                            Width = 280,
-                            Height = 200
-                        };
-                        
-                        var fallbackText = new System.Windows.Controls.TextBlock
-                        {
-                            Text = $"ID: {model.Id}",
-                            Foreground = System.Windows.Media.Brushes.White,
-                            FontSize = 16,
-                            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                            VerticalAlignment = System.Windows.VerticalAlignment.Center
-                        };
-                        
-                        // Add the border and text to the grid
-                        grid.Children.Add(fallbackBorder);
-                        grid.Children.Add(fallbackText);
+                        wallpaper.Tags.Add("ai");
                     }
+
+                    // Add likes tag
+                    wallpaper.Tags.Add($"likes:{wallpaper.Likes}");
+
+                    // Add downloads tag
+                    wallpaper.Tags.Add($"downloads:{wallpaper.Downloads}");
+
+                    // Extract resolution
+                    string resolution = item.GetProperty("Resolution").GetString() ?? "";
+                    if (!string.IsNullOrEmpty(resolution) && resolution.Contains('x'))
+                    {
+                        var parts = resolution.Split('x');
+                        if (parts.Length == 2 && int.TryParse(parts[0], out int width) && int.TryParse(parts[1], out int height))
+                        {
+                            wallpaper.Width = width;
+                            wallpaper.Height = height;
+                        }
+                    }
+
+                    ConvertAndAddWallpaper(wallpaper);
                 }
-                
-                // Only add the image if it was loaded successfully
-                if (imageLoaded)
-                {
-                    grid.Children.Add(image);
-                }
-                
-                // Create the info panel at the bottom
-                var infoBorder = new Border
-                {
-                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(176, 0, 0, 0)), // #B0000000
-                    VerticalAlignment = VerticalAlignment.Bottom,
-                    Padding = new Thickness(10, 8, 10, 8)
-                };
-                
-                var infoPanel = new StackPanel();
-                
-                // Title
-                var title = new System.Windows.Controls.TextBlock
-                {
-                    Text = model.Title ?? "Untitled Wallpaper",
-                    Foreground = System.Windows.Media.Brushes.White,
-                    FontSize = 14,
-                    FontWeight = FontWeights.SemiBold
-                };
-                
-                // Source info
-                var source = new System.Windows.Controls.TextBlock
-                {
-                    Text = $"Source: {model.Source ?? "Unknown"}",
-                    Foreground = System.Windows.Media.Brushes.LightGray,
-                    FontSize = 12,
-                    Margin = new Thickness(0, 4, 0, 0)
-                };
-                
-                // Action buttons
-                var buttonsPanel = new StackPanel
-                {
-                    Orientation = System.Windows.Controls.Orientation.Horizontal,
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
-                    Margin = new Thickness(0, 8, 0, 0)
-                };
-                
-                // Apply button
-                var applyButton = new Wpf.Ui.Controls.Button
-                {
-                    Content = "View",
-                    Appearance = Wpf.Ui.Controls.ControlAppearance.Primary,
-                    Padding = new Thickness(8, 4, 8, 4),
-                    Margin = new Thickness(0, 0, 4, 0),
-                    FontSize = 12
-                };
-                
-                applyButton.Click += (s, e) => ViewWallpaperFromModel(model);
-                
-                // Save button
-                var saveButton = new Wpf.Ui.Controls.Button
-                {
-                    Content = "Save",
-                    Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary,
-                    Padding = new Thickness(8, 4, 8, 4),
-                    Margin = new Thickness(4, 0, 4, 0),
-                    FontSize = 12
-                };
-                
-                saveButton.Click += (s, e) => SaveWallpaperFromModel(model);
-                
-                // Add buttons to panel
-                buttonsPanel.Children.Add(applyButton);
-                buttonsPanel.Children.Add(saveButton);
-                
-                // Add elements to info panel
-                infoPanel.Children.Add(title);
-                infoPanel.Children.Add(source);
-                infoPanel.Children.Add(buttonsPanel);
-                
-                // Add info panel to border
-                infoBorder.Child = infoPanel;
-                
-                // Add border to grid
-                grid.Children.Add(infoBorder);
-                
-                // Add grid to card
-                card.Content = grid;
-                
-                // Add click event to the card
-                card.MouseLeftButtonUp += (s, e) => ViewWallpaperFromModel(model);
-                
-                // Add card to the panel
-                WallpapersPanel.Children.Add(card);
-                
-                _logger.LogInformation("Added direct wallpaper card to UI for ID: {Id}", model.Id);
+
+                _logger?.LogInformation($"Successfully loaded {Images.Count} wallpapers");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating direct wallpaper card for ID: {Id}", model.Id);
+                _logger?.LogError(ex, "Error loading wallpapers from JSON file");
             }
         }
-        
-        // Helper methods for the direct card actions
-        private void ViewWallpaperFromModel(WallpaperModel model)
+
+        private void ConvertAndAddWallpaper(Core.Models.Wallpaper wallpaper)
         {
-            _logger.LogInformation("View wallpaper clicked: {Id}", model.Id);
-            
-            Process.Start(new ProcessStartInfo
+            if (wallpaper == null) return;
+
+            var wallpaperItem = new WallpaperItem
             {
-                FileName = model.ImageUrl,
-                UseShellExecute = true
-            });
+                ImageUrl = wallpaper.ThumbnailUrl,
+                ImageId = wallpaper.Id,
+                Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
+            };
+
+            Images.Add(wallpaperItem);
         }
-        
-        private async void SaveWallpaperFromModel(WallpaperModel model)
-        {
-            _logger.LogInformation("Save wallpaper clicked: {Id}", model.Id);
-            
-            try
-            {
-                // Convert to Wallpaper model
-                var wallpaper = new Wallpaper
-                {
-                    Id = model.Id,
-                    Title = model.Title,
-                    Name = model.Title,
-                    Tags = new List<string> { "Latest" },
-                    ThumbnailUrl = model.ThumbnailUrl,
-                    SourceUrl = model.ImageUrl,
-                    Width = model.Width,
-                    Height = model.Height,
-                    Source = Core.Models.WallpaperSource.Custom,
-                    Metadata = new Dictionary<string, string>
-                    {
-                        { "Source", model.Source },
-                        { "Rating", model.Rating.ToString() },
-                        { "Resolution", model.ResolutionCategory },
-                        { "IsStaticPlaceholder", "true" }
-                    }
-                };
-                
-                // Save to repository
-                await _wallpaperService.SaveWallpaperAsync(wallpaper);
-                
-                _snackbarService.Show(
-                    "Success",
-                    "Wallpaper saved to your collection",
-                    ControlAppearance.Success,
-                    null,
-                    TimeSpan.FromSeconds(2));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error saving wallpaper: {Id}", model.Id);
-                
-                _snackbarService.Show(
-                    "Error",
-                    "Failed to save wallpaper",
-                    ControlAppearance.Danger,
-                    null,
-                    TimeSpan.FromSeconds(2));
-            }
-        }
-        
+
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -872,105 +656,6 @@ namespace WallYouNeed.App.Pages
                 ControlAppearance.Info,
                 null,
                 TimeSpan.FromSeconds(2));
-        }
-
-        private void ConvertAndAddWallpaper(Core.Models.Wallpaper wallpaper)
-        {
-            if (wallpaper == null) return;
-
-            var wallpaperItem = new WallpaperItem
-            {
-                ImageUrl = wallpaper.ThumbnailUrl,
-                ImageId = wallpaper.Id,
-                Resolution = $"{wallpaper.Width}x{wallpaper.Height}"
-            };
-
-            Images.Add(wallpaperItem);
-        }
-
-        private async Task LoadWallpapersAsync()
-        {
-            try
-            {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "wallpapers_pretty.json");
-                _logger?.LogInformation($"Loading wallpapers from JSON file: {jsonPath}");
-
-                if (!File.Exists(jsonPath))
-                {
-                    _logger?.LogError($"JSON file not found: {jsonPath}");
-                    return;
-                }
-
-                string jsonContent = await File.ReadAllTextAsync(jsonPath);
-                var wallpaperItems = JsonSerializer.Deserialize<List<dynamic>>(jsonContent);
-
-                if (wallpaperItems == null)
-                {
-                    _logger?.LogError("Failed to deserialize wallpapers from JSON");
-                    return;
-                }
-
-                foreach (var item in wallpaperItems)
-                {
-                    // Create a wallpaper object from the JSON structure
-                    var wallpaper = new Core.Models.Wallpaper
-                    {
-                        Id = item.GetProperty("ID").GetString() ?? "",
-                        Title = item.GetProperty("Title").GetString() ?? "",
-                        Description = item.GetProperty("Description").GetString() ?? "",
-                        SourceUrl = item.GetProperty("WallpaperUrl").GetString() ?? "",
-                        ThumbnailUrl = item.GetProperty("MiniPhotoUrl").GetString() ?? "",
-                        // Extract tags - assuming we collect specific fields as tags
-                        Tags = new List<string>(),
-                        Width = 0,
-                        Height = 0,
-                        Likes = int.TryParse(item.GetProperty("Rating").GetString(), out int likes) ? likes : 0,
-                        Downloads = int.TryParse(item.GetProperty("Downloads").GetString(), out int downloads) ? downloads : 0,
-                    };
-
-                    // Add tags based on properties
-                    if (item.GetProperty("UltraHD").GetString() == "1")
-                    {
-                        var uhdType = item.GetProperty("UltraHDType").GetString();
-                        if (!string.IsNullOrEmpty(uhdType))
-                        {
-                            wallpaper.Tags.Add(uhdType);
-                        }
-                    }
-
-                    // Add AI tag if appropriate
-                    if (item.GetProperty("AIGenerated").GetString() == "1")
-                    {
-                        wallpaper.Tags.Add("ai");
-                    }
-
-                    // Add likes tag
-                    wallpaper.Tags.Add($"likes:{wallpaper.Likes}");
-
-                    // Add downloads tag
-                    wallpaper.Tags.Add($"downloads:{wallpaper.Downloads}");
-
-                    // Extract resolution
-                    string resolution = item.GetProperty("Resolution").GetString() ?? "";
-                    if (!string.IsNullOrEmpty(resolution) && resolution.Contains('x'))
-                    {
-                        var parts = resolution.Split('x');
-                        if (parts.Length == 2 && int.TryParse(parts[0], out int width) && int.TryParse(parts[1], out int height))
-                        {
-                            wallpaper.Width = width;
-                            wallpaper.Height = height;
-                        }
-                    }
-
-                    ConvertAndAddWallpaper(wallpaper);
-                }
-
-                _logger?.LogInformation($"Successfully loaded {Images.Count} wallpapers");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error loading wallpapers from JSON file");
-            }
         }
     }
 }
