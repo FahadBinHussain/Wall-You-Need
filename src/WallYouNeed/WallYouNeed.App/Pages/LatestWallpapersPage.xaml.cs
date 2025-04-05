@@ -303,8 +303,8 @@ namespace WallYouNeed.App.Pages
                     {
                         var wallpaper = new SimpleWallpaper();
                         
-                        // Get the image URL - using MediumPhotoUrl
-                        if (item.TryGetProperty("MediumPhotoUrl", out JsonElement urlElement) && 
+                        // Get the image URL - using MiniPhotoUrl for faster loading
+                        if (item.TryGetProperty("MiniPhotoUrl", out JsonElement urlElement) && 
                             urlElement.ValueKind == JsonValueKind.String)
                         {
                             wallpaper.Url = urlElement.GetString() ?? "";

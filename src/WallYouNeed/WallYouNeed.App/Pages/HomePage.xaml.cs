@@ -466,7 +466,7 @@ namespace WallYouNeed.App.Pages
                         Title = GetStringProperty(item, "Title"),
                         Description = GetStringProperty(item, "Description"),
                         SourceUrl = GetStringProperty(item, "WallpaperUrl"),
-                        ThumbnailUrl = GetStringProperty(item, "MediumPhotoUrl"),
+                        ThumbnailUrl = GetStringProperty(item, "MiniPhotoUrl"),
                         // Extract tags - assuming we collect specific fields as tags
                         Tags = new List<string>(),
                         Width = 0,

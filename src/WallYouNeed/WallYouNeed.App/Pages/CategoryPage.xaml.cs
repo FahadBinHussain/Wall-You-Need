@@ -919,7 +919,7 @@ namespace WallYouNeed.App.Pages
                         Title = item.GetProperty("Title").GetString() ?? "",
                         Description = item.GetProperty("Description").GetString() ?? "",
                         SourceUrl = item.GetProperty("WallpaperUrl").GetString() ?? "",
-                        ThumbnailUrl = item.GetProperty("MediumPhotoUrl").GetString() ?? "",
+                        ThumbnailUrl = item.GetProperty("MiniPhotoUrl").GetString() ?? "",
                         // Extract tags - assuming we collect specific fields as tags
                         Tags = new List<string>(),
                         Width = 0,
