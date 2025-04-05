@@ -247,6 +247,9 @@ namespace WallYouNeed.App.Pages
                 _wallpapers.Clear();
                 _loadedUrls.Clear();
                 
+                // Reset page counter
+                _currentApiPage = 1;
+                
                 StatusTextBlock.Text = "Loading wallpapers...";
                 
                 // Try to load from API
@@ -2354,7 +2357,13 @@ namespace WallYouNeed.App.Pages
         
         private string BuildApiUrl()
         {
-            return $"{_apiBaseUrl}?action=paging_list&list_type={_apiSortBy}&page={_currentApiPage}&page_size={_apiPageSize}&category={_apiCategory}&is_ai={_apiAiFilter}";
+            // Page number starts from 0 in the API
+            int apiPageIndex = _currentApiPage - 1;
+            if (apiPageIndex < 0) apiPageIndex = 0;
+
+            return $"{_apiBaseUrl}?action=paging_list&list_type={_apiSortBy}&page={apiPageIndex}&page_size={_apiPageSize}" +
+                   $"&category={_apiCategory}&is_ai={_apiAiFilter}&sort_by=popularity" +
+                   $"&4k=false&5k=false&8k=false&status=active&args=";
         }
     }
 
