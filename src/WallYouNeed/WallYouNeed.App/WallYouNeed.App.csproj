@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -45,13 +46,6 @@
     <Resource Include="Assets\logo.png" />
     <Resource Include="Assets\noad.png" />
     <Resource Include="Assets\placeholder-dark.png" />
-  </ItemGroup>
-
-  <!-- Data files -->
-  <ItemGroup>
-    <None Include="Data\wallpapers_pretty.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project> 

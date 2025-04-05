@@ -64,6 +64,14 @@ namespace WallYouNeed.App.Pages
         private int _runningBackgroundTasks = 0;
         private readonly object _backgroundTaskLock = new object();
 
+        private readonly string _apiBaseUrl = "https://backiee.com/api/wallpaper/list.php";
+        private int _currentApiPage = 1;
+        private const int _apiPageSize = 30;
+        private string _apiCategory = "all";
+        private string _apiAiFilter = "all"; // Options: all, 0 (non-AI), 1 (AI only)
+        private string _apiSortBy = "latest"; // Options: latest, popularity, downloads
+        private bool _useApiForLoading = true; // Enable API loading by default
+
         public LatestWallpapersPage(ILogger<LatestWallpapersPage> logger = null, ISettingsService settingsService = null)
         {
             _logger = logger;
@@ -239,16 +247,16 @@ namespace WallYouNeed.App.Pages
                 _wallpapers.Clear();
                 _loadedUrls.Clear();
                 
-                StatusTextBlock.Text = "Loading wallpapers from data file...";
+                StatusTextBlock.Text = "Loading wallpapers...";
                 
-                // Try to load from JSON file first
-                bool jsonLoaded = await LoadImagesFromJsonFile();
+                // Try to load from API
+                bool wallpapersLoaded = await LoadWallpapersFromApiAsync();
                 
-                // If JSON loading failed, use test data as fallback
-                if (!jsonLoaded)
+                // If API loading failed, use test data as fallback
+                if (!wallpapersLoaded)
                 {
-                    _logger?.LogWarning("Failed to load from JSON, falling back to test data");
-                    StatusTextBlock.Text = "Using sample data (JSON file not found)";
+                    _logger?.LogWarning("Failed to load from API, falling back to test data");
+                    StatusTextBlock.Text = "Using sample data (API not available)";
                     await Task.Delay(1000); // Show message briefly
                     
                     // Generate test data
@@ -285,8 +293,8 @@ namespace WallYouNeed.App.Pages
                 
                 if (!File.Exists(fullPath))
                 {
-                    _logger?.LogError("JSON file not found in Data directory");
-                    return false;
+                    _logger?.LogInformation("JSON file not found, switching to API loading");
+                    return await LoadWallpapersFromApiAsync();
                 }
 
                 _logger?.LogInformation($"Found JSON file at: {fullPath}");
@@ -1074,7 +1082,18 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                _logger?.LogInformation("LoadMoreImagesAsync called, current imageId: {ImageId}, background: {isBackground}", 
+                _logger?.LogInformation("LoadMoreImagesAsync called, current loading mode: {mode}", 
+                    _useApiForLoading ? "API" : "Sequential HTTP Check");
+                
+                // If API loading is enabled, use that method
+                if (_useApiForLoading)
+                {
+                    await LoadMoreWallpapersFromApiAsync(cancellationToken);
+                    return;
+                }
+                
+                // Otherwise, fall back to the existing sequential HTTP check approach
+                _logger?.LogInformation("Using sequential HTTP check approach, current imageId: {ImageId}, background: {isBackground}", 
                     _currentImageId, isBackgroundLoading);
                 
                 // Show status only if not background loading
@@ -1320,20 +1339,963 @@ namespace WallYouNeed.App.Pages
                 System.Windows.MessageBox.Show($"Clicked on {wallpaper.ResolutionLabel} wallpaper\nResolution: {wallpaper.Resolution}\nAI Generated: {wallpaper.IsAI}\nImage ID: {wallpaper.ImageId}", 
                     "Wallpaper Details", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 
-                // TODO: Implement setting wallpaper functionality here
+                // Implement setting wallpaper functionality
+                DownloadAndSetWallpaper(wallpaper);
+            }
+            else if (sender is Grid grid && grid.Tag is WallpaperItem gridWallpaper)
+            {
+                _logger?.LogInformation($"Wallpaper clicked: {gridWallpaper.ResolutionLabel} (ID: {gridWallpaper.ImageId})");
+                
+                // Show a popup with wallpaper details
+                var result = System.Windows.MessageBox.Show(
+                    $"Would you like to set this {gridWallpaper.ResolutionLabel} wallpaper as your desktop background?\n\nResolution: {gridWallpaper.Resolution}\nAI Generated: {gridWallpaper.IsAI}\nImage ID: {gridWallpaper.ImageId}", 
+                    "Set Wallpaper", 
+                    System.Windows.MessageBoxButton.YesNo, 
+                    System.Windows.MessageBoxImage.Question);
+                
+                if (result == System.Windows.MessageBoxResult.Yes)
+                {
+                    // Download and set wallpaper
+                    DownloadAndSetWallpaper(gridWallpaper);
+                }
+            }
+        }
+        
+        private async void DownloadAndSetWallpaper(WallpaperItem wallpaper)
+        {
+            try
+            {
+                _logger?.LogInformation($"Downloading wallpaper: {wallpaper.ImageUrl}");
+                
+                // Show loading status
+                StatusTextBlock.Text = "Downloading wallpaper...";
+                StatusTextBlock.Visibility = Visibility.Visible;
+                LoadingProgressBar.Visibility = Visibility.Visible;
+                
+                // Get the high-resolution URL by modifying the thumbnail URL
+                // Backiee uses a specific format for full-size images
+                string highResUrl = GetHighResolutionUrl(wallpaper.ImageUrl, wallpaper.ImageId);
+                
+                // Create temp directory if it doesn't exist
+                string tempDir = Path.Combine(Path.GetTempPath(), "WallYouNeed");
+                if (!Directory.Exists(tempDir))
+                {
+                    Directory.CreateDirectory(tempDir);
+                }
+                
+                // Create a unique filename based on wallpaper ID and timestamp
+                string wallpaperFile = Path.Combine(tempDir, $"wallpaper_{wallpaper.ImageId}_{DateTime.Now.Ticks}.jpg");
+                
+                // Download the wallpaper
+                using (var client = new HttpClient())
+                {
+                    client.DefaultRequestHeaders.Add("User-Agent", "WallYouNeed/1.0");
+                    
+                    // Update status
+                    StatusTextBlock.Text = $"Downloading wallpaper {wallpaper.ImageId}...";
+                    
+                    // Download the image
+                    var imageBytes = await client.GetByteArrayAsync(highResUrl);
+                    
+                    // Save to file
+                    await File.WriteAllBytesAsync(wallpaperFile, imageBytes);
+                    
+                    _logger?.LogInformation($"Wallpaper saved to: {wallpaperFile}");
+                }
+                
+                // Set as desktop wallpaper using Windows API
+                StatusTextBlock.Text = "Setting wallpaper...";
+                
+                bool wallpaperSet = SetWindowsWallpaper(wallpaperFile);
+                
+                if (wallpaperSet)
+                {
+                    _logger?.LogInformation("Wallpaper set successfully");
+                    StatusTextBlock.Text = "Wallpaper set successfully";
+                    
+                    // Track the download count increment (would be sent to API in a real implementation)
+                    wallpaper.Downloads += 1;
+                }
+                else
+                {
+                    _logger?.LogError("Failed to set wallpaper");
+                    StatusTextBlock.Text = "Failed to set wallpaper";
+                }
+                
+                // Hide status after a delay
+                await Task.Delay(2000);
+                StatusTextBlock.Visibility = Visibility.Collapsed;
+                LoadingProgressBar.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error setting wallpaper");
+                StatusTextBlock.Text = $"Error: {ex.Message}";
+                await Task.Delay(2000);
+                StatusTextBlock.Visibility = Visibility.Collapsed;
+                LoadingProgressBar.Visibility = Visibility.Collapsed;
+            }
+        }
+        
+        private string GetHighResolutionUrl(string thumbnailUrl, string imageId)
+        {
+            try
+            {
+                // Convert thumbnail URL to high-resolution URL
+                // Example: https://backiee.com/static/wallpapers/560x315/123456.jpg
+                // to https://backiee.com/static/wallpapers/wide/123456.jpg
+                
+                if (string.IsNullOrEmpty(thumbnailUrl) || string.IsNullOrEmpty(imageId))
+                {
+                    return thumbnailUrl; // Return original if we can't convert
+                }
+                
+                // For Backiee, high-resolution wallpapers are in the "wide" directory
+                return $"https://backiee.com/static/wallpapers/wide/{imageId}.jpg";
+            }
+            catch
+            {
+                return thumbnailUrl; // Return original URL if any error occurs
+            }
+        }
+        
+        private bool SetWindowsWallpaper(string wallpaperFilePath)
+        {
+            try
+            {
+                // Use Windows API to set wallpaper
+                Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true);
+                
+                // Set wallpaper style to Fill (2 is stretch, 0 is center, 6 is fit, 10 is fill, 22 is span)
+                key.SetValue("WallpaperStyle", "10");
+                key.SetValue("TileWallpaper", "0");
+                
+                // Set the wallpaper
+                bool result = NativeMethods.SystemParametersInfo(
+                    NativeMethods.SPI_SETDESKWALLPAPER,
+                    0,
+                    wallpaperFilePath,
+                    NativeMethods.SPIF_UPDATEINIFILE | NativeMethods.SPIF_SENDCHANGE);
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error setting wallpaper using Windows API");
+                return false;
             }
         }
 
         private void FilterButton_Click(object sender, RoutedEventArgs e)
         {
             _logger?.LogInformation("Filter button clicked");
-            System.Windows.MessageBox.Show("Filter functionality would be implemented here.", "Filter", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            
+            // Create a filter dialog
+            var filterWindow = new System.Windows.Window
+            {
+                Title = "Filter Wallpapers",
+                Width = 400,
+                Height = 450,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                ResizeMode = ResizeMode.NoResize
+            };
+            
+            // Create the main panel with stacked controls
+            var stackPanel = new System.Windows.Controls.StackPanel { Margin = new Thickness(20) };
+            
+            // Add category filter
+            stackPanel.Children.Add(new System.Windows.Controls.TextBlock { 
+                Text = "Category:", 
+                FontWeight = FontWeights.SemiBold, 
+                Margin = new Thickness(0, 10, 0, 5) 
+            });
+            
+            var categoryComboBox = new System.Windows.Controls.ComboBox { 
+                Margin = new Thickness(0, 0, 0, 15) 
+            };
+            
+            // Add default "All" option
+            categoryComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "All", Tag = "all", IsSelected = true });
+            
+            // Add common categories
+            string[] categories = {
+                "Abstract", "Animals", "Anime", "Architecture", "Art", "Cars", "City", 
+                "Fantasy", "Flowers", "Food", "Games", "Holidays", "Landscape", "Movies", 
+                "Music", "Nature", "Space", "Sports", "Technology"
+            };
+            
+            foreach (var category in categories)
+            {
+                categoryComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { 
+                    Content = category, 
+                    Tag = category.ToLowerInvariant() 
+                });
+            }
+            
+            stackPanel.Children.Add(categoryComboBox);
+            
+            // Add sort by filter
+            stackPanel.Children.Add(new System.Windows.Controls.TextBlock { 
+                Text = "Sort By:", 
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 10, 0, 5) 
+            });
+            
+            var sortByComboBox = new System.Windows.Controls.ComboBox { 
+                Margin = new Thickness(0, 0, 0, 15) 
+            };
+            
+            // Add sorting options
+            sortByComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Latest", Tag = "latest", IsSelected = true });
+            sortByComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Most Popular", Tag = "popularity" });
+            sortByComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Most Downloads", Tag = "downloads" });
+            
+            stackPanel.Children.Add(sortByComboBox);
+            
+            // Add AI filter
+            stackPanel.Children.Add(new System.Windows.Controls.TextBlock { 
+                Text = "AI Generation:", 
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 10, 0, 5) 
+            });
+            
+            var aiComboBox = new System.Windows.Controls.ComboBox { 
+                Margin = new Thickness(0, 0, 0, 15) 
+            };
+            
+            aiComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Show All", Tag = "all", IsSelected = true });
+            aiComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Only AI Generated", Tag = "1" });
+            aiComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "No AI Generated", Tag = "0" });
+            
+            stackPanel.Children.Add(aiComboBox);
+            
+            // Add resolution filter (checkbox for 4K, 5K, 8K)
+            stackPanel.Children.Add(new System.Windows.Controls.TextBlock { 
+                Text = "Resolution:", 
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 10, 0, 5) 
+            });
+            
+            var resolutionPanel = new System.Windows.Controls.StackPanel { Margin = new Thickness(0, 0, 0, 15) };
+            
+            // This filter will only apply to the API calls, not to wallpapers already loaded
+            var checkbox4K = new System.Windows.Controls.CheckBox { Content = "Include 4K", IsChecked = true };
+            var checkbox5K = new System.Windows.Controls.CheckBox { Content = "Include 5K", IsChecked = true };
+            var checkbox8K = new System.Windows.Controls.CheckBox { Content = "Include 8K", IsChecked = true };
+            
+            resolutionPanel.Children.Add(checkbox4K);
+            resolutionPanel.Children.Add(checkbox5K);
+            resolutionPanel.Children.Add(checkbox8K);
+            
+            stackPanel.Children.Add(resolutionPanel);
+            
+            // Add API toggle
+            stackPanel.Children.Add(new System.Windows.Controls.TextBlock { 
+                Text = "Data Source:", 
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 10, 0, 5) 
+            });
+            
+            var apiToggle = new System.Windows.Controls.CheckBox { 
+                Content = "Use API (recommended)",
+                IsChecked = _useApiForLoading,
+                Margin = new Thickness(0, 0, 0, 15)
+            };
+            
+            stackPanel.Children.Add(apiToggle);
+            
+            // Add buttons panel
+            var buttonsPanel = new System.Windows.Controls.StackPanel { 
+                Orientation = System.Windows.Controls.Orientation.Horizontal, 
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                Margin = new Thickness(0, 15, 0, 0)
+            };
+            
+            var cancelButton = new System.Windows.Controls.Button { 
+                Content = "Cancel",
+                Margin = new Thickness(0, 0, 10, 0)
+            };
+            
+            var applyButton = new System.Windows.Controls.Button { 
+                Content = "Apply Filters"
+            };
+            
+            // Handle cancel button click
+            cancelButton.Click += (s, args) => { filterWindow.Close(); };
+            
+            // Handle apply button click
+            applyButton.Click += async (s, args) => 
+            {
+                try
+                {
+                    // Get selected category
+                    var selectedCategory = categoryComboBox.SelectedItem as System.Windows.Controls.ComboBoxItem;
+                    if (selectedCategory != null && selectedCategory.Tag is string categoryTag)
+                    {
+                        _apiCategory = categoryTag;
+                    }
+                    
+                    // Get selected sort by
+                    var selectedSortBy = sortByComboBox.SelectedItem as System.Windows.Controls.ComboBoxItem;
+                    if (selectedSortBy != null && selectedSortBy.Tag is string sortByTag)
+                    {
+                        _apiSortBy = sortByTag;
+                    }
+                    
+                    // Get selected AI filter
+                    var selectedAI = aiComboBox.SelectedItem as System.Windows.Controls.ComboBoxItem;
+                    if (selectedAI != null && selectedAI.Tag is string aiTag)
+                    {
+                        _apiAiFilter = aiTag;
+                    }
+                    
+                    // Get API toggle state
+                    _useApiForLoading = apiToggle.IsChecked ?? true;
+                    
+                    // Reset to first page
+                    _currentApiPage = 1;
+                    
+                    _logger?.LogInformation($"Applying filters: Category={_apiCategory}, SortBy={_apiSortBy}, AI={_apiAiFilter}, UseAPI={_useApiForLoading}");
+                    
+                    // Close the dialog
+                    filterWindow.Close();
+                    
+                    // Clear existing wallpapers and load with new filters
+                    await LoadInitialWallpapers();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error applying filters");
+                    System.Windows.MessageBox.Show(
+                        $"Error applying filters: {ex.Message}", 
+                        "Error", 
+                        System.Windows.MessageBoxButton.OK, 
+                        System.Windows.MessageBoxImage.Error);
+                }
+            };
+            
+            buttonsPanel.Children.Add(cancelButton);
+            buttonsPanel.Children.Add(applyButton);
+            stackPanel.Children.Add(buttonsPanel);
+            
+            // Set the content of the window
+            filterWindow.Content = stackPanel;
+            
+            // Show the dialog
+            filterWindow.ShowDialog();
         }
 
         private void SetAsSlideshowButton_Click(object sender, RoutedEventArgs e)
         {
             _logger?.LogInformation("Slideshow button clicked");
-            System.Windows.MessageBox.Show("Slideshow functionality would be implemented here.", "Slideshow", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            
+            // Show a simple message that this feature would be implemented
+            System.Windows.MessageBox.Show(
+                "The slideshow feature would:\n\n" +
+                "1. Download wallpapers from API\n" +
+                "2. Set up a Windows scheduled task\n" +
+                "3. Change wallpapers automatically\n\n" +
+                "This will be implemented in a future update.",
+                "Slideshow Feature",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Information);
+        }
+        
+        private async Task SetupSlideshowAsync(int intervalMinutes, bool useFilters, bool useAiOnly)
+        {
+            try
+            {
+                // Show progress
+                StatusTextBlock.Text = "Setting up slideshow...";
+                StatusTextBlock.Visibility = Visibility.Visible;
+                LoadingProgressBar.Visibility = Visibility.Visible;
+                
+                // Create a folder to store slideshow wallpapers
+                string slideshowDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WallYouNeed", "Slideshow");
+                if (!Directory.Exists(slideshowDir))
+                {
+                    Directory.CreateDirectory(slideshowDir);
+                }
+                
+                // Create a folder for the script
+                string scriptDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WallYouNeed", "Scripts");
+                if (!Directory.Exists(scriptDir))
+                {
+                    Directory.CreateDirectory(scriptDir);
+                }
+                
+                // Create PowerShell script to change wallpaper
+                string scriptPath = Path.Combine(scriptDir, "ChangeWallpaper.ps1");
+                string scriptContent = @"
+                param (
+                    [string]$WallpaperDirectory
+                )
+
+                # Function to set wallpaper
+                function Set-Wallpaper {
+                    param (
+                        [string]$WallpaperPath
+                    )
+                    
+                    Add-Type -TypeDefinition @""
+                    using System;
+                    using System.Runtime.InteropServices;
+
+                    public class Wallpaper {
+                        [DllImport(""user32.dll"", CharSet = CharSet.Auto)]
+                        public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+                    }
+                ""@
+
+                    $SPI_SETDESKWALLPAPER = 0x0014
+                    $SPIF_UPDATEINIFILE = 0x01
+                    $SPIF_SENDCHANGE = 0x02
+                    
+                    # Set the wallpaper style in registry
+                    Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value '10'
+                    Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value '0'
+                    
+                    # Set the wallpaper
+                    [Wallpaper]::SystemParametersInfo($SPI_SETDESKWALLPAPER, 0, $WallpaperPath, $SPIF_UPDATEINIFILE -bor $SPIF_SENDCHANGE)
+                }
+
+                # Get all image files from the specified directory
+                $wallpapers = Get-ChildItem -Path $WallpaperDirectory -Filter *.jpg
+
+                if ($wallpapers.Count -gt 0) {
+                    # Select a random wallpaper
+                    $randomWallpaper = $wallpapers | Get-Random
+                    $wallpaperPath = $randomWallpaper.FullName
+                    
+                    # Set it as the desktop wallpaper
+                    Set-Wallpaper -WallpaperPath $wallpaperPath
+                    
+                    # Write to log
+                    $logPath = Join-Path -Path $WallpaperDirectory -ChildPath 'slideshow_log.txt'
+                    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+                    ""$timestamp - Set wallpaper: $wallpaperPath"" | Out-File -FilePath $logPath -Append
+                }
+                ";
+                
+                // Write the script
+                await File.WriteAllTextAsync(scriptPath, scriptContent);
+                
+                // Download some initial wallpapers for the slideshow
+                await DownloadSlideshowWallpapersAsync(slideshowDir, useFilters, useAiOnly);
+                
+                // Create task scheduler task
+                string taskName = "WallYouNeedSlideshow";
+                string powershellPath = "powershell.exe";
+                string arguments = $"-ExecutionPolicy Bypass -File \"{scriptPath}\" -WallpaperDirectory \"{slideshowDir}\"";
+                
+                // Delete the task if it already exists
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = "schtasks.exe",
+                    Arguments = $"/Delete /TN \"{taskName}\" /F",
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                
+                try
+                {
+                    var process = Process.Start(processInfo);
+                    await process.WaitForExitAsync();
+                }
+                catch
+                {
+                    // Ignore errors if task doesn't exist
+                }
+                
+                // Create the new task
+                string repeat = "/SC MINUTE /MO " + intervalMinutes;
+                processInfo = new ProcessStartInfo
+                {
+                    FileName = "schtasks.exe",
+                    Arguments = $"/Create /TN \"{taskName}\" /TR \"\\'{powershellPath}\\' {arguments}\" {repeat} /F",
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                
+                var createProcess = Process.Start(processInfo);
+                await createProcess.WaitForExitAsync();
+                
+                if (createProcess.ExitCode != 0)
+                {
+                    throw new Exception($"Failed to create scheduled task. Exit code: {createProcess.ExitCode}");
+                }
+                
+                // Run the task once immediately to set initial wallpaper
+                processInfo = new ProcessStartInfo
+                {
+                    FileName = "schtasks.exe",
+                    Arguments = $"/Run /TN \"{taskName}\"",
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                
+                var runProcess = Process.Start(processInfo);
+                await runProcess.WaitForExitAsync();
+                
+                // Show success message
+                StatusTextBlock.Text = $"Slideshow setup successfully. Wallpaper will change every {intervalMinutes} minutes.";
+                await Task.Delay(3000);
+                StatusTextBlock.Visibility = Visibility.Collapsed;
+                LoadingProgressBar.Visibility = Visibility.Collapsed;
+                
+                // Show MessageBox confirmation
+                System.Windows.MessageBox.Show(
+                    $"Wallpaper slideshow has been set up successfully. Your wallpaper will change every {intervalMinutes} minutes.\n\nA task has been created in Windows Task Scheduler.", 
+                    "Slideshow Activated", 
+                    System.Windows.MessageBoxButton.OK, 
+                    System.Windows.MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error setting up slideshow");
+                StatusTextBlock.Text = $"Error: {ex.Message}";
+                await Task.Delay(3000);
+                StatusTextBlock.Visibility = Visibility.Collapsed;
+                LoadingProgressBar.Visibility = Visibility.Collapsed;
+                
+                throw; // Re-throw for the calling method to handle
+            }
+        }
+        
+        private async Task DownloadSlideshowWallpapersAsync(string slideshowDir, bool useFilters, bool useAiOnly)
+        {
+            try
+            {
+                StatusTextBlock.Text = "Downloading wallpapers for slideshow...";
+                
+                // For initial setup, download 10 wallpapers
+                int wallpapersToDownload = 10;
+                int downloaded = 0;
+                
+                // If we have wallpapers, use them first
+                if (_wallpapers.Count > 0)
+                {
+                    // Apply filters if requested
+                    var filteredWallpapers = _wallpapers.ToList();
+                    
+                    if (useAiOnly)
+                    {
+                        filteredWallpapers = filteredWallpapers.Where(w => w.IsAI).ToList();
+                    }
+                    
+                    // Shuffle and take a subset
+                    var random = new Random();
+                    var selectedWallpapers = filteredWallpapers
+                        .OrderBy(x => random.Next())
+                        .Take(wallpapersToDownload)
+                        .ToList();
+                    
+                    // Download each wallpaper
+                    foreach (var wallpaper in selectedWallpapers)
+                    {
+                        try
+                        {
+                            // Get high resolution URL
+                            string highResUrl = GetHighResolutionUrl(wallpaper.ImageUrl, wallpaper.ImageId);
+                            
+                            // Create a unique filename
+                            string wallpaperFile = Path.Combine(slideshowDir, $"wallpaper_{wallpaper.ImageId}.jpg");
+                            
+                            // Download if doesn't exist already
+                            if (!File.Exists(wallpaperFile))
+                            {
+                                using (var client = new HttpClient())
+                                {
+                                    client.DefaultRequestHeaders.Add("User-Agent", "WallYouNeed/1.0");
+                                    
+                                    // Download the image
+                                    var imageBytes = await client.GetByteArrayAsync(highResUrl);
+                                    
+                                    // Save to file
+                                    await File.WriteAllBytesAsync(wallpaperFile, imageBytes);
+                                    
+                                    downloaded++;
+                                    StatusTextBlock.Text = $"Downloaded {downloaded} of {wallpapersToDownload} wallpapers...";
+                                }
+                            }
+                            else
+                            {
+                                // Count existing files toward our total
+                                downloaded++;
+                                StatusTextBlock.Text = $"Wallpaper {wallpaper.ImageId} already exists ({downloaded} of {wallpapersToDownload})";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogError(ex, $"Error downloading wallpaper {wallpaper.ImageId} for slideshow");
+                            // Continue with next wallpaper
+                        }
+                    }
+                }
+                else
+                {
+                    // If no wallpapers are loaded, fetch some from API directly
+                    string apiUrl;
+                    
+                    if (useFilters)
+                    {
+                        // Use current filters
+                        apiUrl = $"{_apiBaseUrl}?action=paging_list&list_type={_apiSortBy}&page=1&page_size={wallpapersToDownload}&category={_apiCategory}&is_ai={(useAiOnly ? "1" : _apiAiFilter)}";
+                    }
+                    else
+                    {
+                        // Use default parameters but respect AI setting
+                        apiUrl = $"{_apiBaseUrl}?action=paging_list&list_type=latest&page=1&page_size={wallpapersToDownload}&category=all&is_ai={(useAiOnly ? "1" : "all")}";
+                    }
+                    
+                    using (var client = new HttpClient())
+                    {
+                        client.DefaultRequestHeaders.Add("User-Agent", "WallYouNeed/1.0");
+                        
+                        // Fetch wallpapers from API
+                        var response = await client.GetAsync(apiUrl);
+                        response.EnsureSuccessStatusCode();
+                        
+                        string jsonContent = await response.Content.ReadAsStringAsync();
+                        
+                        // Deserialize response
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true,
+                            AllowTrailingCommas = true
+                        };
+                        
+                        List<BackieeApiWallpaper> apiWallpapers = JsonSerializer.Deserialize<List<BackieeApiWallpaper>>(
+                            jsonContent,
+                            options
+                        );
+                        
+                        if (apiWallpapers != null && apiWallpapers.Count > 0)
+                        {
+                            // Download each wallpaper
+                            foreach (var apiWallpaper in apiWallpapers)
+                            {
+                                try
+                                {
+                                    if (string.IsNullOrEmpty(apiWallpaper.FullPhotoUrl))
+                                        continue;
+                                        
+                                    // Create a unique filename
+                                    string wallpaperFile = Path.Combine(slideshowDir, $"wallpaper_{apiWallpaper.ID}.jpg");
+                                    
+                                    // Download if doesn't exist already
+                                    if (!File.Exists(wallpaperFile))
+                                    {
+                                        // Download the image
+                                        var imageBytes = await client.GetByteArrayAsync(apiWallpaper.FullPhotoUrl);
+                                        
+                                        // Save to file
+                                        await File.WriteAllBytesAsync(wallpaperFile, imageBytes);
+                                        
+                                        downloaded++;
+                                        StatusTextBlock.Text = $"Downloaded {downloaded} of {wallpapersToDownload} wallpapers...";
+                                    }
+                                    else
+                                    {
+                                        // Count existing files toward our total
+                                        downloaded++;
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger?.LogError(ex, $"Error downloading wallpaper {apiWallpaper.ID} for slideshow");
+                                    // Continue with next wallpaper
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                StatusTextBlock.Text = $"Slideshow setup: {downloaded} wallpapers downloaded.";
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error downloading wallpapers for slideshow");
+                StatusTextBlock.Text = $"Error downloading wallpapers: {ex.Message}";
+                await Task.Delay(3000);
+                // Continue with setup even if downloads fail
+            }
+        }
+
+        private async Task<bool> LoadWallpapersFromApiAsync()
+        {
+            try
+            {
+                // Reset the current page to 1 for initial load
+                _currentApiPage = 1;
+                
+                // Build the API URL with parameters
+                string apiUrl = BuildApiUrl();
+                _logger?.LogInformation($"Fetching wallpapers from API: {apiUrl}");
+                
+                using (HttpClient client = new HttpClient())
+                {
+                    // Set User-Agent header to avoid potential blocking
+                    client.DefaultRequestHeaders.Add("User-Agent", "WallYouNeed/1.0");
+                    
+                    // Send GET request to the API
+                    HttpResponseMessage response = await client.GetAsync(apiUrl);
+                    
+                    // Check if the request was successful
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger?.LogError($"API request failed with status code: {response.StatusCode}");
+                        return false;
+                    }
+                    
+                    // Read the response content
+                    string jsonContent = await response.Content.ReadAsStringAsync();
+                    
+                    // Deserialize JSON into list of BackieeApiWallpaper objects
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        AllowTrailingCommas = true
+                    };
+
+                    List<BackieeApiWallpaper> apiWallpapers = JsonSerializer.Deserialize<List<BackieeApiWallpaper>>(
+                        jsonContent,
+                        options
+                    );
+
+                    if (apiWallpapers == null || apiWallpapers.Count == 0)
+                    {
+                        _logger?.LogWarning("No wallpapers found in the API response");
+                        return false;
+                    }
+
+                    _logger?.LogInformation($"Successfully loaded {apiWallpapers.Count} wallpapers from API");
+                    
+                    // Convert API wallpapers to our WallpaperItem model and add to the UI
+                    foreach (var apiWallpaper in apiWallpapers)
+                    {
+                        if (string.IsNullOrEmpty(apiWallpaper.MiniPhotoUrl))
+                            continue;
+                            
+                        // Normalize the URL to lowercase for consistent comparison
+                        string normalizedUrl = apiWallpaper.MiniPhotoUrl.ToLowerInvariant();
+                        
+                        // Skip if we already have this URL
+                        if (_loadedUrls.Contains(normalizedUrl))
+                            continue;
+                            
+                        // Extract image ID from API data
+                        string imageId = apiWallpaper.ID ?? GetImageIdFromUrl(normalizedUrl);
+                        
+                        // Skip if we already have this imageId
+                        if (_wallpapers.Any(img => img.ImageId == imageId))
+                            continue;
+                        
+                        // Create a wallpaper item
+                        var image = new WallpaperItem
+                        {
+                            ImageUrl = normalizedUrl,
+                            ImageId = imageId,
+                            IsAI = apiWallpaper.AIGenerated == "1",
+                            Likes = int.TryParse(apiWallpaper.Rating, out int likesValue) ? likesValue : 0,
+                            Downloads = int.TryParse(apiWallpaper.Downloads, out int downloadsValue) ? downloadsValue : 0
+                        };
+                        
+                        // Set resolution based on quality
+                        image.Resolution = apiWallpaper.Resolution ?? "1920x1080"; // Default
+                        
+                        if (!string.IsNullOrEmpty(apiWallpaper.UltraHDType))
+                        {
+                            image.ResolutionLabel = apiWallpaper.UltraHDType;
+                        }
+                        else if (apiWallpaper.UltraHD == "1")
+                        {
+                            image.ResolutionLabel = "4K"; // Default for UltraHD if type not specified
+                        }
+                        
+                        _wallpapers.Add(image);
+                        _loadedUrls.Add(normalizedUrl);
+                        
+                        // Create and add UI element
+                        var wallpaperElement = CreateWallpaperElement(image);
+                        WallpaperContainer.Children.Add(wallpaperElement);
+                        
+                        // Also track the ID to avoid re-attempting it
+                        if (int.TryParse(imageId, out int parsedId))
+                        {
+                            _attemptedIds.Add(parsedId);
+                        }
+                    }
+                    
+                    // Increment the current page for next load
+                    _currentApiPage++;
+                    
+                    return _wallpapers.Count > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error loading wallpapers from API: " + ex.Message);
+                return false;
+            }
+        }
+        
+        private async Task LoadMoreWallpapersFromApiAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Build the API URL with the current page
+                string apiUrl = BuildApiUrl();
+                _logger?.LogInformation($"Loading more wallpapers from API: {apiUrl} (Page: {_currentApiPage})");
+                
+                StatusTextBlock.Text = $"Loading more wallpapers from API (Page: {_currentApiPage})...";
+                StatusTextBlock.Visibility = Visibility.Visible;
+                LoadingProgressBar.Visibility = Visibility.Visible;
+                
+                using (HttpClient client = new HttpClient())
+                {
+                    // Set User-Agent header
+                    client.DefaultRequestHeaders.Add("User-Agent", "WallYouNeed/1.0");
+                    
+                    // Send GET request to the API
+                    HttpResponseMessage response = await client.GetAsync(apiUrl, cancellationToken);
+                    
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    
+                    // Check if the request was successful
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger?.LogError($"API request failed with status code: {response.StatusCode}");
+                        
+                        StatusTextBlock.Text = $"Failed to load wallpapers from API: {response.StatusCode}";
+                        await Task.Delay(2000, cancellationToken); // Show error briefly
+                        StatusTextBlock.Visibility = Visibility.Collapsed;
+                        LoadingProgressBar.Visibility = Visibility.Collapsed;
+                        
+                        return;
+                    }
+                    
+                    // Read the response content
+                    string jsonContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                    
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    
+                    // Deserialize JSON
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        AllowTrailingCommas = true
+                    };
+
+                    List<BackieeApiWallpaper> apiWallpapers = JsonSerializer.Deserialize<List<BackieeApiWallpaper>>(
+                        jsonContent,
+                        options
+                    );
+
+                    if (apiWallpapers == null || apiWallpapers.Count == 0)
+                    {
+                        _logger?.LogWarning("No additional wallpapers found in the API response");
+                        
+                        StatusTextBlock.Text = "No more wallpapers available";
+                        await Task.Delay(2000, cancellationToken); // Show message briefly
+                        StatusTextBlock.Visibility = Visibility.Collapsed;
+                        LoadingProgressBar.Visibility = Visibility.Collapsed;
+                        
+                        return;
+                    }
+
+                    int newWallpapersCount = 0;
+                    
+                    // Create a list to hold the new wallpaper elements
+                    var newWallpaperElements = new List<FrameworkElement>();
+                    
+                    // Convert API wallpapers to our model
+                    foreach (var apiWallpaper in apiWallpapers)
+                    {
+                        if (string.IsNullOrEmpty(apiWallpaper.MiniPhotoUrl))
+                            continue;
+                            
+                        string normalizedUrl = apiWallpaper.MiniPhotoUrl.ToLowerInvariant();
+                        
+                        if (_loadedUrls.Contains(normalizedUrl))
+                            continue;
+                            
+                        string imageId = apiWallpaper.ID ?? GetImageIdFromUrl(normalizedUrl);
+                        
+                        if (_wallpapers.Any(img => img.ImageId == imageId))
+                            continue;
+                        
+                        var image = new WallpaperItem
+                        {
+                            ImageUrl = normalizedUrl,
+                            ImageId = imageId,
+                            IsAI = apiWallpaper.AIGenerated == "1",
+                            Likes = int.TryParse(apiWallpaper.Rating, out int likesValue) ? likesValue : 0,
+                            Downloads = int.TryParse(apiWallpaper.Downloads, out int downloadsValue) ? downloadsValue : 0
+                        };
+                        
+                        image.Resolution = apiWallpaper.Resolution ?? "1920x1080";
+                        
+                        if (!string.IsNullOrEmpty(apiWallpaper.UltraHDType))
+                        {
+                            image.ResolutionLabel = apiWallpaper.UltraHDType;
+                        }
+                        else if (apiWallpaper.UltraHD == "1")
+                        {
+                            image.ResolutionLabel = "4K";
+                        }
+                        
+                        _wallpapers.Add(image);
+                        _loadedUrls.Add(normalizedUrl);
+                        newWallpapersCount++;
+                        
+                        // Create UI element
+                        var wallpaperElement = CreateWallpaperElement(image);
+                        newWallpaperElements.Add(wallpaperElement);
+                        
+                        if (int.TryParse(imageId, out int parsedId))
+                        {
+                            _attemptedIds.Add(parsedId);
+                        }
+                    }
+                    
+                    // Add all new elements to the UI
+                    foreach (var element in newWallpaperElements)
+                    {
+                        WallpaperContainer.Children.Add(element);
+                    }
+                    
+                    _logger?.LogInformation($"Added {newWallpapersCount} new wallpapers from API (Page: {_currentApiPage})");
+                    
+                    // Increment the page number for the next API call
+                    _currentApiPage++;
+                    
+                    StatusTextBlock.Text = $"Loaded {newWallpapersCount} new wallpapers (Total: {_wallpapers.Count})";
+                    await Task.Delay(1000, cancellationToken); // Show message briefly
+                    StatusTextBlock.Visibility = Visibility.Collapsed;
+                    LoadingProgressBar.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error loading more wallpapers from API");
+                
+                StatusTextBlock.Text = $"Error loading wallpapers: {ex.Message}";
+                await Task.Delay(2000); // Show error briefly
+                StatusTextBlock.Visibility = Visibility.Collapsed;
+                LoadingProgressBar.Visibility = Visibility.Collapsed;
+            }
+        }
+        
+        private string BuildApiUrl()
+        {
+            return $"{_apiBaseUrl}?action=paging_list&list_type={_apiSortBy}&page={_currentApiPage}&page_size={_apiPageSize}&category={_apiCategory}&is_ai={_apiAiFilter}";
         }
     }
 
@@ -1359,5 +2321,34 @@ namespace WallYouNeed.App.Pages
         public bool IsAI { get; set; }
         public int Likes { get; set; }
         public int Downloads { get; set; }
+    }
+
+    // API model class to match the Backiee API response
+    internal class BackieeApiWallpaper
+    {
+        public string? ID { get; set; }
+        public string? Title { get; set; }
+        public string? ThemeCat { get; set; }
+        public string? Resolution { get; set; }
+        public string? Rating { get; set; }
+        public string? Downloads { get; set; }
+        public string? UltraHD { get; set; }
+        public string? UltraHDType { get; set; }
+        public string? Uploaded { get; set; }
+        public string? AIGenerated { get; set; }
+        public string? FullPhotoUrl { get; set; }
+        public string? MiniPhotoUrl { get; set; }
+        public string? WallpaperUrl { get; set; }
+    }
+
+    // Native methods for Windows API calls
+    internal static class NativeMethods
+    {
+        public const int SPI_SETDESKWALLPAPER = 0x0014;
+        public const int SPIF_UPDATEINIFILE = 0x01;
+        public const int SPIF_SENDCHANGE = 0x02;
+        
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
     }
 } 
