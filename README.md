@@ -50,8 +50,11 @@ The project is organized into several components:
 
 ## Prerequisites
 
-### For .NET Application
-- .NET 7.0 SDK or higher
+### For Running the app
+- [.NET 8.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-aspnetcore-8.0.14-windows-x64-installer)
+- Windows operating system
+### For Building the app
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-8.0.407-windows-x64-installer)
 - Windows operating system
 
 ### For Python Utilities
