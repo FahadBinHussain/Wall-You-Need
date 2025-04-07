@@ -169,6 +169,9 @@ namespace WallYouNeed.App
             System.Windows.Application.Current.DispatcherUnhandledException += Current_DispatcherUnhandledException;
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
+            // Initialize theme based on saved settings
+            await InitializeThemeFromSettings();
+
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
             mainWindow.Show();
 
@@ -176,6 +179,33 @@ namespace WallYouNeed.App
             _logger.LogInformation($"Logs are being written to: {_logFilePath}");
             
             base.OnStartup(e);
+        }
+
+        /// <summary>
+        /// Initialize application theme based on saved settings
+        /// </summary>
+        private async Task InitializeThemeFromSettings()
+        {
+            try
+            {
+                var settingsService = _host.Services.GetRequiredService<ISettingsService>();
+                var themeService = _host.Services.GetRequiredService<Wpf.Ui.IThemeService>();
+                
+                var settings = await settingsService.LoadSettingsAsync();
+                
+                // Apply the theme from settings
+                ApplicationTheme theme = settings.Theme == Core.Models.AppTheme.Light 
+                    ? ApplicationTheme.Light 
+                    : ApplicationTheme.Dark;
+                
+                _logger.LogInformation("Initializing application with theme: {Theme}", settings.Theme);
+                themeService.SetTheme(theme);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize theme from settings");
+                // Fall back to default theme (Dark)
+            }
         }
 
         protected override async void OnExit(ExitEventArgs e)

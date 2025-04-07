@@ -471,7 +471,7 @@ namespace WallYouNeed.App
                     if (searchBox.Text != "Search..." && searchBox.Text.Length == 1)
                     {
                         // User started typing, so we want proper text color
-                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFF"));
+                        searchBox.Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["TextFillColorPrimaryBrush"];
                     }
 
                     // Show clear button only when there's text and it's not the placeholder
@@ -532,7 +532,7 @@ namespace WallYouNeed.App
                     if (string.IsNullOrWhiteSpace(searchBox.Text))
                     {
                         searchBox.Text = "Search...";
-                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#999999"));
+                        searchBox.Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["TextFillColorSecondaryBrush"];
                         clearButtonBorder.Visibility = System.Windows.Visibility.Collapsed;
                     }
                 };
@@ -550,7 +550,7 @@ namespace WallYouNeed.App
                     {
                         // Clear placeholder text before the character is typed
                         searchBox.Text = "";
-                        searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFF"));
+                        searchBox.Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["TextFillColorPrimaryBrush"];
                         
                         // Don't handle special keys like Enter or Tab
                         if (e.Key == Key.Tab || e.Key == Key.Enter)
@@ -583,7 +583,7 @@ namespace WallYouNeed.App
                 {
                     _logger.LogDebug("Clear button clicked");
                     searchBox.Text = "";
-                    searchBox.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFF"));
+                    searchBox.Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["TextFillColorPrimaryBrush"];
                     clearButtonBorder.Visibility = System.Windows.Visibility.Collapsed;
                     searchBox.Focus();
                 };
