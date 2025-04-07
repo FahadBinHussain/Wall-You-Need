@@ -9,6 +9,7 @@
         Title="Wall-You-Need" 
         Height="800" 
         Width="1200"
+        MinWidth="200"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanResizeWithGrip"

@@ -37,6 +37,9 @@ namespace WallYouNeed.App
 
             InitializeComponent();
             
+            // Set minimum window width to prevent resizing issues
+            this.MinWidth = 200; // Slightly larger than the previous 150 to ensure UI elements have enough space
+            
             // Register the SnackbarPresenter with the SnackbarService
             snackbarService.SetSnackbarPresenter(SnackbarPresenter);
             _logger.LogInformation("SnackbarPresenter registered successfully");
@@ -71,6 +74,8 @@ namespace WallYouNeed.App
         {
             if (_isWindowLoaded && this.WindowState != WindowState.Minimized)
             {
+                // We no longer need to enforce minimum width here since MinWidth property handles it
+                
                 _logger.LogDebug("Window size changed: {Width}x{Height}", this.Width, this.Height);
                 SaveWindowPositionQuietly();
             }

@@ -119,6 +119,39 @@ namespace WallYouNeed.App.Pages
         {
             _logger?.LogInformation($"Window size changed to: {e.NewSize.Width}x{e.NewSize.Height}");
             
+            // Get the parent window
+            Window parentWindow = Window.GetWindow(this);
+            if (parentWindow != null)
+            {
+                // Define the maximum width threshold (adjust as needed)
+                const double maxWidthThreshold = 1800;
+                
+                // If the window width exceeds the threshold, make it unresizable
+                if (e.NewSize.Width > maxWidthThreshold)
+                {
+                    _logger?.LogInformation($"Window width ({e.NewSize.Width}) exceeds threshold ({maxWidthThreshold}). Making window unresizable.");
+                    parentWindow.ResizeMode = ResizeMode.NoResize;
+                    
+                    // Show a message to the user
+                    StatusTextBlock.Text = "Maximum window size reached";
+                    StatusTextBlock.Visibility = Visibility.Visible;
+                    
+                    // Hide the message after a delay
+                    Task.Delay(2000).ContinueWith(_ => 
+                    {
+                        Dispatcher.Invoke(() => 
+                        {
+                            StatusTextBlock.Visibility = Visibility.Collapsed;
+                        });
+                    });
+                }
+                else
+                {
+                    // Reset to normal resizing mode if below threshold
+                    parentWindow.ResizeMode = ResizeMode.CanResize;
+                }
+            }
+            
             // Update the layout when the window size changes
             AdjustItemSizes();
             
