@@ -83,6 +83,9 @@ namespace WallYouNeed.App.Pages
 
             // Create a new cancellation token source for infinite scrolling
             _cts = new CancellationTokenSource();
+            
+            // Disable scroll position restoration
+            _shouldRestoreScrollPosition = false;
 
             // Register events
             Loaded += LatestWallpapersPage_Loaded;
@@ -218,16 +221,18 @@ namespace WallYouNeed.App.Pages
                     return;
                 }
                 
-                double scrollPosition = MainScrollViewer.VerticalOffset;
+                // No longer save scroll position
+                // double scrollPosition = MainScrollViewer.VerticalOffset;
                 
-                _logger?.LogInformation($"Saving LatestWallpapersPage settings - Item size: {_itemWidth}x{_itemHeight}, Scroll: {scrollPosition}");
+                _logger?.LogInformation($"Saving LatestWallpapersPage settings - Item size: {_itemWidth}x{_itemHeight}");
                 
                 // Update settings with LatestWallpapersPage values
                 await _settingsService.UpdateSettingsAsync(settings => 
                 {
                     settings.LatestWallpapersItemWidth = _itemWidth;
                     settings.LatestWallpapersItemHeight = _itemHeight;
-                    settings.LatestWallpapersScrollPosition = scrollPosition;
+                    // No longer save scroll position
+                    // settings.LatestWallpapersScrollPosition = scrollPosition;
                 });
             }
             catch (Exception ex)
@@ -247,13 +252,35 @@ namespace WallYouNeed.App.Pages
                 _wallpapers.Clear();
                 _loadedUrls.Clear();
                 
-                // Reset page counter
+                // Explicitly reset page counter to ensure correct sequence
                 _currentApiPage = 1;
+                _logger?.LogInformation("Reset page counter to 1 (API index 0)");
                 
                 StatusTextBlock.Text = "Loading wallpapers...";
                 
-                // Try to load from API
+                // Load the first batch of wallpapers (page 0)
+                _logger?.LogInformation("Loading first batch of wallpapers (page 0)");
                 bool wallpapersLoaded = await LoadWallpapersFromApiAsync();
+                
+                // After first load, _currentApiPage should be 2
+                _logger?.LogInformation("After first load, page counter = {page}", _currentApiPage);
+                
+                if (wallpapersLoaded)
+                {
+                    // Explicitly ensure we're on page 2 (API index 1)
+                    if (_currentApiPage != 2)
+                    {
+                        _logger?.LogWarning("Page counter unexpected value: {page}, forcing to 2", _currentApiPage);
+                        _currentApiPage = 2;
+                    }
+                    
+                    // Immediately load the second batch (page 1)
+                    _logger?.LogInformation("Loading second batch of wallpapers (page 1)");
+                    await LoadMoreWallpapersFromApiAsync(_cts.Token);
+                    
+                    // After second load, _currentApiPage should be 3
+                    _logger?.LogInformation("After second load, page counter = {page}", _currentApiPage);
+                }
                 
                 // If API loading failed, use test data as fallback
                 if (!wallpapersLoaded)
@@ -935,32 +962,9 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                // Restore scroll position once if needed (after initial load)
-                if (_shouldRestoreScrollPosition && _isPageLoaded && e.ExtentHeight > 0)
-                {
-                    _shouldRestoreScrollPosition = false;
-                    
-                    if (_settingsService != null)
-                    {
-                        var settings = await _settingsService.GetSettingsAsync();
-                        if (settings.LatestWallpapersScrollPosition > 0)
-                        {
-                            _logger?.LogInformation($"Restoring scroll position to {settings.LatestWallpapersScrollPosition}");
-                            MainScrollViewer.ScrollToVerticalOffset(settings.LatestWallpapersScrollPosition);
-                            return;
-                        }
-                    }
-                }
-                
-                // Save settings when user scrolls (debounced)
-                if (_isPageLoaded && e.VerticalChange != 0)
-                {
-                    if ((DateTime.Now - _lastScrollCheck) > TimeSpan.FromSeconds(2))
-                    {
-                        _lastScrollCheck = DateTime.Now;
-                        SaveSettingsQuietly();
-                    }
-                }
+                // NOTE: Scroll position restoration was disabled to fix issues with API page loading
+                // The previous implementation would save and restore scroll position, which may have
+                // interfered with the proper loading sequence of wallpapers from the API
                 
                 // Debounce scroll events for infinite scrolling
                 if ((DateTime.Now - _lastScrollCheck) < _scrollDebounceTime)
@@ -993,12 +997,6 @@ namespace WallYouNeed.App.Pages
                                 
                                 // Load more wallpapers - using HTTP check method
                                 await LoadMoreImagesAsync(_cts.Token);
-                                
-                                // Save settings after loading more items
-                                if (_isPageLoaded)
-                                {
-                                    SaveSettingsQuietly();
-                                }
                                 
                                 // Queue background loading for the next batch
                                 if (_isPrefetchingEnabled)
@@ -1085,12 +1083,14 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                _logger?.LogInformation("LoadMoreImagesAsync called, current loading mode: {mode}", 
-                    _useApiForLoading ? "API" : "Sequential HTTP Check");
+                _logger?.LogInformation("LoadMoreImagesAsync called, current loading mode: {mode}, page: {page}", 
+                    _useApiForLoading ? "API" : "Sequential HTTP Check", _currentApiPage);
                 
                 // If API loading is enabled, use that method
                 if (_useApiForLoading)
                 {
+                    // Ensure we're loading the correct page
+                    _logger?.LogInformation("Loading API page {page} (API index: {index})", _currentApiPage, _currentApiPage - 1);
                     await LoadMoreWallpapersFromApiAsync(cancellationToken);
                     return;
                 }
@@ -2208,7 +2208,7 @@ namespace WallYouNeed.App.Pages
             {
                 // Build the API URL with the current page
                 string apiUrl = BuildApiUrl();
-                _logger?.LogInformation($"Loading more wallpapers from API: {apiUrl} (Page: {_currentApiPage})");
+                _logger?.LogInformation($"Loading more wallpapers from API: {apiUrl} (Current page: {_currentApiPage}, API index: {_currentApiPage-1})");
                 
                 StatusTextBlock.Text = $"Loading more wallpapers from API (Page: {_currentApiPage})...";
                 StatusTextBlock.Visibility = Visibility.Visible;
@@ -2360,6 +2360,8 @@ namespace WallYouNeed.App.Pages
             // Page number starts from 0 in the API
             int apiPageIndex = _currentApiPage - 1;
             if (apiPageIndex < 0) apiPageIndex = 0;
+            
+            _logger?.LogInformation($"Building API URL for page {_currentApiPage} (API index: {apiPageIndex})");
 
             return $"{_apiBaseUrl}?action=paging_list&list_type={_apiSortBy}&page={apiPageIndex}&page_size={_apiPageSize}" +
                    $"&category={_apiCategory}&is_ai={_apiAiFilter}&sort_by=popularity" +
