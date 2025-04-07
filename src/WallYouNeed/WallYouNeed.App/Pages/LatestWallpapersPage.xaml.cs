@@ -635,7 +635,7 @@ namespace WallYouNeed.App.Pages
             // Create and add the image (with placeholder until loaded)
             var image = new System.Windows.Controls.Image
             {
-                Stretch = Stretch.Fill,
+                Stretch = Stretch.UniformToFill,
                 Opacity = 0 // Start with invisible image
             };
             
@@ -943,12 +943,21 @@ namespace WallYouNeed.App.Pages
                         // Look for the content grid
                         if (gridChild is Grid contentGrid)
                         {
+                            // Update the content grid's clip
+                            if (contentGrid.Clip is RectangleGeometry contentClip)
+                            {
+                                contentClip.Rect = new Rect(0, 0, newItemWidth, newItemHeight);
+                            }
+                            
                             foreach (var contentItem in contentGrid.Children)
                             {
                                 // Find the Image element and update its clip
-                                if (contentItem is System.Windows.Controls.Image image && image.Clip is RectangleGeometry clipGeometry)
+                                if (contentItem is System.Windows.Controls.Image image)
                                 {
-                                    clipGeometry.Rect = new Rect(0, 0, newItemWidth, newItemHeight);
+                                    if (image.Clip is RectangleGeometry imageClip)
+                                    {
+                                        imageClip.Rect = new Rect(0, 0, newItemWidth, newItemHeight);
+                                    }
                                 }
                             }
                         }
