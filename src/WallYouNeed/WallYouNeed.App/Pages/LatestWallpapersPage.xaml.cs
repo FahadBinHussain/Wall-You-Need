@@ -612,8 +612,8 @@ namespace WallYouNeed.App.Pages
             contentGrid.Clip = new RectangleGeometry
             {
                 Rect = new Rect(0, 0, _itemWidth, _itemHeight),
-                RadiusX = 20,
-                RadiusY = 20
+                RadiusX = 6,
+                RadiusY = 6
             };
             
             containerGrid.Children.Add(contentGrid);
@@ -650,8 +650,8 @@ namespace WallYouNeed.App.Pages
             image.Clip = new RectangleGeometry
             {
                 Rect = new Rect(0, 0, _itemWidth, _itemHeight),
-                RadiusX = 20,
-                RadiusY = 20
+                RadiusX = 10,
+                RadiusY = 10
             };
             
             // Handle the image loading events
