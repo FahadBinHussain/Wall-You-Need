@@ -607,6 +607,15 @@ namespace WallYouNeed.App.Pages
             {
                 ClipToBounds = true
             };
+            
+            // Apply clipping to the content grid to match the rounded rectangle
+            contentGrid.Clip = new RectangleGeometry
+            {
+                Rect = new Rect(0, 0, _itemWidth, _itemHeight),
+                RadiusX = 20,
+                RadiusY = 20
+            };
+            
             containerGrid.Children.Add(contentGrid);
             
             // Create a loading indicator
@@ -700,8 +709,15 @@ namespace WallYouNeed.App.Pages
                 var badge = new System.Windows.Controls.Image
                 {
                     Source = new BitmapImage(new Uri(badgeSource, UriKind.Relative)),
-                    Height = 48
+                    Height = 48,
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Top,
+                    Margin = new Thickness(0)
                 };
+                
+                // Set Z-index to ensure it's above other elements
+                System.Windows.Controls.Panel.SetZIndex(badge, 10);
+                
                 badgesPanel.Children.Add(badge);
             }
 
