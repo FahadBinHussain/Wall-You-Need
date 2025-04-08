@@ -26,7 +26,6 @@ namespace WallYouNeed.App.Pages
     public partial class HomePage : Page, INavigableView<HomePage>
     {
         private readonly ILogger<HomePage> _logger;
-        private readonly ISnackbarService _snackbarService;
         private readonly IWallpaperService _wallpaperService;
         private readonly ICollectionService _collectionService;
         private readonly ISettingsService _settingsService;
@@ -40,13 +39,11 @@ namespace WallYouNeed.App.Pages
 
         public HomePage(
             ILogger<HomePage> logger,
-            ISnackbarService snackbarService,
             IWallpaperService wallpaperService,
             ICollectionService collectionService,
             ISettingsService settingsService)
         {
             _logger = logger;
-            _snackbarService = snackbarService;
             _wallpaperService = wallpaperService;
             _collectionService = collectionService;
             _settingsService = settingsService;
@@ -81,8 +78,6 @@ namespace WallYouNeed.App.Pages
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "Exception in LatestViewAllButton click handler");
-                            _snackbarService.Show("Error", $"Navigation error: {ex.Message}", 
-                                ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
                         }
                     };
                 }
@@ -120,8 +115,6 @@ namespace WallYouNeed.App.Pages
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error setting up view all buttons");
-                _snackbarService.Show("Error", $"Failed to setup navigation buttons: {ex.Message}", 
-                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
             }
         }
         
@@ -253,8 +246,6 @@ namespace WallYouNeed.App.Pages
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in FeaturedWallpaper_Click handler");
-                _snackbarService.Show("Error", $"Navigation error: {ex.Message}", 
-                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
             }
         }
         
@@ -281,8 +272,6 @@ namespace WallYouNeed.App.Pages
                         if (latestWindow == null)
                         {
                             _logger.LogError("Failed to get MainWindow from current window");
-                            _snackbarService.Show("Error", "Failed to navigate: MainWindow not found", 
-                                ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
                             return;
                         }
                         
@@ -291,8 +280,6 @@ namespace WallYouNeed.App.Pages
                         if (latestFrame == null)
                         {
                             _logger.LogError("Failed to get ContentFrame from MainWindow");
-                            _snackbarService.Show("Error", "Failed to navigate: ContentFrame not found", 
-                                ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
                             return;
                         }
                         
@@ -303,8 +290,6 @@ namespace WallYouNeed.App.Pages
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Error navigating to LatestWallpapersPage");
-                        _snackbarService.Show("Error", $"Failed to navigate to LatestWallpapersPage: {ex.Message}", 
-                            ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
                     }
                     
                     return;
@@ -317,7 +302,6 @@ namespace WallYouNeed.App.Pages
                 var categoryPage = new CategoryPage(
                     Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<CategoryPage>>((App.Current as App).Services),
                     _wallpaperService,
-                    _snackbarService,
                     _settingsService);
                 
                 // Set the category
@@ -337,22 +321,16 @@ namespace WallYouNeed.App.Pages
                     else
                     {
                         _logger.LogError("Failed to get ContentFrame for CategoryPage navigation");
-                        _snackbarService.Show("Error", "Failed to navigate: ContentFrame not found", 
-                            ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
                     }
                 }
                 else
                 {
                     _logger.LogError("Failed to get MainWindow for CategoryPage navigation");
-                    _snackbarService.Show("Error", "Failed to navigate: MainWindow not found", 
-                        ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error navigating to category: {CategoryName}", categoryName);
-                _snackbarService.Show("Error", $"Failed to navigate to category: {ex.Message}", 
-                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(3));
             }
         }
         
@@ -365,8 +343,6 @@ namespace WallYouNeed.App.Pages
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading initial content");
-                _snackbarService.Show("Error", "Failed to load initial content", 
-                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
             }
         }
 

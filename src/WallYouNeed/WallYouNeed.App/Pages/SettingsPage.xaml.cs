@@ -24,17 +24,8 @@ namespace WallYouNeed.App.Pages
     /// </summary>
     public partial class SettingsPage : Page
     {
-        private readonly ISnackbarService _snackbarService;
-        
         public SettingsPage()
         {
-            InitializeComponent();
-        }
-        
-        public SettingsPage(ISnackbarService snackbarService)
-        {
-            _snackbarService = snackbarService;
-            
             InitializeComponent();
             
             // Set up event handlers
@@ -48,57 +39,57 @@ namespace WallYouNeed.App.Pages
 
         private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            _snackbarService?.Show("Theme", "Theme selection changed", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Theme selection changed
         }
 
         private void AutoLaunchToggle_Checked(object sender, RoutedEventArgs e)
         {
-            _snackbarService?.Show("Auto Launch", "Auto launch enabled", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Auto launch enabled
         }
 
         private void AutoLaunchToggle_Unchecked(object sender, RoutedEventArgs e)
         {
-            _snackbarService?.Show("Auto Launch", "Auto launch disabled", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Auto launch disabled
         }
 
         private void RemoveWidgetsButton_Click(object sender, RoutedEventArgs e)
         {
-            _snackbarService?.Show("Widgets", "Widgets removed", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Widgets removed
         }
 
         private void NotificationExpandButton_Click(object sender, RoutedEventArgs e)
         {
-            _snackbarService?.Show("Notifications", "Notification settings expanded", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Notification settings expanded
         }
 
         private void QuickLikeToggle_Checked(object sender, RoutedEventArgs e)
         {
-            _snackbarService?.Show("Quick Like", "Quick like enabled", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Quick like enabled
         }
 
         private void QuickLikeToggle_Unchecked(object sender, RoutedEventArgs e)
         {
-            _snackbarService?.Show("Quick Like", "Quick like disabled", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Quick like disabled
         }
 
         private void SyncToggle_Checked(object sender, RoutedEventArgs e)
         {
-            _snackbarService?.Show("Sync", "Synchronization enabled", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Synchronization enabled
         }
 
         private void SyncToggle_Unchecked(object sender, RoutedEventArgs e)
         {
-            _snackbarService?.Show("Sync", "Synchronization disabled", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Synchronization disabled
         }
 
         private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            _snackbarService?.Show("Language", "Language changed", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Language changed
         }
 
         private void ShowHintsButton_Click(object sender, RoutedEventArgs e)
         {
-            _snackbarService?.Show("Hints", "Hints will be shown again", ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+            // Hints will be shown again
         }
     }
 } 

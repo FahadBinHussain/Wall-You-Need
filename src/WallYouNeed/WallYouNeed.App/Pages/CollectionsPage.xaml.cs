@@ -22,7 +22,6 @@ namespace WallYouNeed.App.Pages
     public partial class CollectionsPage : Page, INavigableView<CollectionsPage>
     {
         private readonly ILogger<CollectionsPage> _logger;
-        private readonly ISnackbarService _snackbarService;
         private readonly ICollectionService _collectionService;
         private readonly IWallpaperService _wallpaperService;
         private readonly ILogService _logService;
@@ -33,13 +32,11 @@ namespace WallYouNeed.App.Pages
         
         public CollectionsPage(
             ILogger<CollectionsPage> logger,
-            ISnackbarService snackbarService,
             ICollectionService collectionService,
             IWallpaperService wallpaperService,
             ILogService logService)
         {
             _logger = logger;
-            _snackbarService = snackbarService;
             _collectionService = collectionService;
             _wallpaperService = wallpaperService;
             _logService = logService;
@@ -69,7 +66,6 @@ namespace WallYouNeed.App.Pages
             {
                 _logger.LogError(ex, "Failed to load collections");
                 _logService.LogError(ex, "Failed to load collections with exception: {ExMessage}", ex.Message);
-                _snackbarService.Show("Error", "Failed to load collections. Please try again.", ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
             }
         }
         
@@ -165,8 +161,6 @@ namespace WallYouNeed.App.Pages
                             EmptyStatePanel.Visibility = Visibility.Collapsed;
                             
                             _logService.LogInfo("Collection UI updated - showing collections list");
-                            _snackbarService.Show("Success", "Collection created successfully", 
-                                ControlAppearance.Success, null, TimeSpan.FromSeconds(2));
                         }
                         else
                         {
@@ -177,8 +171,6 @@ namespace WallYouNeed.App.Pages
                     {
                         _logger.LogError(ex, "Failed to create collection");
                         _logService.LogError(ex, "Failed to create collection: {ExMessage}", ex.Message);
-                        _snackbarService.Show("Error", "Failed to create collection: " + ex.Message, 
-                            ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
                     }
                 }
             }
@@ -186,8 +178,6 @@ namespace WallYouNeed.App.Pages
             {
                 _logger.LogError(ex, "Error in CreateCollection_Click: {Message}", ex.Message);
                 _logService.LogError(ex, "Error in CreateCollection_Click: {Message}", ex.Message);
-                _snackbarService.Show("Error", "Failed to create collection. Please try again.", 
-                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
             }
         }
         
@@ -233,8 +223,7 @@ namespace WallYouNeed.App.Pages
                             _logService.LogInfo("Proceeding with collection deletion: {Id}", collectionId);
                             
                             // For our static example, just show a success message
-                            _snackbarService.Show("Success", "Collection deleted successfully", 
-                                ControlAppearance.Success, null, TimeSpan.FromSeconds(2));
+                            _logService.LogInfo("Collection deleted successfully");
                                 
                             // In a real app with a proper database:
                             // await _collectionService.DeleteCollectionAsync(collectionId);
@@ -256,8 +245,6 @@ namespace WallYouNeed.App.Pages
                         {
                             _logger.LogError(ex, "Failed to delete collection");
                             _logService.LogError(ex, "Failed to delete collection: {ExMessage}", ex.Message);
-                            _snackbarService.Show("Error", "Failed to delete collection: " + ex.Message, 
-                                ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
                         }
                     }
                 }
@@ -266,8 +253,6 @@ namespace WallYouNeed.App.Pages
             {
                 _logger.LogError(ex, "Error in DeleteCollection_Click: {Message}", ex.Message);
                 _logService.LogError(ex, "Error in DeleteCollection_Click: {Message}", ex.Message);
-                _snackbarService.Show("Error", "Failed to delete collection. Please try again.", 
-                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
             }
         }
         
@@ -298,8 +283,7 @@ namespace WallYouNeed.App.Pages
                     _logService.LogInfo("Viewing collection: {Id}", collectionId);
                     
                     // Just show a notification for now
-                    _snackbarService.Show("Collection View", "Viewing collection: " + collectionId, 
-                        ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
+                    _logService.LogInfo("Collection View", "Viewing collection: " + collectionId);
                     
                     // In a real app, you would navigate to a collection details page
                     // navigationService.NavigateTo<CollectionDetailsPage>(new NavigationArguments { { "collectionId", collectionId } });
@@ -309,8 +293,6 @@ namespace WallYouNeed.App.Pages
             {
                 _logger.LogError(ex, "Error in ViewCollection_Click: {Message}", ex.Message);
                 _logService.LogError(ex, "Error in ViewCollection_Click: {Message}", ex.Message);
-                _snackbarService.Show("Error", "Failed to view collection. Please try again.", 
-                    ControlAppearance.Danger, null, TimeSpan.FromSeconds(2));
             }
         }
         

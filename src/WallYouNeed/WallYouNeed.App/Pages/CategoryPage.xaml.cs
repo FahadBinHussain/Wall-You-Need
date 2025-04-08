@@ -25,7 +25,6 @@ namespace WallYouNeed.App.Pages
     {
         private readonly ILogger<CategoryPage> _logger;
         private readonly IWallpaperService _wallpaperService;
-        private readonly ISnackbarService _snackbarService;
         private readonly ISettingsService _settingsService;
         
         private string _currentCategory = string.Empty;
@@ -49,12 +48,10 @@ namespace WallYouNeed.App.Pages
         public CategoryPage(
             ILogger<CategoryPage> logger,
             IWallpaperService wallpaperService,
-            ISnackbarService snackbarService,
             ISettingsService settingsService)
         {
             _logger = logger;
             _wallpaperService = wallpaperService;
-            _snackbarService = snackbarService;
             _settingsService = settingsService;
             
             InitializeComponent();
@@ -151,12 +148,7 @@ namespace WallYouNeed.App.Pages
                         // If no wallpapers are found, show a message
                         if (!wallpapers.Any())
                         {
-                            _snackbarService.Show(
-                                "Notice",
-                                $"No wallpapers found in the {category} category.",
-                                ControlAppearance.Info,
-                                null,
-                                TimeSpan.FromSeconds(3));
+                            _logger.LogInformation("No wallpapers found in the {Category} category.", category);
                             
                             // Show the empty state message
                             if (NoWallpapersMessage != null)
@@ -171,13 +163,6 @@ namespace WallYouNeed.App.Pages
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading wallpapers for category: {Category}", category);
-                
-                _snackbarService.Show(
-                    "Error",
-                    $"Failed to load wallpapers for {category}",
-                    ControlAppearance.Danger,
-                    null,
-                    TimeSpan.FromSeconds(3));
             }
             finally
             {
@@ -303,35 +288,18 @@ namespace WallYouNeed.App.Pages
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error navigating back from category page");
-                
-                _snackbarService.Show(
-                    "Error",
-                    "Failed to navigate back",
-                    ControlAppearance.Danger,
-                    null,
-                    TimeSpan.FromSeconds(2));
             }
         }
         
         // Placeholder implementations for XAML event handlers to avoid build errors
         private void SortButton_Click(object sender, RoutedEventArgs e)
         {
-            _snackbarService.Show(
-                "Info",
-                "Sorting functionality is not implemented yet.",
-                ControlAppearance.Info,
-                null,
-                TimeSpan.FromSeconds(2));
+            _logger.LogInformation("Sorting functionality is not implemented yet.");
         }
         
         private void AddWallpaperButton_Click(object sender, RoutedEventArgs e)
         {
-            _snackbarService.Show(
-                "Info",
-                "Add wallpaper functionality is not implemented yet.",
-                ControlAppearance.Info,
-                null,
-                TimeSpan.FromSeconds(2));
+            _logger.LogInformation("Add wallpaper functionality is not implemented yet.");
         }
         
         // Add a new method to create and add wallpaper cards to the UI
@@ -617,45 +585,25 @@ namespace WallYouNeed.App.Pages
         private void ApplyWallpaper(Core.Models.Wallpaper wallpaper)
         {
             _logger.LogInformation("Apply wallpaper clicked: {Id}", wallpaper.Id);
-            _snackbarService.Show(
-                "Info",
-                $"Apply wallpaper feature is not implemented yet.",
-                ControlAppearance.Info,
-                null,
-                TimeSpan.FromSeconds(2));
+            // Implementation for applying wallpaper
         }
         
         private void ToggleFavorite(Core.Models.Wallpaper wallpaper)
         {
             _logger.LogInformation("Toggle favorite clicked: {Id}", wallpaper.Id);
-            _snackbarService.Show(
-                "Info",
-                $"Favorite wallpaper feature is not implemented yet.",
-                ControlAppearance.Info,
-                null,
-                TimeSpan.FromSeconds(2));
+            // Implementation for toggling favorite status
         }
         
         private void ShowMoreOptions(Core.Models.Wallpaper wallpaper)
         {
             _logger.LogInformation("More options clicked: {Id}", wallpaper.Id);
-            _snackbarService.Show(
-                "Info",
-                $"More options feature is not implemented yet.",
-                ControlAppearance.Info,
-                null,
-                TimeSpan.FromSeconds(2));
+            // Implementation for showing more options
         }
         
         private void ViewWallpaperDetails(Core.Models.Wallpaper wallpaper)
         {
             _logger.LogInformation("View wallpaper details clicked: {Id}", wallpaper.Id);
-            _snackbarService.Show(
-                "Info",
-                $"View wallpaper details feature is not implemented yet.",
-                ControlAppearance.Info,
-                null,
-                TimeSpan.FromSeconds(2));
+            // Implementation for viewing wallpaper details
         }
     }
 }

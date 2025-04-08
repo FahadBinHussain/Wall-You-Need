@@ -28,8 +28,7 @@ namespace WallYouNeed.App
         public MainWindow(
             ILogger<MainWindow> logger,
             IWallpaperService wallpaperService,
-            ISettingsService settingsService,
-            Wpf.Ui.ISnackbarService snackbarService)
+            ISettingsService settingsService)
         {
             _logger = logger;
             _wallpaperService = wallpaperService;
@@ -40,10 +39,6 @@ namespace WallYouNeed.App
             // Set minimum window width to prevent resizing issues
             this.MinWidth = 200; // Slightly larger than the previous 150 to ensure UI elements have enough space
             
-            // Register the SnackbarPresenter with the SnackbarService
-            snackbarService.SetSnackbarPresenter(SnackbarPresenter);
-            _logger.LogInformation("SnackbarPresenter registered successfully");
-
             // Set the current active button to Home by default
             _currentActiveButton = HomeButton;
 
@@ -602,13 +597,7 @@ namespace WallYouNeed.App
         {
             // TODO: Implement search functionality
             _logger.LogInformation("Performing search for: {SearchQuery}", searchQuery);
-            // For now, just show a message
-            var snackbarService = (System.Windows.Application.Current as App)?.Services.GetService<Wpf.Ui.ISnackbarService>();
-            if (snackbarService != null)
-            {
-                snackbarService.Show("Search", $"Searching for: {searchQuery}", 
-                    Wpf.Ui.Controls.ControlAppearance.Info, null, TimeSpan.FromSeconds(2));
-            }
+            // For now, just log the search query
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

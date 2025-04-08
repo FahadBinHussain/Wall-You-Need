@@ -467,9 +467,6 @@
                     <!-- Main Content Frame -->
                     <Frame Grid.Column="1" x:Name="ContentFrame" NavigationUIVisibility="Hidden" Background="#FFFFFF"/>
                 </Grid>
-
-                <!-- Snackbar Presenter -->
-                <ui:SnackbarPresenter x:Name="SnackbarPresenter" />
             </Grid>
         </Border>
     </Grid>

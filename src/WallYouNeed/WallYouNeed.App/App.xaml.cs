@@ -146,7 +146,6 @@ namespace WallYouNeed.App
             
             // Register UI services
             services.AddSingleton<Wpf.Ui.IThemeService, Wpf.Ui.ThemeService>();
-            services.AddSingleton<Wpf.Ui.ISnackbarService, Wpf.Ui.SnackbarService>();
             
             // Register pages
             services.AddTransient<MainWindow>();
