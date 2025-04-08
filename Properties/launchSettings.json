@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Wall-You-Need (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Wall-You-Need (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
