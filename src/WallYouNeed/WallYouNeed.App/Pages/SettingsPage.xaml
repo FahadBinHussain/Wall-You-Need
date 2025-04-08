@@ -7,362 +7,387 @@
       xmlns:local="clr-namespace:WallYouNeed.App.Pages"
       mc:Ignorable="d" 
       d:DesignHeight="650" d:DesignWidth="800"
-      Title="Settings">
+      Title="Settings"
+      Background="#1E1E1E"
+      x:Name="SettingsPageControl">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="24,12">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header with Title -->
+        <TextBlock Grid.Row="0" 
+                   Text="Settings" 
+                   FontSize="32" 
+                   FontWeight="SemiBold" 
+                   Foreground="White"
+                   Margin="24,12,0,12"/>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Header -->
-            <TextBlock Grid.Row="0" 
-                       Text="Settings" 
-                       FontSize="32" 
-                       FontWeight="SemiBold" 
-                       Margin="0,0,0,12"/>
-
-            <StackPanel Grid.Row="1" Margin="0,0,0,0">
-                
-                <!-- Appearance -->
-                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
-                        CornerRadius="8" 
-                        Padding="16"
-                        Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock Grid.Row="0" 
-                                   Text="Appearance" 
-                                   FontSize="18" 
-                                   FontWeight="SemiBold" 
-                                   Margin="0,0,0,12"/>
-                        
-                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <StackPanel Grid.Column="0" 
-                                            Orientation="Horizontal" 
-                                            VerticalAlignment="Center">
-                                    <ui:SymbolIcon Symbol="DarkTheme24" 
-                                                  Margin="0,0,12,0" 
-                                                  VerticalAlignment="Center"/>
-                                    <TextBlock Text="Dark Mode" 
-                                              VerticalAlignment="Center"/>
-                                </StackPanel>
-                                
-                                <CheckBox Grid.Column="1" 
-                                         x:Name="ThemeToggle" 
-                                         Checked="ThemeToggle_Checked" 
-                                         Unchecked="ThemeToggle_Unchecked"
-                                         VerticalAlignment="Center"/>
-                            </Grid>
-                        </StackPanel>
-                    </Grid>
+            <!-- Tabs Navigation -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="24,0,0,0">
+                <Border BorderThickness="0,0,0,2" BorderBrush="#569DE5">
+                    <TextBlock Text="Settings" 
+                               FontSize="16" 
+                               Foreground="White" 
+                               Margin="0,0,24,0"
+                               FontWeight="SemiBold"
+                               Padding="0,4,0,6"/>
                 </Border>
                 
-                <!-- Wallpaper Rotation -->
-                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
-                        CornerRadius="8" 
-                        Padding="16"
-                        Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock Grid.Row="0" 
-                                   Text="Wallpaper Rotation" 
-                                   FontSize="18" 
-                                   FontWeight="SemiBold" 
-                                   Margin="0,0,0,12"/>
-                        
-                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <StackPanel Grid.Column="0" 
-                                            Orientation="Horizontal" 
-                                            VerticalAlignment="Center">
-                                    <ui:SymbolIcon Symbol="ArrowClockwise24" 
-                                                  Margin="0,0,12,0" 
-                                                  VerticalAlignment="Center"/>
-                                    <TextBlock Text="Auto-change wallpaper" 
-                                              VerticalAlignment="Center"/>
-                                </StackPanel>
-                                
-                                <CheckBox Grid.Column="1" 
-                                         x:Name="AutoChangeToggle" 
-                                         Checked="AutoChangeToggle_Checked" 
-                                         Unchecked="AutoChangeToggle_Unchecked"
-                                         VerticalAlignment="Center"/>
-                            </Grid>
-                            
-                            <Grid x:Name="RotationIntervalGrid" 
-                                  Visibility="Collapsed"
-                                  Margin="0,16,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <TextBlock Grid.Column="0" 
-                                          Text="Change every:" 
-                                          VerticalAlignment="Center" 
-                                          Margin="24,0,12,0"/>
-                                
-                                <ComboBox Grid.Column="1" 
-                                         x:Name="RotationIntervalCombo" 
-                                         SelectionChanged="RotationIntervalCombo_SelectionChanged">
-                                    <ComboBoxItem Content="30 minutes"/>
-                                    <ComboBoxItem Content="1 hour"/>
-                                    <ComboBoxItem Content="2 hours"/>
-                                    <ComboBoxItem Content="4 hours"/>
-                                    <ComboBoxItem Content="Daily"/>
-                                </ComboBox>
-                            </Grid>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                <TextBlock Text="About" 
+                           FontSize="16" 
+                           Foreground="#AAAAAA" 
+                           Margin="0,0,24,0"
+                           Padding="0,4,0,8"/>
                 
-                <!-- API Keys -->
-                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
-                        CornerRadius="8" 
-                        Padding="16"
-                        Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock Grid.Row="0" 
-                                   Text="API Keys" 
-                                   FontSize="18" 
-                                   FontWeight="SemiBold" 
-                                   Margin="0,0,0,12"/>
-                        
-                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
-                            <StackPanel Margin="0,0,0,16">
-                                <TextBlock Text="Unsplash API Key" 
-                                          Margin="0,0,0,4"/>
-                                <PasswordBox x:Name="UnsplashApiKey" 
-                                            PasswordChanged="UnsplashApiKey_PasswordChanged"/>
-                            </StackPanel>
-                            
-                            <StackPanel Margin="0,0,0,0">
-                                <TextBlock Text="Pexels API Key" 
-                                          Margin="0,0,0,4"/>
-                                <PasswordBox x:Name="PexelsApiKey" 
-                                            PasswordChanged="PexelsApiKey_PasswordChanged"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                <TextBlock Text="Our applications" 
+                           FontSize="16" 
+                           Foreground="#AAAAAA" 
+                           Margin="0,0,24,0"
+                           Padding="0,4,0,8"/>
                 
-                <!-- System Integration -->
-                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
-                        CornerRadius="8" 
-                        Padding="16"
-                        Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock Grid.Row="0" 
-                                   Text="System Integration" 
-                                   FontSize="18" 
-                                   FontWeight="SemiBold" 
-                                   Margin="0,0,0,12"/>
-                        
-                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <StackPanel Grid.Column="0" 
-                                            Orientation="Horizontal" 
-                                            VerticalAlignment="Center">
-                                    <ui:SymbolIcon Symbol="Flash24" 
-                                                  Margin="0,0,12,0" 
-                                                  VerticalAlignment="Center"/>
-                                    <TextBlock Text="Run at startup" 
-                                              VerticalAlignment="Center"/>
-                                </StackPanel>
-                                
-                                <CheckBox Grid.Column="1" 
-                                         x:Name="StartupToggle" 
-                                         Checked="StartupToggle_Checked" 
-                                         Unchecked="StartupToggle_Unchecked"
-                                         VerticalAlignment="Center"/>
-                            </Grid>
-                            
-                            <Grid Margin="0,0,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <StackPanel Grid.Column="0" 
-                                            Orientation="Horizontal" 
-                                            VerticalAlignment="Center">
-                                    <ui:SymbolIcon Symbol="ArrowMinimize24" 
-                                                  Margin="0,0,12,0" 
-                                                  VerticalAlignment="Center"/>
-                                    <TextBlock Text="Minimize to tray" 
-                                              VerticalAlignment="Center"/>
-                                </StackPanel>
-                                
-                                <CheckBox Grid.Column="1" 
-                                         x:Name="MinimizeToTrayToggle" 
-                                         Checked="MinimizeToTrayToggle_Checked" 
-                                         Unchecked="MinimizeToTrayToggle_Unchecked"
-                                         VerticalAlignment="Center"/>
-                            </Grid>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-                
-                <!-- Storage Settings -->
-                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
-                        CornerRadius="8" 
-                        Padding="16"
-                        Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock Grid.Row="0" 
-                                   Text="Storage Settings" 
-                                   FontSize="18" 
-                                   FontWeight="SemiBold" 
-                                   Margin="0,0,0,12"/>
-                        
-                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
-                            <Button Content="Change Storage Location" 
-                                   Click="ChangeStorageLocation_Click" 
-                                   HorizontalAlignment="Left"
-                                   Margin="0,0,0,16"/>
-                            
-                            <Button Content="Clear Cache" 
-                                   Click="ClearCache_Click" 
-                                   HorizontalAlignment="Left"
-                                   Margin="0,0,0,0"/>
-                                   
-                            <TextBlock x:Name="StorageLocationText"
-                                      Text="Storage location will be displayed here"
-                                      Margin="0,16,0,0"
-                                      TextWrapping="Wrap"/>
-                                      
-                            <TextBlock x:Name="StorageSizeText"
-                                     Text="0 MB used"
-                                     Margin="0,8,0,0"
-                                     Opacity="0.8"
-                                     TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-                
-                <!-- Logs Section -->
-                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" 
-                        CornerRadius="8" 
-                        Padding="16"
-                        Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock Grid.Row="0" 
-                                   Text="Logs" 
-                                   FontSize="18" 
-                                   FontWeight="SemiBold" 
-                                   Margin="0,0,0,12"/>
-                        
-                        <StackPanel Grid.Row="1" Margin="0,0,0,0">
-                            <TextBlock Text="Manage application logs for troubleshooting" 
-                                       Margin="0,0,0,12" 
-                                       Opacity="0.7"/>
-                            
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <TextBlock Text="Application logs location:" 
-                                           VerticalAlignment="Center"/>
-                                
-                                <Button Grid.Column="1" 
-                                        Content="View Logs" 
-                                        Click="ViewLogs_Click"
-                                        Padding="12,6"
-                                        Margin="0,0,8,0"/>
-                                
-                                <Button Grid.Column="2" 
-                                        Content="Export Logs" 
-                                        Click="ExportLogs_Click"
-                                        Padding="12,6"/>
-                            </Grid>
-                            
-                            <Grid Margin="0,0,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <StackPanel Grid.Column="0" 
-                                            Orientation="Horizontal" 
-                                            VerticalAlignment="Center">
-                                    <ui:SymbolIcon Symbol="DocumentText24" 
-                                                  Margin="0,0,12,0" 
-                                                  VerticalAlignment="Center"/>
-                                    <TextBlock Text="Enable verbose logging" 
-                                              VerticalAlignment="Center"/>
-                                </StackPanel>
-                                
-                                <CheckBox Grid.Column="1" 
-                                         x:Name="VerboseLoggingToggle" 
-                                         Checked="VerboseLoggingToggle_Checked" 
-                                         Unchecked="VerboseLoggingToggle_Unchecked"
-                                         VerticalAlignment="Center"/>
-                            </Grid>
-                            <TextBlock Text="Wall-You-Need" 
-                                      FontWeight="SemiBold"
-                                      Margin="0,0,0,8"/>
-                            <TextBlock Text="Version 1.0.0" 
-                                      Opacity="0.8"
-                                      Margin="0,0,0,8"/>
-                            <TextBlock Margin="0,0,0,0">
-                                <Hyperlink NavigateUri="https://github.com/yourusername/wall-you-need" 
-                                          RequestNavigate="Hyperlink_RequestNavigate">
-                                    GitHub Repository
-                                </Hyperlink>
-                            </TextBlock>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                <TextBlock Text="Release notes" 
+                           FontSize="16" 
+                           Foreground="#AAAAAA" 
+                           Margin="0,0,24,0"
+                           Padding="0,4,0,8"/>
             </StackPanel>
+
+            <!-- Settings Content -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="24,12">
+                    
+                    <!-- Language -->
+                    <Border Background="#2D2D2D" 
+                            CornerRadius="8" 
+                            Margin="0,0,0,12">
+                        <Grid Margin="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <ui:SymbolIcon Symbol="Globe24" 
+                                          Foreground="White" 
+                                          FontSize="22"
+                                          Grid.Column="0" 
+                                          Margin="0,0,16,0"/>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Language" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="Select language for the application" 
+                                           Foreground="#AAAAAA" 
+                                           FontSize="12"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            
+                            <ComboBox Grid.Column="2" 
+                                     Width="120" 
+                                     SelectedValue="English" 
+                                     x:Name="LanguageComboBox"
+                                     VerticalAlignment="Center"
+                                     Background="#383838"
+                                     Foreground="White"
+                                     BorderThickness="0"
+                                     SelectionChanged="LanguageComboBox_SelectionChanged">
+                                <ComboBoxItem Content="English" IsSelected="True"/>
+                                <ComboBoxItem Content="Spanish"/>
+                                <ComboBoxItem Content="French"/>
+                                <ComboBoxItem Content="German"/>
+                            </ComboBox>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Automatic Launch -->
+                    <Border Background="#2D2D2D" 
+                            CornerRadius="8" 
+                            Margin="0,0,0,12">
+                        <Grid Margin="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <ui:SymbolIcon Symbol="ArrowSync24" 
+                                          Foreground="White" 
+                                          FontSize="22"
+                                          Grid.Column="0" 
+                                          Margin="0,0,16,0"/>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Automatic launch" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="Launch backlee when I start my computer" 
+                                           Foreground="#AAAAAA" 
+                                           FontSize="12"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            
+                            <CheckBox Grid.Column="2" 
+                                     x:Name="AutoLaunchToggle"
+                                     VerticalAlignment="Center"
+                                     IsChecked="False"
+                                     Checked="AutoLaunchToggle_Checked"
+                                     Unchecked="AutoLaunchToggle_Unchecked"/>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Remove all widgets -->
+                    <Border Background="#2D2D2D" 
+                            CornerRadius="8" 
+                            Margin="0,0,0,12">
+                        <Grid Margin="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <ui:SymbolIcon Symbol="Delete24" 
+                                          Foreground="White" 
+                                          FontSize="22"
+                                          Grid.Column="0" 
+                                          Margin="0,0,16,0"/>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Remove all widgets" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="Remove all your widgets" 
+                                           Foreground="#AAAAAA" 
+                                           FontSize="12"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            
+                            <Button Grid.Column="2" 
+                                    Content="Remove" 
+                                    x:Name="RemoveWidgetsButton"
+                                    Background="#444444"
+                                    Foreground="White"
+                                    Padding="16,8"
+                                    VerticalAlignment="Center"
+                                    Click="RemoveWidgetsButton_Click"/>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Push notification -->
+                    <Border Background="#2D2D2D" 
+                            CornerRadius="8" 
+                            Margin="0,0,0,12">
+                        <Grid Margin="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <ui:SymbolIcon Symbol="Alert24" 
+                                          Foreground="White" 
+                                          FontSize="22"
+                                          Grid.Column="0" 
+                                          Margin="0,0,16,0"/>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Push notification" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="Customize push notification" 
+                                           Foreground="#AAAAAA" 
+                                           FontSize="12"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            
+                            <Button Grid.Column="2" 
+                                    Width="24" 
+                                    Height="24"
+                                    x:Name="NotificationExpandButton"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    VerticalAlignment="Center"
+                                    Click="NotificationExpandButton_Click">
+                                <ui:SymbolIcon Symbol="ChevronDown24" Foreground="White"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Quick like -->
+                    <Border Background="#2D2D2D" 
+                            CornerRadius="8" 
+                            Margin="0,0,0,12">
+                        <Grid Margin="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <ui:SymbolIcon Symbol="Heart24" 
+                                          Foreground="White" 
+                                          FontSize="22"
+                                          Grid.Column="0" 
+                                          Margin="0,0,16,0"/>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Quick like" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="You can turn on or off whether the quick like feature enabled in the wallpaper lists" 
+                                           Foreground="#AAAAAA" 
+                                           FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            
+                            <CheckBox Grid.Column="2" 
+                                     x:Name="QuickLikeToggle"
+                                     VerticalAlignment="Center"
+                                     IsChecked="True"
+                                     Checked="QuickLikeToggle_Checked"
+                                     Unchecked="QuickLikeToggle_Unchecked"/>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Synchronization -->
+                    <Border Background="#2D2D2D" 
+                            CornerRadius="8" 
+                            Margin="0,0,0,12">
+                        <Grid Margin="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <ui:SymbolIcon Symbol="ArrowSync24" 
+                                          Foreground="White" 
+                                          FontSize="22"
+                                          Grid.Column="0" 
+                                          Margin="0,0,16,0"/>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Synchronization" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="Enable synchronization using metered connection" 
+                                           Foreground="#AAAAAA" 
+                                           FontSize="12"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            
+                            <CheckBox Grid.Column="2" 
+                                     x:Name="SyncToggle"
+                                     VerticalAlignment="Center"
+                                     IsChecked="False"
+                                     Checked="SyncToggle_Checked"
+                                     Unchecked="SyncToggle_Unchecked"/>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Theme -->
+                    <Border Background="#2D2D2D" 
+                            CornerRadius="8" 
+                            Margin="0,0,0,12">
+                        <Grid Margin="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <ui:SymbolIcon Symbol="DarkTheme24" 
+                                          Foreground="White" 
+                                          FontSize="22"
+                                          Grid.Column="0" 
+                                          Margin="0,0,16,0"/>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Theme" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="Select light or dark theme for the application" 
+                                           Foreground="#AAAAAA" 
+                                           FontSize="12"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            
+                            <ComboBox Grid.Column="2" 
+                                     Width="120" 
+                                     SelectedValue="Light" 
+                                     x:Name="ThemeComboBox"
+                                     VerticalAlignment="Center"
+                                     Background="#383838"
+                                     Foreground="White"
+                                     BorderThickness="0"
+                                     SelectionChanged="ThemeComboBox_SelectionChanged">
+                                <ComboBoxItem Content="Light" IsSelected="True"/>
+                                <ComboBoxItem Content="Dark"/>
+                                <ComboBoxItem Content="System Default"/>
+                            </ComboBox>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Hints -->
+                    <Border Background="#2D2D2D" 
+                            CornerRadius="8" 
+                            Margin="0,0,0,12">
+                        <Grid Margin="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <ui:SymbolIcon Symbol="Info24" 
+                                          Foreground="White" 
+                                          FontSize="22"
+                                          Grid.Column="0" 
+                                          Margin="0,0,16,0"/>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Hints" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="Show all hints again on every page" 
+                                           Foreground="#AAAAAA" 
+                                           FontSize="12"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            
+                            <Button Grid.Column="2" 
+                                    Content="Show all tips again" 
+                                    x:Name="ShowHintsButton"
+                                    Background="#444444"
+                                    Foreground="White"
+                                    Padding="16,8"
+                                    VerticalAlignment="Center"
+                                    Click="ShowHintsButton_Click"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
-    </ScrollViewer>
+    </Grid>
 </Page> 
