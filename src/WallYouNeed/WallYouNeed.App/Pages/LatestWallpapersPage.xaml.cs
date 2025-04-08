@@ -84,8 +84,16 @@ namespace WallYouNeed.App.Pages
             // Create a new cancellation token source for infinite scrolling
             _cts = new CancellationTokenSource();
             
-            // Disable scroll position restoration
+            // Initialize API page counter
+            _currentApiPage = 1;
+            
+            // Explicitly disable scroll position restoration
             _shouldRestoreScrollPosition = false;
+            
+            // Ensure other scroll-related variables are properly initialized
+            _isPageLoaded = false;
+            _isLoadingMore = false;
+            _lastScrollCheck = DateTime.MinValue;
 
             // Register events
             Loaded += LatestWallpapersPage_Loaded;
@@ -103,6 +111,10 @@ namespace WallYouNeed.App.Pages
 
             // Create a new cancellation token source
             _cts = new CancellationTokenSource();
+            
+            // Explicitly ensure page counter is reset to avoid issues with scroll state
+            _currentApiPage = 1;
+            _logger?.LogInformation("Starting with fresh page counter (reset to 1)");
 
             // Load settings
             await LoadSettingsAsync();
@@ -322,7 +334,7 @@ namespace WallYouNeed.App.Pages
                 _attemptedIds.Clear();
                 
                 // Explicitly reset page counter to ensure correct sequence
-                _currentApiPage = 1;
+                _currentApiPage = 1; // This maps to API index 0
                 _logger?.LogInformation("Reset page counter to 1 (API index 0)");
                 
                 StatusTextBlock.Text = "Loading wallpapers...";
@@ -332,14 +344,14 @@ namespace WallYouNeed.App.Pages
                 bool wallpapersLoaded = await LoadWallpapersFromApiAsync();
                 
                 // After first load, _currentApiPage should be 2
-                _logger?.LogInformation("After first load, page counter = {page}", _currentApiPage);
+                _logger?.LogInformation("After first load, page counter = {0}", _currentApiPage);
                 
                 if (wallpapersLoaded)
                 {
                     // Explicitly ensure we're on page 2 (API index 1)
                     if (_currentApiPage != 2)
                     {
-                        _logger?.LogWarning("Page counter unexpected value: {page}, forcing to 2", _currentApiPage);
+                        _logger?.LogWarning("Page counter unexpected value: {0}, forcing to 2", _currentApiPage);
                         _currentApiPage = 2;
                     }
                     
@@ -348,7 +360,14 @@ namespace WallYouNeed.App.Pages
                     await LoadMoreWallpapersFromApiAsync(_cts.Token);
                     
                     // After second load, _currentApiPage should be 3
-                    _logger?.LogInformation("After second load, page counter = {page}", _currentApiPage);
+                    _logger?.LogInformation("After second load, page counter = {0}", _currentApiPage);
+                    
+                    // Ensure it's now 3 for the next load to be page 2
+                    if (_currentApiPage != 3)
+                    {
+                        _logger?.LogWarning("Page counter unexpected value after second load: {0}, forcing to 3", _currentApiPage);
+                        _currentApiPage = 3;
+                    }
                 }
                 
                 // If API loading failed, use test data as fallback
@@ -1084,7 +1103,9 @@ namespace WallYouNeed.App.Pages
                             try
                             {
                                 _isLoadingMore = true;
-                                _logger?.LogInformation("Preemptive loading triggered at {0}% scroll", (scrollPercentage * 100).ToString("0"));
+                                int currentPageBeforeScroll = _currentApiPage;
+                                _logger?.LogInformation("Preemptive loading triggered at {0}% scroll (current page: {1})", 
+                                    (scrollPercentage * 100).ToString("0"), _currentApiPage);
                                 
                                 // Show loading status but make it less intrusive
                                 StatusTextBlock.Text = "Loading more wallpapers...";
@@ -1095,6 +1116,8 @@ namespace WallYouNeed.App.Pages
                                 if (_useApiForLoading)
                                 {
                                     await LoadMoreWallpapersFromApiAsync(_cts.Token);
+                                    _logger?.LogInformation("After scroll-triggered loading, page counter progressed from {0} to {1}", 
+                                        currentPageBeforeScroll, _currentApiPage);
                                 }
                                 else
                                 {
@@ -2134,6 +2157,7 @@ namespace WallYouNeed.App.Pages
             {
                 // Build the API URL with parameters
                 string apiUrl = BuildApiUrl();
+                int currentPageBeforeLoading = _currentApiPage;
                 _logger?.LogInformation($"Fetching wallpapers from API: {apiUrl} (Current page: {_currentApiPage})");
 
                 // Create debug directory in Documents folder for easy access
@@ -2176,7 +2200,7 @@ namespace WallYouNeed.App.Pages
                     try
                     {
                         // Save raw response
-                        string debugFile = Path.Combine(debugDir, $"api_response_{DateTime.Now:yyyyMMdd_HHmmss}.json");
+                        string debugFile = Path.Combine(debugDir, $"api_response_{DateTime.Now:yyyyMMdd_HHmmss}_page{currentPageBeforeLoading}.json");
                         await File.WriteAllTextAsync(debugFile, jsonContent);
                         _logger?.LogInformation($"Saved API response to: {debugFile}");
                     }
@@ -2209,7 +2233,7 @@ namespace WallYouNeed.App.Pages
                     try
                     {
                         // Save parsed data
-                        string debugDataFile = Path.Combine(debugDir, $"api_parsed_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+                        string debugDataFile = Path.Combine(debugDir, $"api_parsed_{DateTime.Now:yyyyMMdd_HHmmss}_page{currentPageBeforeLoading}.txt");
                         using (var writer = new StreamWriter(debugDataFile))
                         {
                             await writer.WriteLineAsync($"API URL: {apiUrl}");
@@ -2294,7 +2318,7 @@ namespace WallYouNeed.App.Pages
                     
                     // Increment the current page for next load
                     _currentApiPage++;
-                    _logger?.LogInformation($"*** Incremented page counter to {_currentApiPage} for next API load ***");
+                    _logger?.LogInformation($"*** Incremented page counter from {currentPageBeforeLoading} to {_currentApiPage} for next API load ***");
                     
                     return _wallpapers.Count > 0;
                 }
@@ -2312,6 +2336,7 @@ namespace WallYouNeed.App.Pages
             {
                 // Build the API URL with the current page
                 string apiUrl = BuildApiUrl();
+                int currentPageBeforeLoading = _currentApiPage;
                 _logger?.LogInformation($"Loading more wallpapers from API: {apiUrl} (Current page: {_currentApiPage}, API index: {_currentApiPage-1})");
                 
                 StatusTextBlock.Text = $"Loading more wallpapers from API (Page: {_currentApiPage})...";
@@ -2441,6 +2466,7 @@ namespace WallYouNeed.App.Pages
                     
                     // Increment the page number for the next API call
                     _currentApiPage++;
+                    _logger?.LogInformation($"*** Incremented page counter from {currentPageBeforeLoading} to {_currentApiPage} for next API load ***");
                     
                     StatusTextBlock.Text = $"Loaded {newWallpapersCount} new wallpapers (Total: {_wallpapers.Count})";
                     await Task.Delay(1000, cancellationToken); // Show message briefly
