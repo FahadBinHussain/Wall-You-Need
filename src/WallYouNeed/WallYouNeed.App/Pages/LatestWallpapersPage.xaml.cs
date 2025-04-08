@@ -101,6 +101,9 @@ namespace WallYouNeed.App.Pages
             StatusTextBlock.Visibility = Visibility.Visible;
             LoadingProgressBar.Visibility = Visibility.Visible;
 
+            // Create a new cancellation token source
+            _cts = new CancellationTokenSource();
+
             // Load settings
             await LoadSettingsAsync();
 
@@ -112,6 +115,35 @@ namespace WallYouNeed.App.Pages
             
             // Start preemptive loading after initial load
             await Task.Delay(500); // Short delay to allow UI to render
+            
+            // Instead of trying to simulate a scroll event with ScrollChangedEventArgs,
+            // directly queue up the next page load to ensure infinite scroll works on first load
+            if (_useApiForLoading && !_isLoadingMore)
+            {
+                // Only if we're not already loading and API loading is enabled
+                _logger?.LogInformation("Preemptively triggering next page load to ensure infinite scroll works");
+                
+                // Try to acquire the semaphore without blocking
+                if (await _loadingSemaphore.WaitAsync(0))
+                {
+                    try
+                    {
+                        _isLoadingMore = true;
+                        await LoadMoreWallpapersFromApiAsync(_cts.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Error preemptively loading next page");
+                    }
+                    finally
+                    {
+                        _isLoadingMore = false;
+                        _loadingSemaphore.Release();
+                    }
+                }
+            }
+            
+            // Then start background loading
             StartBackgroundLoading();
         }
 
@@ -280,10 +312,14 @@ namespace WallYouNeed.App.Pages
             {
                 _logger?.LogInformation("Loading initial wallpapers");
                 
+                // Ensure API loading is enabled
+                _useApiForLoading = true;
+                
                 // Clear existing items
                 WallpaperContainer.Children.Clear();
                 _wallpapers.Clear();
                 _loadedUrls.Clear();
+                _attemptedIds.Clear();
                 
                 // Explicitly reset page counter to ensure correct sequence
                 _currentApiPage = 1;
@@ -1020,9 +1056,11 @@ namespace WallYouNeed.App.Pages
         {
             try
             {
-                // NOTE: Scroll position restoration was disabled to fix issues with API page loading
-                // The previous implementation would save and restore scroll position, which may have
-                // interfered with the proper loading sequence of wallpapers from the API
+                // Make sure the page is fully loaded before processing scroll events
+                if (!_isPageLoaded || _cts == null || _cts.IsCancellationRequested)
+                {
+                    return;
+                }
                 
                 // Debounce scroll events for infinite scrolling
                 if ((DateTime.Now - _lastScrollCheck) < _scrollDebounceTime)
@@ -1036,7 +1074,7 @@ namespace WallYouNeed.App.Pages
                 
                 // Check if we're within the preemptive loading threshold
                 // This loads more images before reaching the bottom
-                if (scrollPercentage > 0.7) // Start loading when 70% scrolled
+                if (scrollPercentage > 0.6) // Start loading when 60% scrolled (reduced threshold)
                 {
                     if (!_isLoadingMore)
                     {
@@ -1053,8 +1091,15 @@ namespace WallYouNeed.App.Pages
                                 StatusTextBlock.Visibility = Visibility.Visible;
                                 LoadingProgressBar.Visibility = Visibility.Visible;
                                 
-                                // Load more wallpapers - using HTTP check method
-                                await LoadMoreImagesAsync(_cts.Token);
+                                // Load more wallpapers
+                                if (_useApiForLoading)
+                                {
+                                    await LoadMoreWallpapersFromApiAsync(_cts.Token);
+                                }
+                                else
+                                {
+                                    await LoadMoreImagesAsync(_cts.Token);
+                                }
                                 
                                 // Queue background loading for the next batch
                                 if (_isPrefetchingEnabled)
@@ -2089,7 +2134,7 @@ namespace WallYouNeed.App.Pages
             {
                 // Build the API URL with parameters
                 string apiUrl = BuildApiUrl();
-                _logger?.LogInformation($"Fetching wallpapers from API: {apiUrl}");
+                _logger?.LogInformation($"Fetching wallpapers from API: {apiUrl} (Current page: {_currentApiPage})");
 
                 // Create debug directory in Documents folder for easy access
                 string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -2249,6 +2294,7 @@ namespace WallYouNeed.App.Pages
                     
                     // Increment the current page for next load
                     _currentApiPage++;
+                    _logger?.LogInformation($"*** Incremented page counter to {_currentApiPage} for next API load ***");
                     
                     return _wallpapers.Count > 0;
                 }
