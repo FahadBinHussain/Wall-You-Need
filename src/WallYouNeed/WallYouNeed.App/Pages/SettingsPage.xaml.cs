@@ -77,12 +77,16 @@ namespace WallYouNeed.App.Pages
             if (_isNotificationPanelExpanded)
             {
                 NotificationSettingsPanel.Visibility = Visibility.Visible;
-                ExpandCollapseIcon.Text = "▲";
+                
+                // Rotate the icon to point up (180 degrees)
+                ExpandCollapseIcon.RenderTransform = new System.Windows.Media.RotateTransform(180);
             }
             else
             {
                 NotificationSettingsPanel.Visibility = Visibility.Collapsed;
-                ExpandCollapseIcon.Text = "▼";
+                
+                // Return icon to normal (point down)
+                ExpandCollapseIcon.RenderTransform = new System.Windows.Media.RotateTransform(0);
             }
         }
 

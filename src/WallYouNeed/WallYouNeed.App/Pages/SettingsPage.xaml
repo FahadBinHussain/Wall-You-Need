@@ -224,7 +224,12 @@
                                     Padding="0"
                                     VerticalAlignment="Center"
                                     Click="NotificationExpandButton_Click">
-                                <TextBlock x:Name="ExpandCollapseIcon" Text="▼" FontSize="12" Foreground="White"/>
+                                <Path x:Name="ExpandCollapseIcon" 
+                                      Data="M4.4 7.4L12 14.9999L19.6 7.4L21 8.83325L12 17.8333L3 8.83325L4.4 7.4Z" 
+                                      Fill="White"
+                                      Stretch="Uniform"
+                                      Width="16"
+                                      Height="16" />
                             </Button>
                         </Grid>
                     </Border>
