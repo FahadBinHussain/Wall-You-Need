@@ -224,9 +224,82 @@
                                     Padding="0"
                                     VerticalAlignment="Center"
                                     Click="NotificationExpandButton_Click">
-                                <ui:SymbolIcon Symbol="ChevronDown24" Foreground="White"/>
+                                <TextBlock x:Name="ExpandCollapseIcon" Text="▼" FontSize="12" Foreground="White"/>
                             </Button>
                         </Grid>
+                    </Border>
+                    
+                    <!-- Push Notification Settings (Expandable Panel) -->
+                    <Border x:Name="NotificationSettingsPanel" 
+                            Background="#242424" 
+                            CornerRadius="8" 
+                            Margin="0,-8,0,12"
+                            Visibility="Collapsed">
+                        <StackPanel Margin="16,12">
+                            
+                            <!-- New wallpapers notification -->
+                            <Grid Margin="0,4,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Text="New wallpapers" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"/>
+                                
+                                <CheckBox Grid.Column="1" 
+                                         x:Name="NewWallpapersToggle"
+                                         VerticalAlignment="Center"
+                                         IsChecked="True"
+                                         Checked="NewWallpapersToggle_Checked"
+                                         Unchecked="NewWallpapersToggle_Unchecked"/>
+                            </Grid>
+                            
+                            <!-- Daily wallpaper selections -->
+                            <Grid Margin="0,4,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Text="Daily wallpaper selections" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"/>
+                                
+                                <CheckBox Grid.Column="1" 
+                                         x:Name="DailySelectionsToggle"
+                                         VerticalAlignment="Center"
+                                         IsChecked="True"
+                                         Checked="DailySelectionsToggle_Checked"
+                                         Unchecked="DailySelectionsToggle_Unchecked"/>
+                            </Grid>
+                            
+                            <!-- New wallpapers (duplicate entry as shown in the image) -->
+                            <Grid Margin="0,4,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Text="New wallpapers" 
+                                           Foreground="White" 
+                                           FontSize="16"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"/>
+                                
+                                <CheckBox Grid.Column="1" 
+                                         x:Name="NewWallpapersToggle2"
+                                         VerticalAlignment="Center"
+                                         IsChecked="True"
+                                         Checked="NewWallpapersToggle2_Checked"
+                                         Unchecked="NewWallpapersToggle2_Unchecked"/>
+                            </Grid>
+                        </StackPanel>
                     </Border>
                     
                     <!-- Quick like -->
