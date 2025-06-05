@@ -2,7 +2,7 @@
 
 <img src="https://wakapi-qt1b.onrender.com/api/badge/fahad/interval:any/project:Wall-You-Need" 
      alt="Wakapi Time Tracking" 
-     title="Minimum amount of time spent on this project">
+     title="Spent more than that amount of time spent on this project">
 
 A comprehensive wallpaper management solution featuring both a WPF desktop application and Python utilities for automating wallpaper downloads and rotation from multiple sources.
 
