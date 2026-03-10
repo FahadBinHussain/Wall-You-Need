@@ -4,18 +4,33 @@
      alt="Wakapi Time Tracking" 
      title="Spent more than that amount of time spent on this project">
 
-A comprehensive wallpaper management solution featuring both a WPF desktop application and Python utilities for automating wallpaper downloads and rotation from multiple sources.
+A comprehensive wallpaper management solution featuring **three different platform implementations**: WinUI 3, WPF, and Python/Tkinter - all for managing and automating wallpaper downloads and rotation from multiple sources.
 
-## Project Overview
+## 🚀 Available Platforms
 
-Wall-You-Need is a multi-platform solution for wallpaper enthusiasts with the following components:
+Wall-You-Need is available in three distinct implementations, each with its own strengths:
 
-1. **.NET/WPF Application**: A modern desktop app for browsing, managing, and applying wallpapers
-2. **Python Backend**: Utilities for fetching wallpapers from various sources
-3. **Backiee Scraper**: A specialized component for scraping wallpapers from Backiee
+### 1. **WinUI 3 Application** (Modern Windows)
+- ✨ **Latest Windows UI technology** - Modern, fluent design
+- 🎨 Native Windows 11 look and feel
+- 📍 Location: `winui/`
+- **Recommended for**: Windows 11 users who want the latest UI experience
+
+### 2. **WPF Application** (.NET Desktop)
+- 🖥️ **Mature Windows desktop framework** - Stable and feature-rich
+- 🎭 Custom themes and modern WPF UI library
+- 📍 Location: `wpf/`
+- **Recommended for**: Windows 10/11 users who prefer traditional desktop apps
+
+### 3. **Python/Tkinter Application**
+- 🐍 **Cross-platform Python** - Lightweight and portable
+- 🔧 Easy to customize and extend
+- 📍 Location: `python/`
+- **Recommended for**: Users who want a lightweight solution or need to modify the code
 
 ## Features
 
+All platforms support:
 - **Multiple Wallpaper Sources**:
   - Unsplash
   - Pexels
@@ -24,79 +39,203 @@ Wall-You-Need is a multi-platform solution for wallpaper enthusiasts with the fo
 - **Automated Wallpaper Rotation**
 - **Customizable Time Intervals**
 - **Desktop & Lock Screen Wallpaper Management**
-- **Modern WPF UI with Theme Support**
 - **Collections Management**
 - **Local Wallpaper Storage**
 - **Auto-startup Option**
 - **Wallpaper Search Functionality**
 
-## Project Structure
+## 📦 Prerequisites
 
-The project is organized into several components:
+### For WinUI 3 Application
+- Windows 10 (build 19041 or higher) or Windows 11
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (for building)
+- [Windows App SDK Runtime 1.7](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) (auto-included in self-contained builds)
 
-- **`src/WallYouNeed`**: Main .NET solution
-  - **`WallYouNeed.App`**: WPF application with UI
-  - **`WallYouNeed.Core`**: Core business logic and services
-  - **`BackieeScraper`**: Component for scraping Backiee website
+### For WPF Application
+- Windows 10 or Windows 11
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (for building)
+- [.NET 8.0 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (for running pre-built)
 
-- **`python/`**: Python utilities
-  - **`gui.py`**: Python-based GUI for wallpaper management
-  - **`unsplash.py`**: Unsplash API integration
-  - **`pexels.py`**: Pexels API integration
-  - **`wallpaper_engine.py`**: Steam Wallpaper Engine integration
-  - **`wallpaper_utils.py`**: Helper utilities for wallpaper operations
-  - **`registry_utils.py`**: Windows registry utilities
-  - **`startup_gui.py`**: Auto-startup functionality
+### For Python Application
+- Python 3.8 or higher
+- Tkinter (usually included with Python)
+- Required packages (see `python/requirements.txt`)
 
-## Prerequisites
+## 🚀 Installation & Running
 
-### For Running the app
-- [.NET 8.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-aspnetcore-8.0.14-windows-x64-installer)
-- Windows operating system
-### For Building the app
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-8.0.407-windows-x64-installer)
-- Windows operating system
+### Option 1: WinUI 3 (Modern Windows)
+## 🚀 Installation & Running
 
-### For Python Utilities
-- Python 3.8+
-- Required Python packages (listed in `python/requirements.txt`)
+### Option 1: WinUI 3 (Modern Windows)
 
-## Installation
+**Building and Running:**
+```bash
+# Navigate to winui directory
+cd winui
 
-### .NET Application
-1. Clone the repository
-2. Open the solution in Visual Studio or JetBrains Rider
-3. Build the solution:
-   ```bash
-   dotnet build
-   ```
-4. Run the application:
-   ```bash
-   dotnet run --project src/WallYouNeed/WallYouNeed.App/WallYouNeed.App.csproj
-   ```
+# Publish with self-contained runtime (Recommended)
+dotnet publish -c Release -p:Platform=x64 -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:WindowsAppSDKSelfContained=true -p:UseWinUI=true
 
-### Python Utilities
-1. Install required packages:
-   ```bash
-   pip install -r python/requirements.txt
-   ```
-2. Run the Python GUI:
-   ```bash
-   python python/gui.py
-   ```
+# Run the application
+.\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\Wall-You-Need.exe
+```
 
-## Configuration
+**Alternative (Quick Run for Development):**
+```bash
+cd winui
+dotnet run
+```
+> ⚠️ **Note**: `dotnet run` may fail with "Class not registered" error. Use the publish command above for reliable execution.
 
-Configuration settings are managed through the application's settings page or by directly editing configuration files.
+---
 
-### Key Settings:
-- Wallpaper sources (Unsplash, Pexels, Wallpaper Engine, Backiee)
-- Update interval
-- Maximum wallpaper count
-- Save location
-- Auto-startup options
+### Option 2: WPF (.NET Desktop)
 
-## Error Handling
+**Building and Running:**
+```bash
+# Navigate to WPF app directory
+cd wpf/WallYouNeed.App
+
+# Restore packages (first time only)
+dotnet restore
+
+# Build the application
+dotnet build
+
+# Run the application
+dotnet run
+```
+
+**Or open in Visual Studio/Rider:**
+1. Open `wpf/WallYouNeed.sln`
+2. Set `WallYouNeed.App` as startup project
+3. Press F5 to run
+
+---
+
+### Option 3: Python/Tkinter
+
+**Installation:**
+```bash
+# Navigate to python directory
+cd python
+
+# Install required packages
+pip install -r requirements.txt
+```
+
+**Running:**
+```bash
+# Run the GUI application
+python gui.py
+```
+
+## 📁 Project Structure
+
+```
+Wall-You-Need/
+├── winui/                    # WinUI 3 Application
+│   ├── App.xaml             # Application entry point
+│   ├── MainWindow.xaml      # Main window UI
+│   └── Wall-You-Need.csproj # Project file
+│
+├── wpf/                      # WPF Application
+│   ├── WallYouNeed.App/     # Main WPF application
+│   │   ├── Pages/           # UI pages (HomePage, SettingsPage, etc.)
+│   │   ├── Services/        # App-specific services
+│   │   └── MainWindow.xaml  # Main window
+│   └── WallYouNeed.Core/    # Core business logic
+│       ├── Services/        # Wallpaper services, scrapers
+│       ├── Repositories/    # Data access layer
+│       └── Models/          # Data models
+│
+└── python/                   # Python/Tkinter Application
+    ├── gui.py               # Main GUI application
+    ├── unsplash.py          # Unsplash API integration
+    ├── pexels.py            # Pexels API integration
+    ├── wallpaper_engine.py  # Wallpaper Engine integration
+    ├── wallpaper_utils.py   # Utility functions
+    ├── registry_utils.py    # Windows registry operations
+    ├── startup_gui.py       # Auto-startup management
+    └── requirements.txt     # Python dependencies
+```
+
+## ⚙️ Configuration
+
+Configuration settings are managed through each application's settings interface:
+
+### Key Settings (All Platforms):
+- 🌐 Wallpaper sources (Unsplash, Pexels, Wallpaper Engine, Backiee)
+- ⏱️ Update interval (rotation frequency)
+- 📊 Maximum wallpaper count
+- 💾 Save location for downloaded wallpapers
+- 🚀 Auto-startup options
+- 🎨 Display settings (desktop/lock screen)
+
+## 🛠️ Development
+
+### Building from Source
+
+**WinUI 3:**
+```bash
+cd winui
+dotnet restore
+dotnet build -r win-x64
+```
+
+**WPF:**
+```bash
+cd wpf
+dotnet restore
+dotnet build
+```
+
+**Python:**
+```bash
+cd python
+pip install -r requirements.txt
+# No build step required for Python
+```
+
+### Running Tests
+```bash
+# For .NET projects
+dotnet test
+
+# For Python
+python -m pytest
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Whether you prefer working with:
+- **WinUI 3** - Modern Windows development
+- **WPF** - Traditional .NET desktop
+- **Python** - Scripting and automation
+
+Feel free to submit pull requests or open issues.
+
+## 📝 License
+
+This project is licensed under the terms specified in the LICENSE file.
+
+## 🙏 Acknowledgments
+
+- **Wallpaper Sources**: Unsplash, Pexels, Backiee, Wallpaper Engine
+- **UI Frameworks**: WinUI 3 (Windows App SDK), WPF UI, ModernWpf, Tkinter
+- **.NET**: Microsoft .NET 8.0
+- **Python**: Python Software Foundation
+
+## 📧 Support
+
+For issues, questions, or suggestions:
+- 🐛 Open an issue on GitHub
+- 💬 Check existing discussions
+- 📖 Review the documentation in this README
+
+---
+
+**Choose the version that works best for you and enjoy beautiful wallpapers! 🎨🖼️**
 
 The application includes robust error handling for:
 - Network connectivity issues
